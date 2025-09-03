@@ -1,0 +1,15 @@
+cat >> .gitignore <<'EOF'
+# Build outputs
+/build/
+/target/
+/out/
+*.jar
+*.war
+*.zip
+
+# Gradle/IDE
+.gradle/
+.idea/
+*.iml
+EOF
+

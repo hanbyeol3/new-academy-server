@@ -1,0 +1,1 @@
+rootProject.name = "new-academy-api-server"
