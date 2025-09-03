@@ -13,6 +13,7 @@ java {
     }
 }
 
+@Suppress("UnstableApiUsage")
 configurations {
     compileOnly {
         extendsFrom(configurations.annotationProcessor.get())
@@ -29,14 +30,15 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-security")
-    implementation("com.querydsl:querydsl-jpa:5.0.0:jakarta")
+    implementation("com.querydsl:querydsl-jpa:5.1.0:jakarta")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0")
     
     compileOnly("org.projectlombok:lombok")
     
     runtimeOnly("com.h2database:h2")
+    runtimeOnly("com.mysql:mysql-connector-j")
     
-    annotationProcessor("com.querydsl:querydsl-apt:5.0.0:jakarta")
+    annotationProcessor("com.querydsl:querydsl-apt:5.1.0:jakarta")
     annotationProcessor("jakarta.persistence:jakarta.persistence-api:3.1.0")
     annotationProcessor("jakarta.annotation:jakarta.annotation-api:2.1.1")
     annotationProcessor("org.projectlombok:lombok")

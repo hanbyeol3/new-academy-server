@@ -5,7 +5,6 @@
 /target/
 /out/
 *.class
-*.log
 *.ctxt
 *.tmp
 *.bak
@@ -62,3 +61,16 @@
 # -------------------------
 .DS_Store
 Thumbs.db
+
+# -------------------------
+# Claude Code files
+# -------------------------
+.claude/
+
+# -------------------------
+# Logs and temporary files
+# -------------------------
+*.log
+logs/
+temp/
+tmp/
