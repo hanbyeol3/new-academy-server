@@ -1,15 +1,64 @@
-cat >> .gitignore <<'EOF'
+# -------------------------
 # Build outputs
+# -------------------------
 /build/
 /target/
 /out/
+*.class
+*.log
+*.ctxt
+*.tmp
+*.bak
+*.swp
+*~
+
+# Package archives
 *.jar
 *.war
+*.ear
+*.nar
 *.zip
+*.tar.gz
+*.rar
 
-# Gradle/IDE
+# -------------------------
+# Gradle
+# -------------------------
 .gradle/
+
+# Keep Gradle wrapper files (important for CI/CD)
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+
+# -------------------------
+# IntelliJ IDEA
+# -------------------------
 .idea/
 *.iml
-EOF
+*.ipr
+*.iws
 
+# IntelliJ specific folders
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/usage.statistics.xml
+.idea/**/dictionaries
+.idea/**/shelf
+.idea/**/libraries
+.idea/**/gradle.xml
+.idea/**/compiler.xml
+.idea/**/modules.xml
+.idea/**/misc.xml
+.idea/**/vcs.xml
+.idea/**/jarRepositories.xml
+
+# -------------------------
+# VS Code (in case you use it sometimes)
+# -------------------------
+.vscode/
+
+# -------------------------
+# OS / System files
+# -------------------------
+.DS_Store
+Thumbs.db
