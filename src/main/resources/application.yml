@@ -36,6 +36,12 @@ spring:
       name: admin
       password: admin123
 
+# JWT 설정
+jwt:
+  secret: ${JWT_SECRET:mySecretKeyForJWT2024!@#$%^&*()1234567890}
+  access-expire-minutes: ${JWT_ACCESS_EXPIRE_MINUTES:15}
+  refresh-expire-days: ${JWT_REFRESH_EXPIRE_DAYS:14}
+
 management:
   endpoints:
     web:

@@ -37,16 +37,6 @@ import lombok.*;
 @Schema(description = "QnA 답변 생성 요청")
 public class RequestAnswerCreate {
 
-    /** 답변 대상 질문 ID */
-    @Schema(description = "질문 ID", example = "1", required = true)
-    @NotNull(message = "질문 ID를 입력해주세요")
-    private Long questionId;
-
-    /** 답변 작성자 관리자명 */
-    @Schema(description = "답변 작성자(관리자명)", example = "관리자", required = true)
-    @NotBlank(message = "관리자명을 입력해주세요")
-    @Size(min = 2, max = 100, message = "관리자명은 2자 이상 100자 이하로 입력해주세요")
-    private String adminName;
 
     /** 답변 본문 내용 */
     @Schema(description = "답변 내용", example = "온라인 수강 신청은 홈페이지에서 가능합니다.", required = true)

@@ -99,15 +99,20 @@ public class ResponseQuestion {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updatedAt;
 
+    /** 답변 정보 */
+    @Schema(description = "답변 정보")
+    private ResponseAnswer answer;
+
     /**
      * 엔티티에서 ResponseQuestion으로 변환하는 정적 팩토리 메서드.
      * 
      * @param question 질문 엔티티
      * @param isAuthorOrAdmin 작성자 본인 또는 관리자 여부
      * @param hasSecretAccess 비밀글 접근 권한 여부
+     * @param answer 답변 정보
      * @return ResponseQuestion DTO
      */
-    public static ResponseQuestion from(QnaQuestion question, boolean isAuthorOrAdmin, boolean hasSecretAccess) {
+    public static ResponseQuestion from(QnaQuestion question, boolean isAuthorOrAdmin, boolean hasSecretAccess, ResponseAnswer answer) {
         if (question == null) {
             return null;
         }
@@ -124,7 +129,8 @@ public class ResponseQuestion {
                 .answeredAt(question.getAnsweredAt())
                 .privacyConsent(question.getPrivacyConsent())
                 .createdAt(question.getCreatedAt())
-                .updatedAt(question.getUpdatedAt());
+                .updatedAt(question.getUpdatedAt())
+                .answer(answer);
 
         // 작성자 본인이거나 관리자인 경우에만 상세 정보 제공
         if (isAuthorOrAdmin) {
@@ -141,17 +147,38 @@ public class ResponseQuestion {
     }
 
     /**
+     * 기존 호환성을 위한 오버로드 메서드.
+     */
+    public static ResponseQuestion from(QnaQuestion question, boolean isAuthorOrAdmin, boolean hasSecretAccess) {
+        return from(question, isAuthorOrAdmin, hasSecretAccess, null);
+    }
+
+    /**
      * 공개용 변환 - 일반 사용자용 (개인정보 최대 마스킹).
      */
     public static ResponseQuestion fromPublic(QnaQuestion question) {
-        return from(question, false, false);
+        return from(question, false, false, null);
+    }
+
+    /**
+     * 공개용 변환 - 답변 포함.
+     */
+    public static ResponseQuestion fromPublic(QnaQuestion question, ResponseAnswer answer) {
+        return from(question, false, false, answer);
     }
 
     /**
      * 관리자용 변환 - 모든 정보 노출.
      */
     public static ResponseQuestion fromAdmin(QnaQuestion question) {
-        return from(question, true, true);
+        return from(question, true, true, null);
+    }
+
+    /**
+     * 관리자용 변환 - 답변 포함.
+     */
+    public static ResponseQuestion fromAdmin(QnaQuestion question, ResponseAnswer answer) {
+        return from(question, true, true, answer);
     }
 
     /**

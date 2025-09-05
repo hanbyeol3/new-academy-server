@@ -1,0 +1,42 @@
+package com.academy.api.common.exception;
+
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+
+/**
+ * 에러 코드 정의.
+ * 
+ * 애플리케이션에서 발생할 수 있는 모든 에러 코드를 정의합니다.
+ */
+@Getter
+@RequiredArgsConstructor
+public enum ErrorCode {
+
+    // 공통 에러
+    INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR", "서버 내부 오류가 발생했습니다."),
+    INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, "INVALID_INPUT_VALUE", "입력값이 올바르지 않습니다."),
+    METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "METHOD_NOT_ALLOWED", "허용되지 않은 HTTP 메서드입니다."),
+    HANDLE_ACCESS_DENIED(HttpStatus.FORBIDDEN, "HANDLE_ACCESS_DENIED", "접근 권한이 없습니다."),
+
+    // 인증/인가 에러
+    AUTH_REQUIRED(HttpStatus.UNAUTHORIZED, "AUTH_REQUIRED", "인증이 필요합니다."),
+    AUTH_INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "AUTH_INVALID_CREDENTIALS", "아이디 또는 비밀번호가 올바르지 않습니다."),
+    AUTH_ACCOUNT_SUSPENDED(HttpStatus.LOCKED, "AUTH_ACCOUNT_SUSPENDED", "정지된 계정입니다. 관리자에게 문의하세요."),
+    AUTH_ACCOUNT_DELETED(HttpStatus.LOCKED, "AUTH_ACCOUNT_DELETED", "삭제된 계정입니다."),
+    AUTH_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "AUTH_TOKEN_EXPIRED", "토큰이 만료되었습니다."),
+    AUTH_INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_INVALID_TOKEN", "유효하지 않은 토큰입니다."),
+    AUTH_REFRESH_TOKEN_NOT_FOUND(HttpStatus.UNAUTHORIZED, "AUTH_REFRESH_TOKEN_NOT_FOUND", "Refresh Token을 찾을 수 없습니다."),
+    AUTH_REFRESH_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "AUTH_REFRESH_TOKEN_EXPIRED", "Refresh Token이 만료되었습니다."),
+
+    // 회원 관련 에러
+    MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER_NOT_FOUND", "회원을 찾을 수 없습니다."),
+    MEMBER_USERNAME_DUPLICATE(HttpStatus.CONFLICT, "MEMBER_USERNAME_DUPLICATE", "이미 사용 중인 사용자명입니다."),
+    MEMBER_EMAIL_DUPLICATE(HttpStatus.CONFLICT, "MEMBER_EMAIL_DUPLICATE", "이미 사용 중인 이메일 주소입니다."),
+    MEMBER_PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "MEMBER_PASSWORD_MISMATCH", "현재 비밀번호가 일치하지 않습니다."),
+    MEMBER_SAME_PASSWORD(HttpStatus.BAD_REQUEST, "MEMBER_SAME_PASSWORD", "현재 비밀번호와 동일합니다. 다른 비밀번호를 입력해주세요.");
+
+    private final HttpStatus httpStatus;
+    private final String code;
+    private final String message;
+}

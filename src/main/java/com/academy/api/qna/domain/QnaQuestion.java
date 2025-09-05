@@ -47,6 +47,10 @@ public class QnaQuestion {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** 회원 ID - 로그인 사용자가 작성한 경우, NULL이면 비회원 작성 */
+    @Column(name = "member_id")
+    private Long memberId;
+
     /** 작성자 이름 - 비회원도 작성 가능하므로 필수 입력 */
     @Column(nullable = false, length = 100)
     private String authorName;
