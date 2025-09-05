@@ -33,6 +33,11 @@ dependencies {
     implementation("com.querydsl:querydsl-jpa:5.1.0:jakarta")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0")
     
+    // JWT 의존성
+    implementation("io.jsonwebtoken:jjwt-api:0.12.3")
+    runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.3")
+    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.3")
+    
     compileOnly("org.projectlombok:lombok")
     
     runtimeOnly("com.h2database:h2")
