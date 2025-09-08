@@ -27,6 +27,7 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class)
+@SuppressWarnings("unused")
 public class Member {
 
     @Id
@@ -98,19 +99,17 @@ public class Member {
      * @param memberName 회원 실명
      * @param phoneNumber 전화번호
      * @param emailAddress 이메일 주소 (선택)
+     * @param role 권한 (기본값: USER)
      */
     @Builder
     private Member(String username, String passwordHash, String memberName, 
-                  String phoneNumber, String emailAddress) {
+                  String phoneNumber, String emailAddress, MemberRole role) {
         this.username = username;
         this.passwordHash = passwordHash;
         this.memberName = memberName;
         this.phoneNumber = phoneNumber;
         this.emailAddress = emailAddress;
-        this.isEmailVerified = false;
-        this.isPhoneVerified = false;
-        this.role = MemberRole.USER;
-        this.status = MemberStatus.ACTIVE;
+        this.role = role != null ? role : MemberRole.USER;
     }
 
     /**

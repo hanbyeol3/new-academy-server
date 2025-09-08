@@ -52,6 +52,12 @@ public class AuthService {
         // 비밀번호 해싱
         String hashedPassword = passwordEncoder.encode(request.getPassword());
 
+        // 권한 설정 (기본값: USER)
+        MemberRole memberRole = MemberRole.USER;
+        if ("ADMIN".equalsIgnoreCase(request.getRole())) {
+            memberRole = MemberRole.ADMIN;
+        }
+
         // 회원 엔티티 생성
         Member member = Member.builder()
                 .username(request.getUsername())
@@ -59,6 +65,7 @@ public class AuthService {
                 .memberName(request.getMemberName())
                 .phoneNumber(request.getPhoneNumber())
                 .emailAddress(request.getEmailAddress())
+                .role(memberRole)
                 .build();
 
         Member savedMember = memberRepository.save(member);

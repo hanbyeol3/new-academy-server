@@ -72,8 +72,11 @@ public class SecurityConfiguration {
                 // QnA 공개 API 허용 (비회원도 사용 가능)
                 .requestMatchers("/api/qna-simple/**").permitAll()
                 
-                // 관리자 API는 ADMIN 권한 필요 (임시로 인증만 필요)
-                .requestMatchers("/api/admin/**").authenticated()
+                // 공지사항 공개 API 허용 (비회원도 사용 가능)
+                .requestMatchers("/api/public/**").permitAll()
+                
+                // 관리자 API는 ADMIN 권한 필요
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 
                 // 그 외 모든 API는 인증 필요
                 .anyRequest().authenticated()
