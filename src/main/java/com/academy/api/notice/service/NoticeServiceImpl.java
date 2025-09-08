@@ -1,7 +1,11 @@
 package com.academy.api.notice.service;
 
+import com.academy.api.file.dto.UploadFileDto;
+import com.academy.api.file.service.FileUploadService;
 import com.academy.api.notice.model.RequestNoticeCreate;
+import com.academy.api.notice.model.RequestNoticeCreateWithFiles;
 import com.academy.api.notice.model.RequestNoticeUpdate;
+import com.academy.api.notice.model.RequestNoticeUpdateWithFiles;
 import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
@@ -15,6 +19,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * 공지사항 서비스 구현체.
@@ -38,6 +47,7 @@ public class NoticeServiceImpl implements NoticeService {
 
 	private final NoticeRepository noticeRepository;
 	private final NoticeQueryRepository noticeQueryRepository;
+	private final FileUploadService fileUploadService;
 
 	/** 
 	 * 공지사항 목록 조회 및 페이지네이션 처리.
@@ -81,8 +91,14 @@ public class NoticeServiceImpl implements NoticeService {
 					// 조회수 증가 완료 로깅
 					log.debug("[NoticeService] 조회수 증가 완료. ID={}, 새조회수={}", id, notice.getViewCount());
 					
-					// 엔티티 → 응답 DTO 변환 후 성공 응답 생성
-					return ResponseData.ok(ResponseNotice.from(notice));
+					// 첨부파일 정보 조회
+					List<UploadFileDto> attachedFiles = Collections.emptyList();
+					if (notice.getFileGroupKey() != null) {
+						attachedFiles = fileUploadService.getFilesByGroupKey(notice.getFileGroupKey());
+					}
+					
+					// 엔티티 → 응답 DTO 변환 후 성공 응답 생성 (첨부파일 포함)
+					return ResponseData.ok(ResponseNotice.from(notice, attachedFiles));
 				})
 				.orElseGet(() -> {
 					// 엔티티 미존재 시 경고 로깅 및 에러 응답
@@ -176,7 +192,100 @@ public class NoticeServiceImpl implements NoticeService {
 		// 삭제 성공 로깅
 		log.debug("[NoticeService] 공지사항 삭제 완료. ID={}", id);
 		
+		// 첨부파일들도 함께 삭제
+		Notice notice = noticeRepository.findById(id).orElse(null);
+		if (notice != null && notice.getFileGroupKey() != null) {
+			fileUploadService.deleteFilesByGroupKey(notice.getFileGroupKey());
+		}
+		
 		// 기본 성공 응답 반환
 		return Response.ok();
+	}
+
+	/**
+	 * 파일 첨부 공지사항 생성.
+	 */
+	@Override
+	@Transactional
+	public ResponseData<Long> createWithFiles(RequestNoticeCreateWithFiles request, List<MultipartFile> files) {
+		log.info("[NoticeService] 파일 첨부 공지사항 생성 시작. 제목=[{}], 파일개수={}", 
+				request.getTitle(), files != null ? files.size() : 0);
+		
+		try {
+			// 파일 그룹키 생성
+			String fileGroupKey = null;
+			if (files != null && !files.isEmpty()) {
+				fileGroupKey = UUID.randomUUID().toString();
+				
+				// 파일 업로드
+				List<UploadFileDto> uploadedFiles = fileUploadService.uploadFiles(files, fileGroupKey);
+				log.info("[NoticeService] 파일 업로드 완료. 업로드된 파일 수: {}", uploadedFiles.size());
+			}
+			
+			// 공지사항 엔티티 생성 및 저장
+			Notice notice = Notice.builder()
+					.title(request.getTitle())
+					.content(request.getContent())
+					.pinned(request.getPinned())
+					.published(request.getPublished())
+					.fileGroupKey(fileGroupKey)
+					.build();
+			
+			Notice savedNotice = noticeRepository.save(notice);
+			
+			log.info("[NoticeService] 파일 첨부 공지사항 생성 완료. ID={}, 파일그룹키={}", 
+					savedNotice.getId(), fileGroupKey);
+			
+			return ResponseData.ok(savedNotice.getId());
+			
+		} catch (Exception e) {
+			log.error("[NoticeService] 파일 첨부 공지사항 생성 실패: {}", e.getMessage(), e);
+			return ResponseData.error("N500", "파일 첨부 공지사항 생성에 실패했습니다: " + e.getMessage());
+		}
+	}
+
+	/**
+	 * 파일 첨부 공지사항 수정.
+	 */
+	@Override
+	@Transactional
+	public Response updateWithFiles(Long id, RequestNoticeUpdateWithFiles request, List<MultipartFile> files) {
+		log.info("[NoticeService] 파일 첨부 공지사항 수정 시작. ID={}, 파일개수={}", 
+				id, files != null ? files.size() : 0);
+		
+		return noticeRepository.findById(id)
+				.map(notice -> {
+					try {
+						// 공지사항 기본 정보 수정
+						notice.update(request.getTitle(), request.getContent(),
+								request.getPinned(), request.getPublished());
+						
+						// 새로운 파일이 있는 경우 업로드
+						if (files != null && !files.isEmpty()) {
+							String fileGroupKey = notice.getFileGroupKey();
+							
+							// 파일 그룹키가 없으면 새로 생성
+							if (fileGroupKey == null) {
+								fileGroupKey = UUID.randomUUID().toString();
+								notice.updateFileGroupKey(fileGroupKey);
+							}
+							
+							// 파일 업로드 (기존 파일들은 유지)
+							List<UploadFileDto> uploadedFiles = fileUploadService.uploadFiles(files, fileGroupKey);
+							log.info("[NoticeService] 추가 파일 업로드 완료. 업로드된 파일 수: {}", uploadedFiles.size());
+						}
+						
+						log.info("[NoticeService] 파일 첨부 공지사항 수정 완료. ID={}", id);
+						return Response.ok("0000", "공지사항이 수정되었습니다.");
+						
+					} catch (Exception e) {
+						log.error("[NoticeService] 파일 첨부 공지사항 수정 실패: {}", e.getMessage(), e);
+						return Response.error("N500", "파일 첨부 공지사항 수정에 실패했습니다: " + e.getMessage());
+					}
+				})
+				.orElseGet(() -> {
+					log.warn("[NoticeService] 수정 대상 공지사항 미존재. ID={}", id);
+					return Response.error("N404", "공지사항을 찾을 수 없습니다. ID: " + id);
+				});
 	}
 }

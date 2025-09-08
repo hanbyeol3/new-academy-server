@@ -1,12 +1,17 @@
 package com.academy.api.notice.service;
 
 import com.academy.api.notice.model.RequestNoticeCreate;
+import com.academy.api.notice.model.RequestNoticeCreateWithFiles;
 import com.academy.api.notice.model.RequestNoticeUpdate;
+import com.academy.api.notice.model.RequestNoticeUpdateWithFiles;
 import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
 import com.academy.api.notice.model.ResponseNotice;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 /**
  * 공지사항 비즈니스 로직을 처리하는 서비스 인터페이스.
@@ -74,4 +79,27 @@ public interface NoticeService {
 	 * @return 삭제 성공/실패 응답
 	 */
 	Response delete(Long id);
+
+	/** 
+	 * 파일 첨부 공지사항 생성.
+	 * - 공지사항 생성과 동시에 파일 업로드 처리
+	 * - 파일들을 그룹키로 묶어서 관리
+	 * 
+	 * @param request 공지사항 생성 요청 데이터
+	 * @param files 첨부할 파일 목록
+	 * @return 생성된 공지사항의 ID 또는 에러 응답
+	 */
+	ResponseData<Long> createWithFiles(RequestNoticeCreateWithFiles request, List<MultipartFile> files);
+
+	/** 
+	 * 파일 첨부 공지사항 수정.
+	 * - 공지사항 수정과 동시에 파일 업로드 처리
+	 * - 기존 파일들은 유지하고 새 파일들만 추가
+	 * 
+	 * @param id 수정할 공지사항 ID
+	 * @param request 공지사항 수정 요청 데이터
+	 * @param files 새로 첨부할 파일 목록
+	 * @return 수정 성공/실패 응답
+	 */
+	Response updateWithFiles(Long id, RequestNoticeUpdateWithFiles request, List<MultipartFile> files);
 }

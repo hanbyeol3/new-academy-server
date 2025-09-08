@@ -4,6 +4,7 @@ import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.file.dto.Base64FileUploadRequest;
 import com.academy.api.file.dto.FileUploadResponse;
 import com.academy.api.file.service.FileService;
+import com.academy.api.file.service.FileUploadService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -40,6 +41,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class FileController {
 
     private final FileService fileService;
+    private final FileUploadService fileUploadService;
 
     /**
      * Multipart 파일 업로드.
@@ -104,7 +106,7 @@ public class FileController {
         
         log.info("파일 다운로드 요청. 파일ID={}", fileId);
         
-        return fileService.downloadFile(fileId);
+        return fileUploadService.downloadFile(fileId);
     }
 
     /**
@@ -166,5 +168,27 @@ public class FileController {
         
         boolean exists = fileService.existsFile(fileId);
         return ResponseData.ok(exists);
+    }
+
+    /**
+     * 그룹키와 파일명으로 파일 다운로드.
+     */
+    @Operation(
+        summary = "그룹키와 파일명으로 파일 다운로드", 
+        description = "파일 그룹키와 파일명을 사용하여 파일을 다운로드합니다. 공지사항 첨부파일 등에 사용됩니다."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "다운로드 성공"),
+        @ApiResponse(responseCode = "404", description = "해당 파일을 찾을 수 없음"),
+        @ApiResponse(responseCode = "500", description = "파일 처리 중 오류 발생")
+    })
+    @GetMapping("/download/group/{groupKey}/file/{fileName}")
+    public ResponseEntity<Resource> downloadFileByGroupKeyAndName(
+            @Parameter(description = "파일 그룹키") @PathVariable String groupKey,
+            @Parameter(description = "파일명") @PathVariable String fileName) {
+        
+        log.info("그룹키와 파일명으로 파일 다운로드 요청. 그룹키={}, 파일명={}", groupKey, fileName);
+        
+        return fileUploadService.downloadFileByGroupKeyAndName(groupKey, fileName);
     }
 }

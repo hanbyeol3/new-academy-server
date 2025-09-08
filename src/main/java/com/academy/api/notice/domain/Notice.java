@@ -43,6 +43,10 @@ public class Notice {
     @Builder.Default
     private Long viewCount = 0L;
 
+    /** 첨부 파일 그룹 아이디 */
+    @Column(name = "file_group_key", length = 36)
+    private String fileGroupKey;
+
     @CreatedDate
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -64,6 +68,10 @@ public class Notice {
         if (published != null) {
             this.published = published;
         }
+    }
+
+    public void updateFileGroupKey(String fileGroupKey) {
+        this.fileGroupKey = fileGroupKey;
     }
 
     public void incrementViewCount() {

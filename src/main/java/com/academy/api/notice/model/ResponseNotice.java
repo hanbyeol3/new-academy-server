@@ -1,5 +1,6 @@
 package com.academy.api.notice.model;
 
+import com.academy.api.file.dto.UploadFileDto;
 import com.academy.api.notice.domain.Notice;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
@@ -58,6 +59,10 @@ public class ResponseNotice {
     @Schema(description = "수정일시", example = "2024-01-15T14:20:00")
     private LocalDateTime updatedAt;
 
+    /** 첨부파일 목록 */
+    @Schema(description = "첨부파일 목록")
+    private List<UploadFileDto> attachedFiles;
+
     /**
      * 엔티티(Notice) → 응답 DTO(ResponseNotice)로 변환하는 팩토리 메서드.
      * - 왜? 엔티티를 그대로 노출하지 않고, API 계약 모델로 매핑하기 위함.
@@ -76,6 +81,28 @@ public class ResponseNotice {
                 .viewCount(notice.getViewCount())
                 .createdAt(notice.getCreatedAt())
                 .updatedAt(notice.getUpdatedAt())
+                .build();
+    }
+
+    /**
+     * 엔티티(Notice)와 첨부파일 → 응답 DTO(ResponseNotice)로 변환하는 팩토리 메서드.
+     *
+     * @param notice 변환할 Notice 엔티티 (null 아님 가정)
+     * @param attachedFiles 첨부파일 목록
+     * @return 변환된 ResponseNotice 인스턴스
+     */
+    public static ResponseNotice from(final Notice notice, final List<UploadFileDto> attachedFiles) {
+        // Builder 패턴으로 필드 매핑: 가독성 및 불변성 향상
+        return ResponseNotice.builder()
+                .id(notice.getId())
+                .title(notice.getTitle())
+                .content(notice.getContent())
+                .pinned(notice.getPinned())
+                .published(notice.getPublished())
+                .viewCount(notice.getViewCount())
+                .createdAt(notice.getCreatedAt())
+                .updatedAt(notice.getUpdatedAt())
+                .attachedFiles(attachedFiles)
                 .build();
     }
 
