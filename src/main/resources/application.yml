@@ -54,6 +54,11 @@ springdoc:
   api-docs:
     path: /v3/api-docs
 
+# 파일 업로드 설정
+file:
+  upload-dir: ${FILE_UPLOAD_DIR:./uploads}
+  max-size: ${FILE_MAX_SIZE:10485760} # 10MB
+
 logging:
   level:
     root: INFO
