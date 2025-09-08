@@ -9,6 +9,8 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -51,9 +53,12 @@ public class FileController {
         @ApiResponse(responseCode = "400", description = "잘못된 파일 또는 요청"),
         @ApiResponse(responseCode = "413", description = "파일 크기 초과")
     })
-    @PostMapping("/upload")
+    @PostMapping(value = "/upload", consumes = "multipart/form-data")
     public ResponseData<FileUploadResponse> uploadMultipartFile(
-            @Parameter(description = "업로드할 파일") @RequestParam("file") MultipartFile file) {
+            @Parameter(description = "업로드할 파일",
+                      content = @Content(mediaType = "multipart/form-data",
+                                        schema = @Schema(type = "string", format = "binary")))
+            @RequestParam("file") MultipartFile file) {
         
         log.info("Multipart 파일 업로드 요청. 파일명={}, 크기={}", file.getOriginalFilename(), file.getSize());
         
