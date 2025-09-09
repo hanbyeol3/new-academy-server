@@ -2,6 +2,7 @@ package com.academy.api.qna.repository;
 
 import com.academy.api.qna.domain.QnaQuestion;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -30,7 +31,7 @@ import java.util.Optional;
  *  - N+1 문제 방지를 위한 명시적 쿼리
  */
 @Repository
-public interface QnaQuestionRepository extends JpaRepository<QnaQuestion, Long> {
+public interface QnaQuestionRepository extends JpaRepository<QnaQuestion, Long>, JpaSpecificationExecutor<QnaQuestion> {
 
     /**
      * 게시된 질문만 조회 (공개용).
