@@ -42,7 +42,16 @@ public class QnaPublicController {
      */
     @Operation(
         summary = "질문 목록 조회", 
-        description = "모든 질문 목록을 페이지네이션으로 조회합니다. 비회원도 접근 가능합니다."
+        description = """
+            모든 질문 목록을 페이지네이션으로 조회합니다. 비회원도 접근 가능합니다.
+            
+            검색 조건:
+            - titleLike: 제목 포함 검색
+            - contentLike: 내용 포함 검색  
+            - secret: 비밀글 필터 (exclude/only/include)
+            - isAnswered: 답변 완료 여부
+            - createdFrom/createdTo: 작성일 범위 검색
+            """
     )
     @ApiResponses(value = {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공")

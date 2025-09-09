@@ -49,6 +49,20 @@ public class QnaQuestionQueryRepository extends BaseSearchRepository<QnaQuestion
     /** QueryDSL 쿼리 생성을 위한 팩토리 - 부모 클래스에서 요구하는 의존성 */
     private final JPAQueryFactory jpaQueryFactory;
 
+    /** QnA 질문 정렬 가능한 필드 매핑 - 보안을 위한 화이트리스트 방식 */
+    private static final Map<String, Path<?>> ALLOWED_SORT_FIELDS = Map.of(
+            "id", qnaQuestion.id,
+            "title", qnaQuestion.title,
+            "authorName", qnaQuestion.authorName,
+            "pinned", qnaQuestion.pinned,
+            "published", qnaQuestion.published,
+            "viewCount", qnaQuestion.viewCount,
+            "isAnswered", qnaQuestion.isAnswered,
+            "answeredAt", qnaQuestion.answeredAt,
+            "createdAt", qnaQuestion.createdAt,
+            "updatedAt", qnaQuestion.updatedAt
+    );
+
     /**
      * QueryDSL 팩토리 제공 - BaseSearchRepository 요구사항.
      */
@@ -81,20 +95,20 @@ public class QnaQuestionQueryRepository extends BaseSearchRepository<QnaQuestion
     protected Expression<ResponseQuestion> projection() {
         return Projections.constructor(ResponseQuestion.class,
             qnaQuestion.id,                    // 질문 ID
-            qnaQuestion.authorName,            // 작성자명 (마스킹은 서비스 레이어에서 처리)
-            qnaQuestion.phoneNumber,           // 연락처 (마스킹은 서비스 레이어에서 처리)  
-            qnaQuestion.title,                 // 제목
-            qnaQuestion.content,               // 내용 (비밀글 처리는 서비스에서)
+            qnaQuestion.authorName,            // 작성자 이름 (마스킹은 서비스 레이어에서 처리)
+            qnaQuestion.phoneNumber,           // 연락처 전화번호 (마스킹은 서비스 레이어에서 처리)  
+            qnaQuestion.title,                 // 질문 제목
+            qnaQuestion.content,               // 질문 본문 (비밀글 처리는 서비스에서)
             qnaQuestion.secret,                // 비밀글 여부
             qnaQuestion.pinned,                // 상단 고정 여부
             qnaQuestion.published,             // 게시 여부
             qnaQuestion.viewCount,             // 조회수
-            qnaQuestion.isAnswered,            // 답변 완료 여부
+            qnaQuestion.isAnswered,            // 답변 등록 여부
             qnaQuestion.answeredAt,            // 답변 등록 시각
-            qnaQuestion.privacyConsent,        // 개인정보 수집 동의
-            qnaQuestion.ipAddress,             // IP 주소 (관리자 전용)
-            qnaQuestion.createdAt,             // 작성일시
-            qnaQuestion.updatedAt              // 수정일시
+            qnaQuestion.privacyConsent,        // 개인정보 수집 동의 여부
+            qnaQuestion.ipAddress,             // 작성자 IP 주소 (관리자만 조회 가능)
+            qnaQuestion.createdAt,             // 생성 일시
+            qnaQuestion.updatedAt              // 수정 일시
         );
     }
 
@@ -118,43 +132,14 @@ public class QnaQuestionQueryRepository extends BaseSearchRepository<QnaQuestion
     protected List<BooleanExpression> predicates(ResponseQuestion.Criteria criteria) {
         List<BooleanExpression> predicates = new ArrayList<>();
 
-        // 기본 조건: 게시된 글만 조회 (관리자가 published 조건을 명시적으로 설정하지 않은 경우)
-        if (criteria.getPublished() == null) {
-            predicates.add(PredicateBuilder.eqIfPresent(qnaQuestion.published, true));
-        } else {
-            predicates.add(PredicateBuilder.eqIfPresent(qnaQuestion.published, criteria.getPublished()));
-        }
+        // 기본 조건: 게시된 글만 조회 (public API는 항상 published=true만 조회)
+        predicates.add(PredicateBuilder.eqIfPresent(qnaQuestion.published, true));
 
-        // 키워드 검색 (통합 검색 vs 특정 필드 검색)
-        if (criteria.getKeyword() != null && !criteria.getKeyword().trim().isEmpty()) {
-            String keyword = criteria.getKeyword().trim();
-            
-            if (criteria.getSearchField() != null) {
-                // 특정 필드에서만 검색
-                switch (criteria.getSearchField()) {
-                    case "title":
-                        predicates.add(PredicateBuilder.likeContains(qnaQuestion.title, keyword));
-                        break;
-                    case "content":
-                        predicates.add(PredicateBuilder.likeContains(qnaQuestion.content, keyword));
-                        break;
-                    case "author":
-                        predicates.add(PredicateBuilder.likeContains(qnaQuestion.authorName, keyword));
-                        break;
-                }
-            } else {
-                // 제목, 내용, 작성자명에서 통합 검색 (OR 조건)
-                BooleanExpression titleMatch = PredicateBuilder.likeContains(qnaQuestion.title, keyword);
-                BooleanExpression contentMatch = PredicateBuilder.likeContains(qnaQuestion.content, keyword);
-                BooleanExpression authorMatch = PredicateBuilder.likeContains(qnaQuestion.authorName, keyword);
-                
-                BooleanExpression keywordCondition = titleMatch;
-                if (contentMatch != null) keywordCondition = keywordCondition.or(contentMatch);
-                if (authorMatch != null) keywordCondition = keywordCondition.or(authorMatch);
-                
-                if (keywordCondition != null) predicates.add(keywordCondition);
-            }
-        }
+        // 제목 부분 일치 검색 - 공지사항과 동일한 패턴
+        predicates.add(PredicateBuilder.likeContains(qnaQuestion.title, criteria.getTitleLike()));
+        
+        // 내용 부분 일치 검색 - 공지사항과 동일한 패턴
+        predicates.add(PredicateBuilder.likeContains(qnaQuestion.content, criteria.getContentLike()));
 
         // 비밀글 필터
         if (criteria.getSecret() != null) {
@@ -172,20 +157,12 @@ public class QnaQuestionQueryRepository extends BaseSearchRepository<QnaQuestion
         // 답변 완료 여부 필터
         predicates.add(PredicateBuilder.eqIfPresent(qnaQuestion.isAnswered, criteria.getIsAnswered()));
 
-        // 상단 고정 여부 필터
-        predicates.add(PredicateBuilder.eqIfPresent(qnaQuestion.pinned, criteria.getPinned()));
-
-        // 작성일 범위 검색
+        // 작성일 범위 검색 - 공지사항과 동일한 패턴
         predicates.add(PredicateBuilder.betweenIfPresent(
             qnaQuestion.createdAt, 
-            criteria.getDateFrom(), 
-            criteria.getDateTo()
+            criteria.getCreatedFrom(), 
+            criteria.getCreatedTo()
         ));
-
-        // 관리자 전용 검색 조건들
-        predicates.add(PredicateBuilder.likeContains(qnaQuestion.ipAddress, criteria.getIpAddress()));
-        predicates.add(PredicateBuilder.likeContains(qnaQuestion.authorName, criteria.getAuthorName()));
-        predicates.add(PredicateBuilder.likeContains(qnaQuestion.phoneNumber, criteria.getPhoneNumber()));
 
         return predicates;
     }
@@ -206,6 +183,58 @@ public class QnaQuestionQueryRepository extends BaseSearchRepository<QnaQuestion
         orders.add(qnaQuestion.pinned.desc());      // 고정 질문 우선
         orders.add(qnaQuestion.createdAt.desc());   // 최신 질문 우선
         return orders;
+    }
+
+    /**
+     * 사용자 정렬 조건 매핑 - BaseSearchRepository 구현 요구사항.
+     * 
+     * 클라이언트에서 요청한 정렬 조건을 QueryDSL OrderSpecifier로 변환한다.
+     * 보안을 위해 화이트리스트 방식으로 허용된 필드만 정렬 가능하다.
+     * 
+     * 허용된 정렬 필드:
+     *  - id: 질문 ID
+     *  - title: 제목
+     *  - authorName: 작성자명
+     *  - pinned: 고정 여부
+     *  - published: 게시 상태
+     *  - viewCount: 조회수
+     *  - isAnswered: 답변 완료 여부
+     *  - answeredAt: 답변 등록 시각
+     *  - createdAt: 생성일시
+     *  - updatedAt: 수정일시
+     * 
+     * @param sort Spring Data Sort 객체
+     * @return 변환된 OrderSpecifier 목록
+     */
+    @Override
+    protected List<OrderSpecifier<?>> mapSort(Sort sort) {
+        if (sort.isEmpty()) {
+            log.debug("[QnaQuestionQueryRepository] 사용자 정렬 조건 없음");
+            return List.of();
+        }
+        
+        // 정렬 조건 유효성 검증
+        if (!OrderSpecifierFactory.validateSort(sort, ALLOWED_SORT_FIELDS)) {
+            log.warn("[QnaQuestionQueryRepository] 유효하지 않은 정렬 조건 - 기본 정렬 사용. sort={}", sort);
+            return List.of();
+        }
+        
+        // 유효한 정렬 조건을 OrderSpecifier로 변환
+        List<OrderSpecifier<?>> orderSpecifiers = OrderSpecifierFactory.create(sort, ALLOWED_SORT_FIELDS);
+        
+        log.debug("[QnaQuestionQueryRepository] 사용자 정렬 조건 적용. 조건수={}", orderSpecifiers.size());
+        
+        return orderSpecifiers;
+    }
+
+    /**
+     * 허용된 정렬 필드 목록 조회.
+     * API 문서나 클라이언트 가이드에서 사용 가능한 정렬 필드를 제공할 때 활용한다.
+     * 
+     * @return 정렬 가능한 필드명 목록
+     */
+    public List<String> getAllowedSortFields() {
+        return OrderSpecifierFactory.getAllowedFieldNames(ALLOWED_SORT_FIELDS);
     }
 
 }

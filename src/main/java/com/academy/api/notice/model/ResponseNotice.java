@@ -144,29 +144,38 @@ public class ResponseNotice {
      * - null 또는 빈 값인 필드는 where 조건에서 제외하는 방식으로 사용한다.
      */
     @Getter @Setter
+    @Schema(description = "공지사항 검색 조건")
     public static class Criteria {
         /** 제목 포함 검색 키워드 (null/빈칸이면 조건 제외) */
+        @Schema(description = "제목 포함 검색 키워드", example = "시스템")
         private String titleLike;
 
         /** 내용 포함 검색 키워드 (null/빈칸이면 조건 제외) */
+        @Schema(description = "내용 포함 검색 키워드", example = "점검")
         private String contentLike;
 
         /** 발행 여부 (null이면 조건 제외) */
+        @Schema(description = "발행 여부 필터", example = "true")
         private Boolean published;
 
         /** 상단 고정 여부 (null이면 조건 제외) */
+        @Schema(description = "상단 고정 여부 필터", example = "false")
         private Boolean pinned;
 
         /** 생성일 시작(이상) — null이면 조건 제외 */
+        @Schema(description = "생성일 시작 날짜", example = "2024-01-01 00:00:00")
         private LocalDateTime createdFrom;
 
         /** 생성일 종료(이하) — null이면 조건 제외 */
+        @Schema(description = "생성일 종료 날짜", example = "2024-12-31 23:59:59")
         private LocalDateTime createdTo;
 
         /** 수정일 시작(이상) — null이면 조건 제외 */
+        @Schema(description = "수정일 시작 날짜", example = "2024-01-01 00:00:00")
         private LocalDateTime updatedFrom;
 
         /** 수정일 종료(이하) — null이면 조건 제외 */
+        @Schema(description = "수정일 종료 날짜", example = "2024-12-31 23:59:59")
         private LocalDateTime updatedTo;
     }
 

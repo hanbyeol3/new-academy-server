@@ -63,7 +63,8 @@ public final class PredicateBuilder {
         }
         
         log.debug("[PredicateBuilder] LIKE 조건 생성. path={}, value=[{}]", path, value);
-        return path.containsIgnoreCase(value);
+        // 대소문자 구분하는 LIKE 검색 (성능상 더 나음)
+        return path.like("%" + value + "%");
     }
 
     /**

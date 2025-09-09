@@ -39,15 +39,25 @@ public class NoticePublicController {
      */
     @Operation(
         summary = "공지사항 목록 조회", 
-        description = "검색 조건과 페이지네이션을 적용하여 공지사항 목록을 조회합니다. 모든 사용자 접근 가능."
+        description = """
+            검색 조건과 페이지네이션을 적용하여 공지사항 목록을 조회합니다. 모든 사용자 접근 가능.
+            
+            검색 조건:
+            - titleLike: 제목 포함 검색
+            - contentLike: 내용 포함 검색  
+            - published: 발행 여부 필터
+            - pinned: 상단 고정 여부 필터
+            - createdFrom/createdTo: 생성일 범위 검색
+            - updatedFrom/updatedTo: 수정일 범위 검색
+            """
     )
     @ApiResponses({ 
         @ApiResponse(responseCode = "200", description = "목록 조회 성공")
     })
     @GetMapping
     public ResponseList<ResponseNotice> list(
-            @Parameter(description = "검색 조건 (제목, 내용, 발행상태 등)") ResponseNotice.Criteria cond,
-            @Parameter(description = "페이지네이션 정보") @PageableDefault Pageable pageable) {
+            @Parameter(description = "공지사항 검색 조건") ResponseNotice.Criteria cond,
+            @Parameter(description = "페이지네이션 정보 (page, size, sort)") @PageableDefault Pageable pageable) {
         
         log.info("공지사항 목록 조회 요청. 검색조건={}, 페이지={}", cond, pageable);
         

@@ -104,6 +104,32 @@ public class ResponseQuestion {
     private ResponseAnswer answer;
 
     /**
+     * QueryDSL 프로젝션용 생성자 (답변 정보 제외).
+     * QnaQuestionQueryRepository에서 사용하는 15개 파라미터 생성자
+     */
+    public ResponseQuestion(Long id, String authorName, String phoneNumber, String title, String content,
+                          Boolean secret, Boolean pinned, Boolean published, Long viewCount, Boolean isAnswered,
+                          LocalDateTime answeredAt, Boolean privacyConsent, String ipAddress,
+                          LocalDateTime createdAt, LocalDateTime updatedAt) {
+        this.id = id;
+        this.authorName = authorName;
+        this.phoneNumber = phoneNumber;
+        this.title = title;
+        this.content = content;
+        this.secret = secret;
+        this.pinned = pinned;
+        this.published = published;
+        this.viewCount = viewCount;
+        this.isAnswered = isAnswered;
+        this.answeredAt = answeredAt;
+        this.privacyConsent = privacyConsent;
+        this.ipAddress = ipAddress;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.answer = null; // 프로젝션에서는 답변 정보 별도 설정
+    }
+
+    /**
      * 엔티티에서 ResponseQuestion으로 변환하는 정적 팩토리 메서드.
      * 
      * @param question 질문 엔티티
@@ -242,42 +268,34 @@ public class ResponseQuestion {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
+    @Schema(description = "QnA 질문 검색 조건")
     public static class Criteria {
 
-        /** 키워드 검색 (제목, 내용, 작성자명에서 검색) */
-        private String keyword;
+        /** 제목 포함 검색 키워드 (null/빈칸이면 조건 제외) */
+        @Schema(description = "제목 포함 검색 키워드", example = "시스템")
+        private String titleLike;
 
-        /** 검색 필드 지정 (title, content, author) */
-        private String searchField;
+        /** 내용 포함 검색 키워드 (null/빈칸이면 조건 제외) */
+        @Schema(description = "내용 포함 검색 키워드", example = "문의")
+        private String contentLike;
 
         /** 비밀글 필터 (exclude: 제외, only: 비밀글만, include: 전체) */
+        @Schema(description = "비밀글 필터", allowableValues = {"exclude", "only", "include"}, example = "exclude")
         private String secret;
 
         /** 답변 완료 여부 필터 */
+        @Schema(description = "답변 완료 여부 필터", example = "false")
         private Boolean isAnswered;
 
-        /** 상단 고정 여부 필터 */
-        private Boolean pinned;
-
-        /** 게시 여부 필터 */
-        private Boolean published;
-
-        /** 작성일 시작 날짜 */
+        /** 작성일 시작(이상) — null이면 조건 제외 */
+        @Schema(description = "작성일 시작 날짜", example = "2024-01-01 00:00:00")
         @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-        private LocalDateTime dateFrom;
+        private LocalDateTime createdFrom;
 
-        /** 작성일 종료 날짜 */
+        /** 작성일 종료(이하) — null이면 조건 제외 */
+        @Schema(description = "작성일 종료 날짜", example = "2024-12-31 23:59:59")
         @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-        private LocalDateTime dateTo;
-
-        /** IP 주소 검색 (관리자만) */
-        private String ipAddress;
-
-        /** 작성자 이름 검색 (관리자만) */
-        private String authorName;
-
-        /** 전화번호 검색 (관리자만) */
-        private String phoneNumber;
+        private LocalDateTime createdTo;
     }
 
     /**
