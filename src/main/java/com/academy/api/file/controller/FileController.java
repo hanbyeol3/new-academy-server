@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * 파일 관리 API 컨트롤러.
+ * 파일 관리 API 컨트롤러
  * 
  * 파일 업로드, 다운로드, 조회, 삭제 기능을 제공합니다.
  * 모든 사용자가 접근 가능한 공개 API입니다.
