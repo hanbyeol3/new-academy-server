@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -62,6 +63,22 @@ public class ResponseNotice {
     /** 첨부파일 목록 */
     @Schema(description = "첨부파일 목록")
     private List<UploadFileDto> attachedFiles;
+
+    /**
+     * QueryDSL용 생성자 (attachedFiles 제외).
+     */
+    public ResponseNotice(Long id, String title, String content, Boolean pinned, Boolean published, 
+                         Long viewCount, LocalDateTime createdAt, LocalDateTime updatedAt) {
+        this.id = id;
+        this.title = title;
+        this.content = content;
+        this.pinned = pinned;
+        this.published = published;
+        this.viewCount = viewCount;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.attachedFiles = Collections.emptyList();
+    }
 
     /**
      * 엔티티(Notice) → 응답 DTO(ResponseNotice)로 변환하는 팩토리 메서드.

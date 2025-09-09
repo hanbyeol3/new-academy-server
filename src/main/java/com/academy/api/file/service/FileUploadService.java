@@ -1,5 +1,6 @@
 package com.academy.api.file.service;
 
+import com.academy.api.domain.file.FileContext;
 import com.academy.api.domain.file.StorageType;
 import com.academy.api.domain.file.UploadFile;
 import com.academy.api.file.dto.UploadFileDto;
@@ -24,6 +25,8 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -49,39 +52,81 @@ public class FileUploadService {
     @Value("${file.max-size}")
     private long maxFileSize;
 
+    @Value("${file.max-total-size}")
+    private long maxTotalSize;
+
+    @Value("${file.max-file-count}")
+    private int maxFileCount;
+
+    @Value("${file.allowed-extensions}")
+    private String allowedExtensions;
+
     /**
-     * 파일 그룹으로 파일들을 업로드.
+     * 파일 그룹으로 파일들을 업로드 (기본 컨텍스트: GENERAL).
      * 
      * @param files 업로드할 파일들
      * @param groupKey 파일 그룹키
      * @return 업로드된 파일 목록
      */
     public List<UploadFileDto> uploadFiles(List<MultipartFile> files, String groupKey) {
+        return uploadFiles(files, groupKey, FileContext.GENERAL);
+    }
+
+    /**
+     * 파일 그룹으로 파일들을 업로드 (컨텍스트 지정).
+     * 
+     * @param files 업로드할 파일들
+     * @param groupKey 파일 그룹키
+     * @param context 파일 컨텍스트 (도메인)
+     * @return 업로드된 파일 목록
+     */
+    public List<UploadFileDto> uploadFiles(List<MultipartFile> files, String groupKey, FileContext context) {
+        // 파일 그룹 검증
+        validateFileGroup(files);
+        
         return files.stream()
-                .map(file -> uploadSingleFile(file, groupKey))
+                .map(file -> uploadSingleFile(file, groupKey, context))
                 .collect(Collectors.toList());
     }
 
     /**
-     * 단일 파일 업로드.
+     * 단일 파일 업로드 (기본 컨텍스트: GENERAL).
      * 
      * @param file 업로드할 파일
      * @param groupKey 파일 그룹키
      * @return 업로드된 파일 정보
      */
     public UploadFileDto uploadSingleFile(MultipartFile file, String groupKey) {
+        return uploadSingleFile(file, groupKey, FileContext.GENERAL);
+    }
+
+    /**
+     * 단일 파일 업로드 (컨텍스트 지정).
+     * 
+     * @param file 업로드할 파일
+     * @param groupKey 파일 그룹키
+     * @param context 파일 컨텍스트 (도메인)
+     * @return 업로드된 파일 정보
+     */
+    public UploadFileDto uploadSingleFile(MultipartFile file, String groupKey, FileContext context) {
         try {
             validateFile(file);
+            validateFileExtension(file);
             
             String fileId = UUID.randomUUID().toString();
             String originalFileName = file.getOriginalFilename();
             String ext = getFileExtension(originalFileName);
             String serverFileName = fileId + (ext.isEmpty() ? "" : "." + ext);
             
-            // 업로드 디렉토리 생성
-            Path uploadPath = Paths.get(uploadDir);
+            // 도메인별 폴더 구조 생성: uploads/도메인/연도/월/
+            LocalDateTime now = LocalDateTime.now();
+            String year = String.valueOf(now.getYear());
+            String month = String.format("%02d", now.getMonthValue());
+            
+            Path uploadPath = Paths.get(uploadDir, context.getFolder(), year, month);
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
+                log.info("폴더 생성: {}", uploadPath);
             }
             
             // 파일 저장
@@ -105,7 +150,7 @@ public class FileUploadService {
             
             uploadFileRepository.save(uploadFile);
             
-            log.info("파일 업로드 완료: {} (그룹: {})", originalFileName, groupKey);
+            log.info("파일 업로드 완료: {} (그룹: {}, 컨텍스트: {}, 경로: {})", originalFileName, groupKey, context, filePath);
             
             return UploadFileDto.of(fileId, groupKey, originalFileName, ext, file.getSize(), uploadFile.getRegDate());
             
@@ -210,20 +255,25 @@ public class FileUploadService {
      * @param groupKey 파일 그룹키
      */
     public void deleteFilesByGroupKey(String groupKey) {
+        log.info("그룹키로 파일 삭제 시작: {}", groupKey);
         List<UploadFile> files = uploadFileRepository.findByGroupKeyAndDeletedFalse(groupKey);
+        log.info("삭제 대상 파일 수: {}", files.size());
         
         for (UploadFile file : files) {
+            log.info("파일 삭제 처리 중: {} (경로: {})", file.getFileName(), file.getServerPath());
             file.delete();
             
             // 실제 파일도 삭제 (선택적)
             try {
                 Path filePath = Paths.get(file.getServerPath());
-                Files.deleteIfExists(filePath);
-                log.info("파일 삭제 완료: {}", file.getFileName());
+                boolean deleted = Files.deleteIfExists(filePath);
+                log.info("파일 삭제 완료: {} (물리적 삭제: {})", file.getFileName(), deleted);
             } catch (IOException e) {
                 log.warn("물리적 파일 삭제 실패: {} - {}", file.getFileName(), e.getMessage());
             }
         }
+        
+        log.info("그룹키 파일 삭제 완료: {} (처리된 파일 수: {})", groupKey, files.size());
         
         uploadFileRepository.saveAll(files);
     }
@@ -245,6 +295,55 @@ public class FileUploadService {
         String fileName = file.getOriginalFilename();
         if (fileName == null || fileName.trim().isEmpty()) {
             throw new IllegalArgumentException("파일명이 유효하지 않습니다");
+        }
+    }
+
+    /**
+     * 파일 그룹 유효성 검증 (파일 개수, 전체 용량).
+     * 
+     * @param files 검증할 파일 그룹
+     */
+    private void validateFileGroup(List<MultipartFile> files) {
+        if (files == null || files.isEmpty()) {
+            throw new IllegalArgumentException("업로드할 파일이 없습니다");
+        }
+        
+        // 파일 개수 검증
+        if (files.size() > maxFileCount) {
+            throw new IllegalArgumentException("파일 개수가 너무 많습니다 (최대: " + maxFileCount + "개)");
+        }
+        
+        // 전체 파일 크기 검증
+        long totalSize = files.stream()
+                .mapToLong(MultipartFile::getSize)
+                .sum();
+                
+        if (totalSize > maxTotalSize) {
+            long maxTotalSizeMB = maxTotalSize / 1024 / 1024;
+            long totalSizeMB = totalSize / 1024 / 1024;
+            throw new IllegalArgumentException("전체 파일 크기가 너무 큽니다 (현재: " + totalSizeMB + "MB, 최대: " + maxTotalSizeMB + "MB)");
+        }
+    }
+
+    /**
+     * 파일 확장자 유효성 검증.
+     * 
+     * @param file 검증할 파일
+     */
+    private void validateFileExtension(MultipartFile file) {
+        String fileName = file.getOriginalFilename();
+        if (fileName == null) {
+            throw new IllegalArgumentException("파일명이 유효하지 않습니다");
+        }
+        
+        String extension = getFileExtension(fileName);
+        if (extension.isEmpty()) {
+            throw new IllegalArgumentException("파일 확장자가 없습니다");
+        }
+        
+        List<String> allowedExtList = Arrays.asList(allowedExtensions.toLowerCase().split(","));
+        if (!allowedExtList.contains(extension.toLowerCase())) {
+            throw new IllegalArgumentException("허용되지 않은 파일 형식입니다. 허용 형식: " + allowedExtensions);
         }
     }
 

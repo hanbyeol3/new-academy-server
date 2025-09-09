@@ -2,6 +2,7 @@ package com.academy.api.file.service;
 
 import com.academy.api.data.responses.ResponseResult;
 import com.academy.api.data.responses.common.ResponseData;
+import com.academy.api.domain.file.FileContext;
 import com.academy.api.file.dto.Base64FileUploadRequest;
 import com.academy.api.file.dto.FileUploadResponse;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.UUID;
 
@@ -49,7 +51,12 @@ public class FileServiceImpl implements FileService {
             String extension = getFileExtension(originalFileName);
             String serverFileName = fileId + "." + extension;
             
-            Path uploadPath = Paths.get(uploadDir);
+            // 도메인별 폴더 구조 생성 (GENERAL 컨텍스트)
+            LocalDateTime now = LocalDateTime.now();
+            String year = String.valueOf(now.getYear());
+            String month = String.format("%02d", now.getMonthValue());
+            
+            Path uploadPath = Paths.get(uploadDir, FileContext.GENERAL.getFolder(), year, month);
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
             }
@@ -95,7 +102,12 @@ public class FileServiceImpl implements FileService {
             String extension = getFileExtension(originalFileName);
             String serverFileName = fileId + "." + extension;
             
-            Path uploadPath = Paths.get(uploadDir);
+            // 도메인별 폴더 구조 생성 (GENERAL 컨텍스트)
+            LocalDateTime now = LocalDateTime.now();
+            String year = String.valueOf(now.getYear());
+            String month = String.format("%02d", now.getMonthValue());
+            
+            Path uploadPath = Paths.get(uploadDir, FileContext.GENERAL.getFolder(), year, month);
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
             }

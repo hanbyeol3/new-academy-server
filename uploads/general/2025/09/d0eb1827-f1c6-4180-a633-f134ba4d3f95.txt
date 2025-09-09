@@ -1,0 +1,2 @@
+일반 파일 업로드 테스트
+FileContext.GENERAL로 저장되어야 함

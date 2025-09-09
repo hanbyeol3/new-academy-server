@@ -35,6 +35,12 @@ spring:
     user:
       name: admin
       password: admin123
+      
+  servlet:
+    multipart:
+      max-file-size: ${FILE_MAX_SIZE:10MB}
+      max-request-size: ${FILE_MAX_TOTAL_SIZE:50MB}
+      enabled: true
 
 # JWT 설정
 jwt:
@@ -57,7 +63,12 @@ springdoc:
 # 파일 업로드 설정
 file:
   upload-dir: ${FILE_UPLOAD_DIR:./uploads}
-  max-size: ${FILE_MAX_SIZE:10485760} # 10MB
+  max-size: ${FILE_MAX_SIZE:10485760} # 10MB (단일 파일)
+  max-total-size: ${FILE_MAX_TOTAL_SIZE:52428800} # 50MB (전체 파일)
+  max-file-count: ${FILE_MAX_FILE_COUNT:10} # 최대 파일 개수
+  allowed-extensions: ${FILE_ALLOWED_EXTENSIONS:jpg,jpeg,png,gif,bmp,pdf,doc,docx,xls,xlsx,ppt,pptx,txt,hwp,zip}
+
+# Spring Multipart 설정 (위의 spring 섹션에 통합됨)
 
 logging:
   level:

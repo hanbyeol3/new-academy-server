@@ -1,5 +1,6 @@
 package com.academy.api.notice.service;
 
+import com.academy.api.domain.file.FileContext;
 import com.academy.api.file.dto.UploadFileDto;
 import com.academy.api.file.service.FileUploadService;
 import com.academy.api.notice.model.RequestNoticeCreate;
@@ -179,11 +180,22 @@ public class NoticeServiceImpl implements NoticeService {
 		// 입력 파라미터 로깅
 		log.info("[NoticeService] 공지사항 삭제 시작. ID={}", id);
 		
-		// 엔티티 존재 여부 확인: 뛰어난 성능을 위해 exists 사용
-		if (!noticeRepository.existsById(id)) {
+		// 삭제할 공지사항 조회 (첨부파일 정보 확인용)
+		Notice notice = noticeRepository.findById(id).orElse(null);
+		if (notice == null) {
 			// 엔티티 미존재 시 경고 로깅 및 에러 응답
 			log.warn("[NoticeService] 삭제 대상 공지사항 미존재. ID={}", id);
 			return Response.error("N404", "공지사항을 찾을 수 없습니다. ID: " + id);
+		}
+		
+		// 첨부파일들을 먼저 삭제 (공지사항 삭제 전에)
+		String fileGroupKey = notice.getFileGroupKey();
+		log.info("[NoticeService] 첨부파일 확인. 그룹키={}", fileGroupKey);
+		if (fileGroupKey != null) {
+			log.info("[NoticeService] 첨부파일 삭제 시작. 그룹키={}", fileGroupKey);
+			fileUploadService.deleteFilesByGroupKey(fileGroupKey);
+		} else {
+			log.info("[NoticeService] 첨부파일 없음. 파일 삭제 건너뜀");
 		}
 		
 		// 엔티티 삭제 실행
@@ -191,12 +203,6 @@ public class NoticeServiceImpl implements NoticeService {
 		
 		// 삭제 성공 로깅
 		log.debug("[NoticeService] 공지사항 삭제 완료. ID={}", id);
-		
-		// 첨부파일들도 함께 삭제
-		Notice notice = noticeRepository.findById(id).orElse(null);
-		if (notice != null && notice.getFileGroupKey() != null) {
-			fileUploadService.deleteFilesByGroupKey(notice.getFileGroupKey());
-		}
 		
 		// 기본 성공 응답 반환
 		return Response.ok();
@@ -217,8 +223,8 @@ public class NoticeServiceImpl implements NoticeService {
 			if (files != null && !files.isEmpty()) {
 				fileGroupKey = UUID.randomUUID().toString();
 				
-				// 파일 업로드
-				List<UploadFileDto> uploadedFiles = fileUploadService.uploadFiles(files, fileGroupKey);
+				// 파일 업로드 (공지사항 컨텍스트)
+				List<UploadFileDto> uploadedFiles = fileUploadService.uploadFiles(files, fileGroupKey, FileContext.NOTICE);
 				log.info("[NoticeService] 파일 업로드 완료. 업로드된 파일 수: {}", uploadedFiles.size());
 			}
 			
@@ -238,6 +244,9 @@ public class NoticeServiceImpl implements NoticeService {
 			
 			return ResponseData.ok(savedNotice.getId());
 			
+		} catch (IllegalArgumentException e) {
+			log.warn("[NoticeService] 파일 첨부 공지사항 생성 실패 - 잘못된 파일: {}", e.getMessage());
+			return ResponseData.error("F400", e.getMessage());
 		} catch (Exception e) {
 			log.error("[NoticeService] 파일 첨부 공지사항 생성 실패: {}", e.getMessage(), e);
 			return ResponseData.error("N500", "파일 첨부 공지사항 생성에 실패했습니다: " + e.getMessage());
@@ -270,14 +279,17 @@ public class NoticeServiceImpl implements NoticeService {
 								notice.updateFileGroupKey(fileGroupKey);
 							}
 							
-							// 파일 업로드 (기존 파일들은 유지)
-							List<UploadFileDto> uploadedFiles = fileUploadService.uploadFiles(files, fileGroupKey);
+							// 파일 업로드 (기존 파일들은 유지, 공지사항 컨텍스트)
+							List<UploadFileDto> uploadedFiles = fileUploadService.uploadFiles(files, fileGroupKey, FileContext.NOTICE);
 							log.info("[NoticeService] 추가 파일 업로드 완료. 업로드된 파일 수: {}", uploadedFiles.size());
 						}
 						
 						log.info("[NoticeService] 파일 첨부 공지사항 수정 완료. ID={}", id);
 						return Response.ok("0000", "공지사항이 수정되었습니다.");
 						
+					} catch (IllegalArgumentException e) {
+						log.warn("[NoticeService] 파일 첨부 공지사항 수정 실패 - 잘못된 파일: {}", e.getMessage());
+						return Response.error("F400", e.getMessage());
 					} catch (Exception e) {
 						log.error("[NoticeService] 파일 첨부 공지사항 수정 실패: {}", e.getMessage(), e);
 						return Response.error("N500", "파일 첨부 공지사항 수정에 실패했습니다: " + e.getMessage());
