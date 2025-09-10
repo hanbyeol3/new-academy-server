@@ -4,10 +4,12 @@ server:
 spring:
   application:
     name: new-academy-api-server
+  profiles:
+    active: local
   
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://192.168.20.22:3306/academy?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=utf8&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://localhost:3306/academy?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=utf8&allowPublicKeyRetrieval=true
     username: root
     password: root-pass-123!
     hikari:

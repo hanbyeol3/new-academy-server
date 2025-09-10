@@ -1,9 +1,7 @@
 package com.academy.api.notice.controller;
 
 import com.academy.api.notice.model.RequestNoticeCreate;
-import com.academy.api.notice.model.RequestNoticeCreateWithFiles;
 import com.academy.api.notice.model.RequestNoticeUpdate;
-import com.academy.api.notice.model.RequestNoticeUpdateWithFiles;
 import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.notice.service.NoticeService;
@@ -19,9 +17,11 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 
 /**
@@ -45,52 +45,95 @@ public class NoticeAdminController {
     private final NoticeService noticeService;
 
     /**
-     * 새로운 공지사항 생성.
+     * 통합 공지사항 생성 (파일 첨부 선택적).
      */
     @Operation(
         summary = "공지사항 생성", 
-        description = "새로운 공지사항을 생성하고 생성된 ID를 반환합니다. 관리자 권한 필요.",
+        description = "새로운 공지사항을 생성합니다. JSON만 전송하면 일반 생성, multipart로 파일과 함께 전송하면 파일 첨부 생성이 됩니다. 관리자 권한 필요.",
         security = @SecurityRequirement(name = "bearerAuth")
     )
     @ApiResponses({
         @ApiResponse(responseCode = "201", description = "생성 성공"),
-        @ApiResponse(responseCode = "400", description = "입력 데이터 검증 실패"),
+        @ApiResponse(responseCode = "400", description = "입력 데이터 검증 실패 또는 파일 업로드 실패"),
         @ApiResponse(responseCode = "401", description = "인증 필요"),
         @ApiResponse(responseCode = "403", description = "관리자 권한 필요")
     })
-    @PostMapping
+    @PostMapping(consumes = {MediaType.APPLICATION_JSON_VALUE, MediaType.MULTIPART_FORM_DATA_VALUE})
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseData<Long> create(
-            @Parameter(description = "공지사항 생성 요청 데이터") @Valid @RequestBody RequestNoticeCreate request) {
+            HttpServletRequest request,
+            @Parameter(description = "공지사항 생성 요청 데이터 (JSON)")
+            @RequestBody(required = false) @Valid RequestNoticeCreate jsonRequest,
+            @Parameter(description = "공지사항 생성 요청 데이터 (multipart)")
+            @RequestPart(value = "notice", required = false) @Valid RequestNoticeCreate multipartRequest,
+            @Parameter(description = "첨부할 파일들 (선택사항)",
+                      content = @Content(mediaType = "multipart/form-data",
+                                        schema = @Schema(type = "array", format = "binary")))
+            @RequestPart(value = "files", required = false) List<MultipartFile> files) {
         
-        log.info("공지사항 생성 요청. 제목={}", request.getTitle());
+        String contentType = request.getContentType();
+        RequestNoticeCreate noticeRequest;
         
-        return noticeService.create(request);
+        // Content-Type에 따라 요청 데이터 결정
+        if (contentType != null && contentType.startsWith(MediaType.MULTIPART_FORM_DATA_VALUE)) {
+            noticeRequest = multipartRequest;
+            log.info("파일 첨부 공지사항 생성 요청. 제목={}, 파일개수={}", 
+                    noticeRequest.getTitle(), files != null ? files.size() : 0);
+            
+            if (files != null && !files.isEmpty()) {
+                return noticeService.createWithFiles(noticeRequest, files);
+            } else {
+                return noticeService.create(noticeRequest);
+            }
+        } else {
+            noticeRequest = jsonRequest;
+            log.info("공지사항 생성 요청. 제목={}", noticeRequest.getTitle());
+            return noticeService.create(noticeRequest);
+        }
     }
 
     /**
-     * 기존 공지사항 수정.
+     * 기존 공지사항 수정 (파일 첨부 선택적).
      */
     @Operation(
         summary = "공지사항 수정", 
-        description = "기존 공지사항의 정보를 수정합니다. 관리자 권한 필요.",
+        description = "기존 공지사항을 수정합니다. 파일 첨부는 선택사항입니다. JSON만 전송하면 일반 수정, multipart로 파일과 함께 전송하면 파일 추가 수정이 됩니다. 관리자 권한 필요.",
         security = @SecurityRequirement(name = "bearerAuth")
     )
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "수정 성공"),
         @ApiResponse(responseCode = "404", description = "해당 ID의 공지사항을 찾을 수 없음"),
-        @ApiResponse(responseCode = "400", description = "입력 데이터 검증 실패"),
+        @ApiResponse(responseCode = "400", description = "입력 데이터 검증 실패 또는 파일 업로드 실패"),
         @ApiResponse(responseCode = "401", description = "인증 필요"),
         @ApiResponse(responseCode = "403", description = "관리자 권한 필요")
     })
-    @PutMapping("/{id}")
+    @PutMapping(value = "/{id}", consumes = {MediaType.APPLICATION_JSON_VALUE, MediaType.MULTIPART_FORM_DATA_VALUE})
     public Response update(
+            HttpServletRequest request,
             @Parameter(description = "수정할 공지사항 ID") @PathVariable Long id,
-            @Parameter(description = "공지사항 수정 요청 데이터") @Valid @RequestBody RequestNoticeUpdate request) {
+            @Parameter(description = "공지사항 수정 요청 데이터") 
+            @RequestBody(required = false) @Valid RequestNoticeUpdate jsonRequest,
+            @Parameter(description = "공지사항 수정 요청 데이터 (multipart)") 
+            @RequestPart(value = "notice", required = false) @Valid RequestNoticeUpdate multipartRequest,
+            @Parameter(description = "새로 추가할 파일들 (선택사항)",
+                      content = @Content(mediaType = "multipart/form-data",
+                                        schema = @Schema(type = "array", format = "binary")))
+            @RequestPart(value = "files", required = false) List<MultipartFile> files) {
         
-        log.info("공지사항 수정 요청. ID={}, 제목={}", id, request.getTitle());
+        String contentType = request.getContentType();
+        RequestNoticeUpdate noticeRequest;
         
-        return noticeService.update(id, request);
+        // Content-Type에 따라 요청 데이터 결정
+        if (contentType != null && contentType.startsWith(MediaType.MULTIPART_FORM_DATA_VALUE)) {
+            noticeRequest = multipartRequest;
+            log.info("파일 첨부 공지사항 수정 요청. ID={}, 제목={}, 파일개수={}", 
+                    id, noticeRequest.getTitle(), files != null ? files.size() : 0);
+            return noticeService.updateWithFiles(id, noticeRequest, files);
+        } else {
+            noticeRequest = jsonRequest;
+            log.info("공지사항 수정 요청. ID={}, 제목={}", id, noticeRequest.getTitle());
+            return noticeService.update(id, noticeRequest);
+        }
     }
 
     /**
@@ -116,64 +159,4 @@ public class NoticeAdminController {
         return noticeService.delete(id);
     }
 
-    /**
-     * 파일 첨부 공지사항 생성.
-     */
-    @Operation(
-        summary = "파일 첨부 공지사항 생성", 
-        description = "파일을 첨부하여 새로운 공지사항을 생성합니다. 관리자 권한 필요.",
-        security = @SecurityRequirement(name = "bearerAuth")
-    )
-    @ApiResponses({
-        @ApiResponse(responseCode = "201", description = "생성 성공"),
-        @ApiResponse(responseCode = "400", description = "입력 데이터 검증 실패 또는 파일 업로드 실패"),
-        @ApiResponse(responseCode = "401", description = "인증 필요"),
-        @ApiResponse(responseCode = "403", description = "관리자 권한 필요")
-    })
-    @PostMapping(value = "/with-files", consumes = "multipart/form-data")
-    @ResponseStatus(HttpStatus.CREATED)
-    public ResponseData<Long> createWithFiles(
-            @Parameter(description = "공지사항 생성 요청 데이터") 
-            @RequestPart("notice") @Valid RequestNoticeCreateWithFiles request,
-            @Parameter(description = "첨부할 파일들",
-                      content = @Content(mediaType = "multipart/form-data",
-                                        schema = @Schema(type = "array", format = "binary")))
-            @RequestPart(value = "files", required = false) List<MultipartFile> files) {
-        
-        log.info("파일 첨부 공지사항 생성 요청. 제목={}, 파일개수={}", 
-                request.getTitle(), files != null ? files.size() : 0);
-        
-        return noticeService.createWithFiles(request, files);
-    }
-
-    /**
-     * 파일 첨부 공지사항 수정.
-     */
-    @Operation(
-        summary = "파일 첨부 공지사항 수정", 
-        description = "기존 공지사항에 파일을 추가하여 수정합니다. 기존 파일들은 유지됩니다. 관리자 권한 필요.",
-        security = @SecurityRequirement(name = "bearerAuth")
-    )
-    @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "수정 성공"),
-        @ApiResponse(responseCode = "404", description = "해당 ID의 공지사항을 찾을 수 없음"),
-        @ApiResponse(responseCode = "400", description = "입력 데이터 검증 실패 또는 파일 업로드 실패"),
-        @ApiResponse(responseCode = "401", description = "인증 필요"),
-        @ApiResponse(responseCode = "403", description = "관리자 권한 필요")
-    })
-    @PutMapping(value = "/{id}/with-files", consumes = "multipart/form-data")
-    public Response updateWithFiles(
-            @Parameter(description = "수정할 공지사항 ID") @PathVariable Long id,
-            @Parameter(description = "공지사항 수정 요청 데이터") 
-            @RequestPart("notice") @Valid RequestNoticeUpdateWithFiles request,
-            @Parameter(description = "새로 추가할 파일들",
-                      content = @Content(mediaType = "multipart/form-data",
-                                        schema = @Schema(type = "array", format = "binary")))
-            @RequestPart(value = "files", required = false) List<MultipartFile> files) {
-        
-        log.info("파일 첨부 공지사항 수정 요청. ID={}, 제목={}, 파일개수={}", 
-                id, request.getTitle(), files != null ? files.size() : 0);
-        
-        return noticeService.updateWithFiles(id, request, files);
-    }
 }

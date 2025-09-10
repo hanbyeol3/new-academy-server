@@ -4,9 +4,7 @@ import com.academy.api.domain.file.FileContext;
 import com.academy.api.file.dto.UploadFileDto;
 import com.academy.api.file.service.FileUploadService;
 import com.academy.api.notice.model.RequestNoticeCreate;
-import com.academy.api.notice.model.RequestNoticeCreateWithFiles;
 import com.academy.api.notice.model.RequestNoticeUpdate;
-import com.academy.api.notice.model.RequestNoticeUpdateWithFiles;
 import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
@@ -208,58 +206,59 @@ public class NoticeServiceImpl implements NoticeService {
 		return Response.ok();
 	}
 
+
 	/**
-	 * 파일 첨부 공지사항 생성.
+	 * 파일 첨부 공지사항 생성 (통합 API용).
 	 */
 	@Override
 	@Transactional
-	public ResponseData<Long> createWithFiles(RequestNoticeCreateWithFiles request, List<MultipartFile> files) {
-		log.info("[NoticeService] 파일 첨부 공지사항 생성 시작. 제목=[{}], 파일개수={}", 
+	public ResponseData<Long> createWithFiles(RequestNoticeCreate request, List<MultipartFile> files) {
+		log.info("[NoticeService] 통합 파일 첨부 공지사항 생성 시작. 제목={}, 파일개수={}", 
 				request.getTitle(), files != null ? files.size() : 0);
 		
 		try {
 			// 파일 그룹키 생성
-			String fileGroupKey = null;
+			String fileGroupKey = UUID.randomUUID().toString();
+			
+			// 공지사항 엔티티 생성
+			Notice notice = Notice.builder()
+					.title(request.getTitle())
+					.content(request.getContent())
+					.pinned(request.getPinned() != null ? request.getPinned() : false)
+					.published(request.getPublished() != null ? request.getPublished() : true)
+					.viewCount(0L)
+					.fileGroupKey(fileGroupKey)
+					.build();
+			
+			// 공지사항 저장
+			Notice savedNotice = noticeRepository.save(notice);
+			log.debug("[NoticeService] 공지사항 저장 완료. ID={}", savedNotice.getId());
+			
+			// 파일이 있는 경우 업로드 처리
 			if (files != null && !files.isEmpty()) {
-				fileGroupKey = UUID.randomUUID().toString();
-				
-				// 파일 업로드 (공지사항 컨텍스트)
 				List<UploadFileDto> uploadedFiles = fileUploadService.uploadFiles(files, fileGroupKey, FileContext.NOTICE);
 				log.info("[NoticeService] 파일 업로드 완료. 업로드된 파일 수: {}", uploadedFiles.size());
 			}
 			
-			// 공지사항 엔티티 생성 및 저장
-			Notice notice = Notice.builder()
-					.title(request.getTitle())
-					.content(request.getContent())
-					.pinned(request.getPinned())
-					.published(request.getPublished())
-					.fileGroupKey(fileGroupKey)
-					.build();
-			
-			Notice savedNotice = noticeRepository.save(notice);
-			
-			log.info("[NoticeService] 파일 첨부 공지사항 생성 완료. ID={}, 파일그룹키={}", 
-					savedNotice.getId(), fileGroupKey);
-			
-			return ResponseData.ok(savedNotice.getId());
+			log.info("[NoticeService] 통합 파일 첨부 공지사항 생성 완료. ID={}", savedNotice.getId());
+			return ResponseData.ok("0000", "파일 첨부 공지사항이 생성되었습니다.", savedNotice.getId());
 			
 		} catch (IllegalArgumentException e) {
-			log.warn("[NoticeService] 파일 첨부 공지사항 생성 실패 - 잘못된 파일: {}", e.getMessage());
+			log.warn("[NoticeService] 통합 파일 첨부 공지사항 생성 실패 - 잘못된 파일: {}", e.getMessage());
 			return ResponseData.error("F400", e.getMessage());
 		} catch (Exception e) {
-			log.error("[NoticeService] 파일 첨부 공지사항 생성 실패: {}", e.getMessage(), e);
+			log.error("[NoticeService] 통합 파일 첨부 공지사항 생성 실패: {}", e.getMessage(), e);
 			return ResponseData.error("N500", "파일 첨부 공지사항 생성에 실패했습니다: " + e.getMessage());
 		}
 	}
 
 	/**
-	 * 파일 첨부 공지사항 수정.
+	 * 파일 첨부 공지사항 수정 (통합 API용).
 	 */
 	@Override
 	@Transactional
-	public Response updateWithFiles(Long id, RequestNoticeUpdateWithFiles request, List<MultipartFile> files) {
-		log.info("[NoticeService] 파일 첨부 공지사항 수정 시작. ID={}, 파일개수={}", 
+	public Response updateWithFiles(Long id, RequestNoticeUpdate request, List<MultipartFile> files) {
+		log.info("[NoticeService] 통합 파일 첨부 공지사항 수정 시작. ID={}, 파일개수={}", 
 				id, files != null ? files.size() : 0);
 		
 		return noticeRepository.findById(id)
@@ -284,14 +283,14 @@ public class NoticeServiceImpl implements NoticeService {
 							log.info("[NoticeService] 추가 파일 업로드 완료. 업로드된 파일 수: {}", uploadedFiles.size());
 						}
 						
-						log.info("[NoticeService] 파일 첨부 공지사항 수정 완료. ID={}", id);
+						log.info("[NoticeService] 통합 파일 첨부 공지사항 수정 완료. ID={}", id);
 						return Response.ok("0000", "공지사항이 수정되었습니다.");
 						
 					} catch (IllegalArgumentException e) {
-						log.warn("[NoticeService] 파일 첨부 공지사항 수정 실패 - 잘못된 파일: {}", e.getMessage());
+						log.warn("[NoticeService] 통합 파일 첨부 공지사항 수정 실패 - 잘못된 파일: {}", e.getMessage());
 						return Response.error("F400", e.getMessage());
 					} catch (Exception e) {
-						log.error("[NoticeService] 파일 첨부 공지사항 수정 실패: {}", e.getMessage(), e);
+						log.error("[NoticeService] 통합 파일 첨부 공지사항 수정 실패: {}", e.getMessage(), e);
 						return Response.error("N500", "파일 첨부 공지사항 수정에 실패했습니다: " + e.getMessage());
 					}
 				})
