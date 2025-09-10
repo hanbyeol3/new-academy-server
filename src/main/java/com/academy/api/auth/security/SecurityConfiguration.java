@@ -75,6 +75,10 @@ public class SecurityConfiguration {
                 // 공지사항 공개 API 허용 (비회원도 사용 가능)
                 .requestMatchers("/api/public/**").permitAll()
                 
+                // 설명회 공개 API 허용 (비회원도 사용 가능)
+                .requestMatchers("/api/explanations").permitAll()
+                .requestMatchers("/api/explanations/**").permitAll()
+                
                 // 관리자 API는 ADMIN 권한 필요
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 
