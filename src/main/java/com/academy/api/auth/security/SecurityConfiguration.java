@@ -79,6 +79,10 @@ public class SecurityConfiguration {
                 .requestMatchers("/api/explanations").permitAll()
                 .requestMatchers("/api/explanations/**").permitAll()
                 
+                // 갤러리 공개 API 허용 (비회원도 사용 가능)
+                .requestMatchers("/api/gallery").permitAll()
+                .requestMatchers("/api/gallery/**").permitAll()
+                
                 // 관리자 API는 ADMIN 권한 필요
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 

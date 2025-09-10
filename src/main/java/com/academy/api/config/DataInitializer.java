@@ -7,6 +7,8 @@ import com.academy.api.explanation.domain.ExplanationEvent;
 import com.academy.api.explanation.domain.ExplanationEventStatus;
 import com.academy.api.explanation.domain.ExplanationDivision;
 import com.academy.api.explanation.repository.ExplanationEventRepository;
+import com.academy.api.gallery.domain.GalleryItem;
+import com.academy.api.gallery.repository.GalleryItemRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -25,6 +27,7 @@ public class DataInitializer implements CommandLineRunner {
 
     private final MemberRepository memberRepository;
     private final ExplanationEventRepository explanationEventRepository;
+    private final GalleryItemRepository galleryItemRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -38,23 +41,42 @@ public class DataInitializer implements CommandLineRunner {
         // 샘플 설명회 데이터 생성
         createSampleExplanationEvents();
 
+        // 샘플 갤러리 데이터 생성
+        createSampleGalleryItems();
+
         log.info("=== 샘플 데이터 초기화 완료 ===");
     }
 
     private void updateAdminRole() {
+        // 기존 admin 계정 업데이트
         memberRepository.findByUsername("admin")
                 .ifPresent(member -> {
-                    // Member 엔티티에 역할 업데이트 메서드가 없으므로 리플렉션 사용
-                    try {
-                        var roleField = Member.class.getDeclaredField("role");
-                        roleField.setAccessible(true);
-                        roleField.set(member, MemberRole.ADMIN);
-                        memberRepository.save(member);
-                        log.info("관리자 역할 업데이트 완료: {}", member.getUsername());
-                    } catch (Exception e) {
-                        log.error("관리자 역할 업데이트 실패", e);
-                    }
+                    updateMemberRole(member, "admin");
                 });
+        
+        // gallery_admin 계정 업데이트
+        memberRepository.findByUsername("gallery_admin")
+                .ifPresent(member -> {
+                    updateMemberRole(member, "gallery_admin");
+                });
+        
+        // testadmin 계정 업데이트
+        memberRepository.findByUsername("testadmin")
+                .ifPresent(member -> {
+                    updateMemberRole(member, "testadmin");
+                });
+    }
+    
+    private void updateMemberRole(Member member, String username) {
+        try {
+            var roleField = Member.class.getDeclaredField("role");
+            roleField.setAccessible(true);
+            roleField.set(member, MemberRole.ADMIN);
+            memberRepository.save(member);
+            log.info("관리자 역할 업데이트 완료: {}", username);
+        } catch (Exception e) {
+            log.error("관리자 역할 업데이트 실패: {}", username, e);
+        }
     }
 
     private void createSampleExplanationEvents() {
@@ -119,6 +141,108 @@ public class DataInitializer implements CommandLineRunner {
 
             explanationEventRepository.save(event3);
             log.info("샘플 설명회 생성 (마감): {}", event3.getTitle());
+        }
+    }
+
+    private void createSampleGalleryItems() {
+        log.info("갤러리 샘플 데이터 생성 시작");
+
+        // 샘플 갤러리 1: 파일 ID 기반
+        if (!galleryItemRepository.existsByTitle("학원 전경")) {
+            GalleryItem item1 = GalleryItem.builder()
+                    .title("학원 전경")
+                    .description("아름다운 가을 캠퍼스 전경입니다.")
+                    .imageFileId("f6a1e3b2-1234-5678-9abc-def012345678")
+                    .sortOrder(1)
+                    .published(true)
+                    .build();
+
+            galleryItemRepository.save(item1);
+            log.info("샘플 갤러리 생성: {}", item1.getTitle());
+        }
+
+        // 샘플 갤러리 2: 직접 URL
+        if (!galleryItemRepository.existsByTitle("학원 로비")) {
+            GalleryItem item2 = GalleryItem.builder()
+                    .title("학원 로비")
+                    .description("넓고 쾌적한 로비 공간입니다.")
+                    .imageUrl("https://example.com/static/lobby.jpg")
+                    .sortOrder(2)
+                    .published(true)
+                    .build();
+
+            galleryItemRepository.save(item2);
+            log.info("샘플 갤러리 생성: {}", item2.getTitle());
+        }
+
+        // 샘플 갤러리 3: 파일 ID 기반
+        if (!galleryItemRepository.existsByTitle("도서관")) {
+            GalleryItem item3 = GalleryItem.builder()
+                    .title("도서관")
+                    .description("조용하고 집중할 수 있는 도서관입니다.")
+                    .imageFileId("a7b2f4c3-5678-9abc-def0-123456789abc")
+                    .sortOrder(3)
+                    .published(true)
+                    .build();
+
+            galleryItemRepository.save(item3);
+            log.info("샘플 갤러리 생성: {}", item3.getTitle());
+        }
+
+        // 샘플 갤러리 4: 직접 URL
+        if (!galleryItemRepository.existsByTitle("쉼터 공간")) {
+            GalleryItem item4 = GalleryItem.builder()
+                    .title("쉼터 공간")
+                    .description("학생들이 휴식을 취할 수 있는 공간입니다.")
+                    .imageUrl("https://example.com/static/rest-area.jpg")
+                    .sortOrder(4)
+                    .published(true)
+                    .build();
+
+            galleryItemRepository.save(item4);
+            log.info("샘플 갤러리 생성: {}", item4.getTitle());
+        }
+
+        // 샘플 갤러리 5: 직접 URL
+        if (!galleryItemRepository.existsByTitle("실험실")) {
+            GalleryItem item5 = GalleryItem.builder()
+                    .title("실험실")
+                    .description("최신 장비를 갖춘 과학 실험실입니다.")
+                    .imageUrl("https://example.com/static/lab.jpg")
+                    .sortOrder(5)
+                    .published(true)
+                    .build();
+
+            galleryItemRepository.save(item5);
+            log.info("샘플 갤러리 생성: {}", item5.getTitle());
+        }
+
+        // 샘플 갤러리 6: 파일 ID 기반
+        if (!galleryItemRepository.existsByTitle("운동장")) {
+            GalleryItem item6 = GalleryItem.builder()
+                    .title("운동장")
+                    .description("넓은 운동장에서 체육 활동을 할 수 있습니다.")
+                    .imageFileId("c8d3e5f4-9abc-def0-1234-56789abcdef0")
+                    .sortOrder(6)
+                    .published(true)
+                    .build();
+
+            galleryItemRepository.save(item6);
+            log.info("샘플 갤러리 생성: {}", item6.getTitle());
+        }
+
+        // 샘플 갤러리 7: 비공개 항목
+        if (!galleryItemRepository.existsByTitle("비공개 항목")) {
+            GalleryItem item7 = GalleryItem.builder()
+                    .title("비공개 항목")
+                    .description("관리자만 볼 수 있는 테스트 항목입니다.")
+                    .imageUrl("https://example.com/static/private.jpg")
+                    .sortOrder(7)
+                    .published(false)
+                    .build();
+
+            galleryItemRepository.save(item7);
+            log.info("샘플 갤러리 생성 (비공개): {}", item7.getTitle());
         }
     }
 }

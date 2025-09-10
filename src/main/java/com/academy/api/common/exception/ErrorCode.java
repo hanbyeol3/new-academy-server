@@ -34,7 +34,12 @@ public enum ErrorCode {
     MEMBER_USERNAME_DUPLICATE(HttpStatus.CONFLICT, "MEMBER_USERNAME_DUPLICATE", "이미 사용 중인 사용자명입니다."),
     MEMBER_EMAIL_DUPLICATE(HttpStatus.CONFLICT, "MEMBER_EMAIL_DUPLICATE", "이미 사용 중인 이메일 주소입니다."),
     MEMBER_PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "MEMBER_PASSWORD_MISMATCH", "현재 비밀번호가 일치하지 않습니다."),
-    MEMBER_SAME_PASSWORD(HttpStatus.BAD_REQUEST, "MEMBER_SAME_PASSWORD", "현재 비밀번호와 동일합니다. 다른 비밀번호를 입력해주세요.");
+    MEMBER_SAME_PASSWORD(HttpStatus.BAD_REQUEST, "MEMBER_SAME_PASSWORD", "현재 비밀번호와 동일합니다. 다른 비밀번호를 입력해주세요."),
+
+    // 갤러리 관련 에러
+    GALLERY_NOT_FOUND(HttpStatus.NOT_FOUND, "GALLERY_NOT_FOUND", "갤러리 항목을 찾을 수 없습니다."),
+    IMAGE_SOURCE_REQUIRED(HttpStatus.BAD_REQUEST, "IMAGE_SOURCE_REQUIRED", "이미지 파일 ID 또는 이미지 URL이 필요합니다."),
+    IMAGE_SOURCE_CONFLICT(HttpStatus.BAD_REQUEST, "IMAGE_SOURCE_CONFLICT", "이미지 파일 ID와 이미지 URL을 동시에 지정할 수 없습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;
