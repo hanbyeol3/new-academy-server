@@ -7,7 +7,8 @@ import com.academy.api.gallery.domain.GalleryItem;
 import com.academy.api.gallery.dto.RequestGalleryCreate;
 import com.academy.api.gallery.dto.RequestGalleryUpdate;
 import com.academy.api.gallery.dto.ResponseGalleryItem;
-import com.academy.api.gallery.exception.GalleryNotFoundException;
+import com.academy.api.common.exception.BusinessException;
+import com.academy.api.common.exception.ErrorCode;
 import com.academy.api.gallery.mapper.GalleryMapper;
 import com.academy.api.gallery.repository.GalleryItemRepository;
 import lombok.RequiredArgsConstructor;
@@ -64,7 +65,7 @@ public class GalleryServiceImpl implements GalleryService {
         log.info("갤러리 항목 수정 요청. id={}, title={}", id, request.getTitle());
         
         GalleryItem galleryItem = galleryItemRepository.findById(id)
-                .orElseThrow(() -> new GalleryNotFoundException(id));
+                .orElseThrow(() -> new BusinessException(ErrorCode.GALLERY_NOT_FOUND));
         
         galleryItem.update(
                 request.getTitle(),
@@ -88,7 +89,7 @@ public class GalleryServiceImpl implements GalleryService {
         log.info("갤러리 항목 삭제 요청. id={}", id);
         
         if (!galleryItemRepository.existsById(id)) {
-            throw new GalleryNotFoundException(id);
+            throw new BusinessException(ErrorCode.GALLERY_NOT_FOUND);
         }
         
         galleryItemRepository.deleteById(id);
