@@ -39,7 +39,11 @@ public enum ErrorCode {
     // 갤러리 관련 에러
     GALLERY_NOT_FOUND(HttpStatus.NOT_FOUND, "GALLERY_NOT_FOUND", "갤러리 항목을 찾을 수 없습니다."),
     IMAGE_SOURCE_REQUIRED(HttpStatus.BAD_REQUEST, "IMAGE_SOURCE_REQUIRED", "이미지 파일 ID 또는 이미지 URL이 필요합니다."),
-    IMAGE_SOURCE_CONFLICT(HttpStatus.BAD_REQUEST, "IMAGE_SOURCE_CONFLICT", "이미지 파일 ID와 이미지 URL을 동시에 지정할 수 없습니다.");
+    IMAGE_SOURCE_CONFLICT(HttpStatus.BAD_REQUEST, "IMAGE_SOURCE_CONFLICT", "이미지 파일 ID와 이미지 URL을 동시에 지정할 수 없습니다."),
+
+    // 학사일정 관련 에러
+    SCHEDULE_NOT_FOUND(HttpStatus.NOT_FOUND, "SCHEDULE_NOT_FOUND", "학사일정을 찾을 수 없습니다."),
+    INVALID_DATE_RANGE(HttpStatus.BAD_REQUEST, "INVALID_DATE_RANGE", "시작 일자는 종료 일자보다 늦을 수 없습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;

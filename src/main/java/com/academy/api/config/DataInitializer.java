@@ -9,6 +9,9 @@ import com.academy.api.explanation.domain.ExplanationDivision;
 import com.academy.api.explanation.repository.ExplanationEventRepository;
 import com.academy.api.gallery.domain.GalleryItem;
 import com.academy.api.gallery.repository.GalleryItemRepository;
+import com.academy.api.schedule.domain.AcademicSchedule;
+import com.academy.api.schedule.domain.ScheduleCategory;
+import com.academy.api.schedule.repository.AcademicScheduleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -18,6 +21,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 @Component
 @Profile("local")
@@ -28,6 +32,7 @@ public class DataInitializer implements CommandLineRunner {
     private final MemberRepository memberRepository;
     private final ExplanationEventRepository explanationEventRepository;
     private final GalleryItemRepository galleryItemRepository;
+    private final AcademicScheduleRepository scheduleRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -43,6 +48,9 @@ public class DataInitializer implements CommandLineRunner {
 
         // 샘플 갤러리 데이터 생성
         createSampleGalleryItems();
+
+        // 샘플 학사일정 데이터 생성
+        createSampleAcademicSchedules();
 
         log.info("=== 샘플 데이터 초기화 완료 ===");
     }
@@ -243,6 +251,111 @@ public class DataInitializer implements CommandLineRunner {
 
             galleryItemRepository.save(item7);
             log.info("샘플 갤러리 생성 (비공개): {}", item7.getTitle());
+        }
+    }
+
+    private void createSampleAcademicSchedules() {
+        log.info("학사일정 샘플 데이터 생성 시작");
+
+        // 2025년 9월 일정들
+        if (!scheduleRepository.existsByTitle("가을학기 개강")) {
+            AcademicSchedule item1 = AcademicSchedule.builder()
+                    .category(ScheduleCategory.OPEN_CLOSE)
+                    .startDate(LocalDate.of(2025, 9, 2))
+                    .endDate(LocalDate.of(2025, 9, 2))
+                    .title("가을학기 개강")
+                    .published(true)
+                    .color("#3B82F6")
+                    .build();
+
+            scheduleRepository.save(item1);
+            log.info("샘플 학사일정 생성: {}", item1.getTitle());
+        }
+
+        if (!scheduleRepository.existsByTitle("9월 교육청 모의고사")) {
+            AcademicSchedule item2 = AcademicSchedule.builder()
+                    .category(ScheduleCategory.EXAM)
+                    .startDate(LocalDate.of(2025, 9, 4))
+                    .endDate(LocalDate.of(2025, 9, 4))
+                    .title("9월 교육청 모의고사")
+                    .published(true)
+                    .color("#EF4444")
+                    .build();
+
+            scheduleRepository.save(item2);
+            log.info("샘플 학사일정 생성: {}", item2.getTitle());
+        }
+
+        if (!scheduleRepository.existsByTitle("중간고사")) {
+            AcademicSchedule item3 = AcademicSchedule.builder()
+                    .category(ScheduleCategory.EXAM)
+                    .startDate(LocalDate.of(2025, 9, 16))
+                    .endDate(LocalDate.of(2025, 9, 18))
+                    .title("중간고사")
+                    .published(true)
+                    .color("#EF4444")
+                    .build();
+
+            scheduleRepository.save(item3);
+            log.info("샘플 학사일정 생성: {}", item3.getTitle());
+        }
+
+        if (!scheduleRepository.existsByTitle("수강신청 기간")) {
+            AcademicSchedule item4 = AcademicSchedule.builder()
+                    .category(ScheduleCategory.NOTICE)
+                    .startDate(LocalDate.of(2025, 9, 25))
+                    .endDate(LocalDate.of(2025, 9, 27))
+                    .title("수강신청 기간")
+                    .published(true)
+                    .color("#F59E0B")
+                    .build();
+
+            scheduleRepository.save(item4);
+            log.info("샘플 학사일정 생성: {}", item4.getTitle());
+        }
+
+        // 2025년 10월 일정들
+        if (!scheduleRepository.existsByTitle("체육대회")) {
+            AcademicSchedule item5 = AcademicSchedule.builder()
+                    .category(ScheduleCategory.EVENT)
+                    .startDate(LocalDate.of(2025, 10, 5))
+                    .endDate(LocalDate.of(2025, 10, 5))
+                    .title("체육대회")
+                    .published(true)
+                    .color("#10B981")
+                    .build();
+
+            scheduleRepository.save(item5);
+            log.info("샘플 학사일정 생성: {}", item5.getTitle());
+        }
+
+        if (!scheduleRepository.existsByTitle("가을 특강 주간")) {
+            AcademicSchedule item6 = AcademicSchedule.builder()
+                    .category(ScheduleCategory.EVENT)
+                    .startDate(LocalDate.of(2025, 10, 14))
+                    .endDate(LocalDate.of(2025, 10, 18))
+                    .title("가을 특강 주간")
+                    .published(true)
+                    .color("#10B981")
+                    .build();
+
+            scheduleRepository.save(item6);
+            log.info("샘플 학사일정 생성: {}", item6.getTitle());
+        }
+
+        // 비공개 일정
+        if (!scheduleRepository.existsByTitle("내부 교사 연수")) {
+            AcademicSchedule item7 = AcademicSchedule.builder()
+                    .category(ScheduleCategory.ETC)
+                    .startDate(LocalDate.of(2025, 9, 30))
+                    .endDate(LocalDate.of(2025, 9, 30))
+                    .title("내부 교사 연수")
+                    .published(false)
+                    .color("#6B7280")
+                    .build();
+
+            scheduleRepository.save(item7);
+            log.info("샘플 학사일정 생성 (비공개): {}", item7.getTitle());
         }
     }
 }
