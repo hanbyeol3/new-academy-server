@@ -1,4 +1,4 @@
-package com.academy.api.domain.file;
+package com.academy.api.file.domain;
 
 /**
  * 저장소 유형 열거형.

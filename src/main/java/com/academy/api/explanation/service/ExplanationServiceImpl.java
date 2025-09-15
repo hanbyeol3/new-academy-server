@@ -1,7 +1,7 @@
 package com.academy.api.explanation.service;
 
-import com.academy.api.domain.member.Member;
-import com.academy.api.domain.member.MemberRepository;
+import com.academy.api.member.domain.Member;
+import com.academy.api.member.repository.MemberRepository;
 import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
@@ -9,6 +9,7 @@ import com.academy.api.explanation.domain.ExplanationEvent;
 import com.academy.api.explanation.domain.ExplanationEventStatus;
 import com.academy.api.explanation.domain.ExplanationReservation;
 import com.academy.api.explanation.domain.ExplanationReservationStatus;
+import com.academy.api.explanation.mapper.ExplanationMapper;
 import com.academy.api.explanation.model.*;
 import com.academy.api.explanation.repository.ExplanationEventQueryRepository;
 import com.academy.api.explanation.repository.ExplanationEventRepository;
@@ -38,6 +39,7 @@ public class ExplanationServiceImpl implements ExplanationService {
     private final ExplanationEventQueryRepository eventQueryRepository;
     private final ExplanationReservationRepository reservationRepository;
     private final MemberRepository memberRepository;
+    private final ExplanationMapper explanationMapper;
 
     // ===== Public API =====
 

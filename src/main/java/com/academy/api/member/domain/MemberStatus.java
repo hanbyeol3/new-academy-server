@@ -1,4 +1,4 @@
-package com.academy.api.domain.member;
+package com.academy.api.member.domain;
 
 /**
  * 회원 계정 상태 열거형.

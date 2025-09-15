@@ -1,6 +1,6 @@
 package com.academy.api.file.repository;
 
-import com.academy.api.domain.file.UploadFile;
+import com.academy.api.file.domain.UploadFile;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

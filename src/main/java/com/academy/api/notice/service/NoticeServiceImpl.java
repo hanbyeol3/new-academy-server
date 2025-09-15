@@ -1,6 +1,6 @@
 package com.academy.api.notice.service;
 
-import com.academy.api.domain.file.FileContext;
+import com.academy.api.file.domain.FileContext;
 import com.academy.api.file.dto.UploadFileDto;
 import com.academy.api.file.service.FileUploadService;
 import com.academy.api.notice.model.RequestNoticeCreate;

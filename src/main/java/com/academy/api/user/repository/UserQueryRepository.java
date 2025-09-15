@@ -3,7 +3,7 @@ package com.academy.api.user.repository;
 import com.academy.api.common.query.BaseSearchRepository;
 import com.academy.api.common.query.OrderSpecifierFactory;
 import com.academy.api.common.query.PredicateBuilder;
-import com.academy.api.user.model.ResponseUser;
+import com.academy.api.user.dto.ResponseUser;
 import com.querydsl.core.types.Expression;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Path;

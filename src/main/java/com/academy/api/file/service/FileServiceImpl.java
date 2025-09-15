@@ -2,7 +2,7 @@ package com.academy.api.file.service;
 
 import com.academy.api.data.responses.ResponseResult;
 import com.academy.api.data.responses.common.ResponseData;
-import com.academy.api.domain.file.FileContext;
+import com.academy.api.file.domain.FileContext;
 import com.academy.api.file.dto.Base64FileUploadRequest;
 import com.academy.api.file.dto.FileUploadResponse;
 import lombok.RequiredArgsConstructor;

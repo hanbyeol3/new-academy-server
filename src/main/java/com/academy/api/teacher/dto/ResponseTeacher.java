@@ -1,4 +1,4 @@
-package com.academy.api.teacher.model;
+package com.academy.api.teacher.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;

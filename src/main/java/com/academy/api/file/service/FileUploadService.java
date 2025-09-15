@@ -1,8 +1,8 @@
 package com.academy.api.file.service;
 
-import com.academy.api.domain.file.FileContext;
-import com.academy.api.domain.file.StorageType;
-import com.academy.api.domain.file.UploadFile;
+import com.academy.api.file.domain.FileContext;
+import com.academy.api.file.domain.StorageType;
+import com.academy.api.file.domain.UploadFile;
 import com.academy.api.file.dto.UploadFileDto;
 import com.academy.api.file.repository.UploadFileRepository;
 import lombok.RequiredArgsConstructor;

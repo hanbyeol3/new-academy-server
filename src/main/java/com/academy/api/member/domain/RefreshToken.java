@@ -1,4 +1,4 @@
-package com.academy.api.domain.member;
+package com.academy.api.member.domain;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;

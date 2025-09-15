@@ -1,4 +1,4 @@
-package com.academy.api.domain.member;
+package com.academy.api.member.domain;
 
 /**
  * 회원 권한 열거형.

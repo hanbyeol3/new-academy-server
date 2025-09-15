@@ -1,4 +1,6 @@
-package com.academy.api.domain.member;
+package com.academy.api.member.repository;
+
+import com.academy.api.member.domain.RefreshToken;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;

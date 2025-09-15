@@ -1,8 +1,8 @@
 package com.academy.api.config;
 
-import com.academy.api.domain.member.Member;
-import com.academy.api.domain.member.MemberRole;
-import com.academy.api.domain.member.MemberRepository;
+import com.academy.api.member.domain.Member;
+import com.academy.api.member.domain.MemberRole;
+import com.academy.api.member.repository.MemberRepository;
 import com.academy.api.explanation.domain.ExplanationEvent;
 import com.academy.api.explanation.domain.ExplanationEventStatus;
 import com.academy.api.explanation.domain.ExplanationDivision;

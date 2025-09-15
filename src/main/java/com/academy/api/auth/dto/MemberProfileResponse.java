@@ -1,6 +1,6 @@
 package com.academy.api.auth.dto;
 
-import com.academy.api.domain.member.Member;
+import com.academy.api.member.domain.Member;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;

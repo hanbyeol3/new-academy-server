@@ -1,4 +1,4 @@
-package com.academy.api.domain.file;
+package com.academy.api.file.domain;
 
 /**
  * 파일 컨텍스트 (도메인별 구분).

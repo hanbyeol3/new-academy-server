@@ -1,6 +1,6 @@
 package com.academy.api.auth.jwt;
 
-import com.academy.api.domain.member.Member;
+import com.academy.api.member.domain.Member;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
