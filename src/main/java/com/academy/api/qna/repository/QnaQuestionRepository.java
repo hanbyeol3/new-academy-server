@@ -218,4 +218,12 @@ public interface QnaQuestionRepository extends JpaRepository<QnaQuestion, Long>,
      */
     @Query("SELECT q FROM QnaQuestion q WHERE q.id = :id")
     Optional<QnaQuestion> findByIdForAuth(@Param("id") Long id);
+
+    /**
+     * 제목으로 질문 존재 여부 확인 (데이터 초기화용).
+     * 
+     * @param title 질문 제목
+     * @return 존재 여부
+     */
+    boolean existsByTitle(String title);
 }

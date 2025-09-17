@@ -83,6 +83,10 @@ public class SecurityConfiguration {
                 .requestMatchers("/api/gallery").permitAll()
                 .requestMatchers("/api/gallery/**").permitAll()
                 
+                // 학사일정 공개 API 허용 (비회원도 사용 가능)
+                .requestMatchers("/api/academic-schedules").permitAll()
+                .requestMatchers("/api/academic-schedules/**").permitAll()
+                
                 // 관리자 API는 ADMIN 권한 필요
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 

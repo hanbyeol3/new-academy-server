@@ -26,34 +26,34 @@ public class AcademicSchedule {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id", columnDefinition = "bigint comment '학사일정 식별자'")
+    @Column(name = "id")
     private Long id;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "category", nullable = false, columnDefinition = "enum('OPEN_CLOSE','EXAM','NOTICE','EVENT','ETC') comment '일정 분류'")
+    @Column(name = "category", nullable = false)
     private ScheduleCategory category;
 
-    @Column(name = "start_date", nullable = false, columnDefinition = "date comment '시작 일자(YYYY-MM-DD)'")
+    @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
 
-    @Column(name = "end_date", nullable = false, columnDefinition = "date comment '종료 일자(YYYY-MM-DD, 포함)'")
+    @Column(name = "end_date", nullable = false)
     private LocalDate endDate;
 
-    @Column(name = "title", nullable = false, length = 255, columnDefinition = "varchar(255) comment '일정 제목'")
+    @Column(name = "title", nullable = false, length = 255)
     private String title;
 
-    @Column(name = "published", nullable = false, columnDefinition = "tinyint(1) default 1 comment '게시 여부(1: 게시, 0: 숨김)'")
+    @Column(name = "published", nullable = false)
     private Boolean published = true;
 
-    @Column(name = "color", length = 20, columnDefinition = "varchar(20) comment '표시 색상(hex 코드 등, 예: #22C55E)'")
+    @Column(name = "color", length = 20)
     private String color;
 
     @CreatedDate
-    @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "timestamp default CURRENT_TIMESTAMP comment '생성 시각'")
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @LastModifiedDate
-    @Column(name = "updated_at", nullable = false, columnDefinition = "timestamp default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP comment '수정 시각'")
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
     @Builder

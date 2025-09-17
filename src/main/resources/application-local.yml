@@ -1,27 +1,19 @@
 spring:
   datasource:
-    driver-class-name: org.h2.Driver
-    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    username: sa
-    password: 
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/academy?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: root
+    password: root
     hikari:
-      maximum-pool-size: 5
-      minimum-idle: 2
+      maximum-pool-size: 10
+      minimum-idle: 5
   
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
     show-sql: true
-    defer-datasource-initialization: true
+    defer-datasource-initialization: false
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.H2Dialect
-  
-  h2:
-    console:
-      enabled: false
-  
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.h2.H2ConsoleAutoConfiguration
+        dialect: org.hibernate.dialect.MySQLDialect
