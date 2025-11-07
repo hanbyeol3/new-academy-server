@@ -1,16 +1,19 @@
 package com.academy.api.notice.service;
 
-import com.academy.api.file.domain.FileContext;
-import com.academy.api.file.dto.UploadFileDto;
-import com.academy.api.file.service.FileUploadService;
-import com.academy.api.notice.model.RequestNoticeCreate;
-import com.academy.api.notice.model.RequestNoticeUpdate;
+import com.academy.api.category.domain.Category;
+import com.academy.api.category.repository.CategoryRepository;
+import com.academy.api.common.exception.BusinessException;
+import com.academy.api.common.exception.ErrorCode;
 import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
 import com.academy.api.notice.domain.Notice;
-import com.academy.api.notice.model.ResponseNotice;
-import com.academy.api.notice.repository.NoticeQueryRepository;
+import com.academy.api.notice.dto.RequestNoticeCreate;
+import com.academy.api.notice.dto.RequestNoticeSearch;
+import com.academy.api.notice.dto.RequestNoticeUpdate;
+import com.academy.api.notice.dto.ResponseNotice;
+import com.academy.api.notice.dto.ResponseNoticeSimple;
+import com.academy.api.notice.mapper.NoticeMapper;
 import com.academy.api.notice.repository.NoticeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,25 +21,27 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * 공지사항 서비스 구현체.
  * 
- * - 공지사항 CRUD 비즈니스 로직 처리
- * - 대용량 데이터 조회 시 성능 최적화
- * - 통일된 에러 처리 및 로깅
- * - 트랜잭션 경계 명확히 관리
+ * 공지사항 도메인의 모든 비즈니스 로직을 구현합니다.
+ * CLAUDE.md 표준에 따라 설계되었습니다.
+ * 
+ * 주요 특징:
+ * - 트랜잭션 경계 관리 (@Transactional)
+ * - 체계적인 로깅 (info: 주요 비즈니스, debug: 상세 정보)
+ * - 카테고리 연계 처리
+ * - 파일 서비스 연동 (추후 구현)
+ * - 예외 상황 처리
  * 
  * 로깅 레벨 원칙:
- *  - info: 입력 파라미터, 주요 비즈니스 로직 시작점
- *  - debug: 처리 단계별 상세 정보, 쿼리 결과 요약
- *  - warn: 예상 가능한 예외 상황, 존재하지 않는 리소스 등
- *  - error: 예상치 못한 시스템 오류
+ * - info: 주요 비즈니스 로직 시작점과 완료
+ * - debug: 처리 단계별 상세 정보
+ * - warn: 예상 가능한 예외 상황
+ * - error: 예상치 못한 시스템 오류
  */
 @Slf4j
 @Service
@@ -44,259 +49,238 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class NoticeServiceImpl implements NoticeService {
 
-	private final NoticeRepository noticeRepository;
-	private final NoticeQueryRepository noticeQueryRepository;
-	private final FileUploadService fileUploadService;
+    private final NoticeRepository noticeRepository;
+    private final CategoryRepository categoryRepository;
+    private final NoticeMapper noticeMapper;
 
-	/** 
-	 * 공지사항 목록 조회 및 페이지네이션 처리.
-	 * - 검색 조건에 따른 동적 쿼리 생성
-	 * - 성능 최적화를 위한 인덱스 활용 쿼리
-	 */
-	@Override
-	public ResponseList<ResponseNotice> list(ResponseNotice.Criteria cond, Pageable pageable) {
-		// 입력 파라미터 로깅: 요청 내용 추적 및 디버깅 용도
-		log.info("[NoticeService] 목록 조회 시작. 조건={}, 페이지네이션={}", cond, pageable);
-		
-		// 리포지토리 계층에서 페이지 결과 조회
-		Page<ResponseNotice> page = noticeQueryRepository.search(cond, pageable);
-		
-		// Spring Data Page를 ResponseList로 변환: API 일관성 유지
-		ResponseList<ResponseNotice> result = ResponseList.from(page);
-		
-		// 처리 결과 요약 로깅: 성능 모니터링 및 결과 검증
-		log.debug("[NoticeService] 목록 조회 완료. 전체={}건, 현재페이지={}, 페이지크기={}, 실제반환={}건", 
-				result.getTotal(), result.getPage(), result.getSize(), result.getItems().size());
-		
-		return result;
-	}
+    @Override
+    public ResponseList<ResponseNoticeSimple> getNoticeList(RequestNoticeSearch searchCondition, Pageable pageable) {
+        log.info("[NoticeService] 공지사항 목록 조회 시작. 검색조건={}, 페이지={}", searchCondition, pageable);
+        
+        Page<Notice> noticePage = noticeRepository.searchNotices(searchCondition, pageable);
+        
+        log.debug("[NoticeService] 공지사항 검색 결과. 전체={}건, 현재페이지={}, 실제반환={}건", 
+                noticePage.getTotalElements(), noticePage.getNumber(), noticePage.getContent().size());
+        
+        return noticeMapper.toSimpleResponseList(noticePage);
+    }
 
-	/** 
-	 * 공지사항 단건 조회 및 조회수 증가 처리.
-	 * - 조회와 동시에 조회수 자동 증가 (비즈니스 로직)
-	 * - 엔티티 조회 실패 시 의미 있는 에러 메시지 반환
-	 */
-	@Override
-	@Transactional  // 조회수 증가 업데이트를 위한 쓰기 트랜잭션 필요
-	public ResponseData<ResponseNotice> get(Long id) {
-		// 입력 파라미터 로깅
-		log.info("[NoticeService] 단건 조회 시작. ID={}", id);
-		
-		return noticeRepository.findById(id)
-				.map(notice -> {
-					// 조회수 증가: 비즈니스 로직 처리
-					notice.incrementViewCount();
-					
-					// 조회수 증가 완료 로깅
-					log.debug("[NoticeService] 조회수 증가 완료. ID={}, 새조회수={}", id, notice.getViewCount());
-					
-					// 첨부파일 정보 조회
-					List<UploadFileDto> attachedFiles = Collections.emptyList();
-					if (notice.getFileGroupKey() != null) {
-						attachedFiles = fileUploadService.getFilesByGroupKey(notice.getFileGroupKey());
-					}
-					
-					// 엔티티 → 응답 DTO 변환 후 성공 응답 생성 (첨부파일 포함)
-					return ResponseData.ok(ResponseNotice.from(notice, attachedFiles));
-				})
-				.orElseGet(() -> {
-					// 엔티티 미존재 시 경고 로깅 및 에러 응답
-					log.warn("[NoticeService] 공지사항 미존재. ID={}", id);
-					return ResponseData.error("N404", "공지사항을 찾을 수 없습니다. ID: " + id);
-				});
-	}
+    @Override
+    public ResponseList<ResponseNoticeSimple> getNoticeListForAdmin(RequestNoticeSearch searchCondition, Pageable pageable) {
+        log.info("[NoticeService] 관리자용 공지사항 목록 조회 시작. 검색조건={}, 페이지={}", searchCondition, pageable);
+        
+        Page<Notice> noticePage = noticeRepository.searchNoticesForAdmin(searchCondition, pageable);
+        
+        log.debug("[NoticeService] 관리자 공지사항 검색 결과. 전체={}건, 현재페이지={}, 실제반환={}건", 
+                noticePage.getTotalElements(), noticePage.getNumber(), noticePage.getContent().size());
+        
+        return noticeMapper.toSimpleResponseList(noticePage);
+    }
 
-	/** 
-	 * 새로운 공지사항 생성 처리.
-	 * - 요청 데이터를 Notice 엔티티로 변환 후 영속화
-	 * - 생성된 엔티티의 ID를 반환하여 클라이언트가 후속 작업 가능
-	 */
-	@Override
-	@Transactional  // 데이터 생성을 위한 쓰기 트랜잭션
-	public ResponseData<Long> create(RequestNoticeCreate request) {
-		// 입력 파라미터 로깅 (민감 정보 제외하고 기본 정보만)
-		log.info("[NoticeService] 공지사항 생성 시작. 제목=[{}], 발행여부={}, 고정여부={}", 
-				request.getTitle(), request.getPublished(), request.getPinned());
-		
-		// 요청 DTO → 엔티티 변환: 비즈니스 로직 캡핑
-		Notice notice = Notice.builder()
-				.title(request.getTitle())
-				.content(request.getContent())
-				.pinned(request.getPinned())
-				.published(request.getPublished())
-				.build();
+    @Override
+    public ResponseList<ResponseNoticeSimple> getExposableNoticeList(RequestNoticeSearch searchCondition, Pageable pageable) {
+        log.info("[NoticeService] 공개용 공지사항 목록 조회 시작. 검색조건={}, 페이지={}", searchCondition, pageable);
+        
+        Page<Notice> noticePage = noticeRepository.searchExposableNotices(searchCondition, pageable);
+        
+        log.debug("[NoticeService] 공개 공지사항 검색 결과. 전체={}건, 현재페이지={}, 실제반환={}건", 
+                noticePage.getTotalElements(), noticePage.getNumber(), noticePage.getContent().size());
+        
+        return noticeMapper.toSimpleResponseList(noticePage);
+    }
 
-		// 엔티티 영속화: JPA 리포지토리를 통한 데이터베이스 저장
-		Notice saved = noticeRepository.save(notice);
-		
-		// 생성 결과 로깅
-		log.debug("[NoticeService] 공지사항 생성 완료. 생성ID={}, 제목=[{}]", saved.getId(), saved.getTitle());
-		
-		// 생성된 ID를 포함한 성공 응답 반환
-		return ResponseData.ok(saved.getId());
-	}
+    @Override
+    public ResponseData<ResponseNotice> getNotice(Long id) {
+        log.info("[NoticeService] 공지사항 상세 조회 시작. ID={}", id);
+        
+        Notice notice = findNoticeById(id);
+        
+        log.debug("[NoticeService] 공지사항 조회 완료. ID={}, 제목={}, 조회수={}", 
+                id, notice.getTitle(), notice.getViewCount());
+        
+        ResponseNotice response = noticeMapper.toResponse(notice);
+        return ResponseData.ok(response);
+    }
 
-	/** 
-	 * 기존 공지사항 수정 처리.
-	 * - ID로 엔티티를 찾아 요청 데이터로 업데이트
-	 * - 엔티티의 비즈니스 로직 메서드 활용
-	 */
-	@Override
-	@Transactional  // 데이터 수정을 위한 쓰기 트랜잭션
-	public Response update(Long id, RequestNoticeUpdate request) {
-		// 입력 파라미터 로깅
-		log.info("[NoticeService] 공지사항 수정 시작. ID={}, 제목=[{}], 발행여부={}", 
-				id, request.getTitle(), request.getPublished());
-		
-		return noticeRepository.findById(id)
-				.map(notice -> {
-					// 엔티티 비즈니스 로직 메서드 호출: 더티 체킹 자동 처리
-					notice.update(request.getTitle(), request.getContent(),
-							request.getPinned(), request.getPublished());
-					
-					// 수정 성공 로깅
-					log.debug("[NoticeService] 공지사항 수정 완료. ID={}, 수정시간={}", id, notice.getUpdatedAt());
-					
-					// 성공 응답 반환
-					return Response.ok("0000", "공지사항이 수정되었습니다.");
-				})
-				.orElseGet(() -> {
-					// 엔티티 미존재 시 경고 로깅 및 에러 응답
-					log.warn("[NoticeService] 수정 대상 공지사항 미존재. ID={}", id);
-					return Response.error("N404", "공지사항을 찾을 수 없습니다. ID: " + id);
-				});
-	}
+    @Override
+    @Transactional
+    public ResponseData<ResponseNotice> getNoticeWithViewCount(Long id) {
+        log.info("[NoticeService] 공지사항 상세 조회 (조회수 증가) 시작. ID={}", id);
+        
+        Notice notice = findNoticeById(id);
+        Long beforeViewCount = notice.getViewCount();
+        
+        // 조회수 증가
+        notice.incrementViewCount();
+        
+        log.debug("[NoticeService] 조회수 증가 완료. ID={}, 이전조회수={}, 현재조회수={}", 
+                id, beforeViewCount, notice.getViewCount());
+        
+        ResponseNotice response = noticeMapper.toResponse(notice);
+        return ResponseData.ok(response);
+    }
 
-	/** 
-	 * 공지사항 삭제 처리.
-	 * - ID 존재 여부 선확인 후 삭제 실행
-	 * - 삭제 불가능한 상황에서의 예외 처리
-	 */
-	@Override
-	@Transactional  // 데이터 삭제를 위한 쓰기 트랜잭션
-	public Response delete(Long id) {
-		// 입력 파라미터 로깅
-		log.info("[NoticeService] 공지사항 삭제 시작. ID={}", id);
-		
-		// 삭제할 공지사항 조회 (첨부파일 정보 확인용)
-		Notice notice = noticeRepository.findById(id).orElse(null);
-		if (notice == null) {
-			// 엔티티 미존재 시 경고 로깅 및 에러 응답
-			log.warn("[NoticeService] 삭제 대상 공지사항 미존재. ID={}", id);
-			return Response.error("N404", "공지사항을 찾을 수 없습니다. ID: " + id);
-		}
-		
-		// 첨부파일들을 먼저 삭제 (공지사항 삭제 전에)
-		String fileGroupKey = notice.getFileGroupKey();
-		log.info("[NoticeService] 첨부파일 확인. 그룹키={}", fileGroupKey);
-		if (fileGroupKey != null) {
-			log.info("[NoticeService] 첨부파일 삭제 시작. 그룹키={}", fileGroupKey);
-			fileUploadService.deleteFilesByGroupKey(fileGroupKey);
-		} else {
-			log.info("[NoticeService] 첨부파일 없음. 파일 삭제 건너뜀");
-		}
-		
-		// 엔티티 삭제 실행
-		noticeRepository.deleteById(id);
-		
-		// 삭제 성공 로깅
-		log.debug("[NoticeService] 공지사항 삭제 완료. ID={}", id);
-		
-		// 기본 성공 응답 반환
-		return Response.ok();
-	}
+    @Override
+    @Transactional
+    public ResponseData<Long> createNotice(RequestNoticeCreate request) {
+        log.info("[NoticeService] 공지사항 생성 시작. 제목={}, 카테고리ID={}", request.getTitle(), request.getCategoryId());
+        
+        // 카테고리 조회 (있는 경우만)
+        Category category = null;
+        if (request.getCategoryId() != null) {
+            category = findCategoryById(request.getCategoryId());
+            log.debug("[NoticeService] 카테고리 조회 완료. ID={}, 카테고리명={}", 
+                    request.getCategoryId(), category.getName());
+        }
+        
+        // 공지사항 생성
+        Notice notice = noticeMapper.toEntity(request, category);
+        Notice savedNotice = noticeRepository.save(notice);
+        
+        log.info("[NoticeService] 공지사항 생성 완료. ID={}, 제목={}", savedNotice.getId(), savedNotice.getTitle());
+        
+        return ResponseData.ok("0000", "공지사항이 생성되었습니다.", savedNotice.getId());
+    }
 
+    @Override
+    @Transactional
+    public Response updateNotice(Long id, RequestNoticeUpdate request) {
+        log.info("[NoticeService] 공지사항 수정 시작. ID={}", id);
+        
+        Notice notice = findNoticeById(id);
+        
+        // 카테고리 변경 처리
+        Category category = null;
+        if (request.getCategoryId() != null) {
+            category = findCategoryById(request.getCategoryId());
+            log.debug("[NoticeService] 카테고리 변경. 기존={}, 신규={}", 
+                    notice.getCategory() != null ? notice.getCategory().getName() : "없음", 
+                    category.getName());
+        }
+        
+        // 엔티티 업데이트
+        noticeMapper.updateEntity(notice, request, category);
+        
+        log.info("[NoticeService] 공지사항 수정 완료. ID={}, 제목={}", id, notice.getTitle());
+        
+        return Response.ok("0000", "공지사항이 수정되었습니다.");
+    }
 
-	/**
-	 * 파일 첨부 공지사항 생성 (통합 API용).
-	 */
-	@Override
-	@Transactional
-	public ResponseData<Long> createWithFiles(RequestNoticeCreate request, List<MultipartFile> files) {
-		log.info("[NoticeService] 통합 파일 첨부 공지사항 생성 시작. 제목={}, 파일개수={}", 
-				request.getTitle(), files != null ? files.size() : 0);
-		
-		try {
-			// 파일 그룹키 생성
-			String fileGroupKey = UUID.randomUUID().toString();
-			
-			// 공지사항 엔티티 생성
-			Notice notice = Notice.builder()
-					.title(request.getTitle())
-					.content(request.getContent())
-					.pinned(request.getPinned() != null ? request.getPinned() : false)
-					.published(request.getPublished() != null ? request.getPublished() : true)
-					.viewCount(0L)
-					.fileGroupKey(fileGroupKey)
-					.build();
-			
-			// 공지사항 저장
-			Notice savedNotice = noticeRepository.save(notice);
-			log.debug("[NoticeService] 공지사항 저장 완료. ID={}", savedNotice.getId());
-			
-			// 파일이 있는 경우 업로드 처리
-			if (files != null && !files.isEmpty()) {
-				List<UploadFileDto> uploadedFiles = fileUploadService.uploadFiles(files, fileGroupKey, FileContext.NOTICE);
-				log.info("[NoticeService] 파일 업로드 완료. 업로드된 파일 수: {}", uploadedFiles.size());
-			}
-			
-			log.info("[NoticeService] 통합 파일 첨부 공지사항 생성 완료. ID={}", savedNotice.getId());
-			return ResponseData.ok("0000", "파일 첨부 공지사항이 생성되었습니다.", savedNotice.getId());
-			
-		} catch (IllegalArgumentException e) {
-			log.warn("[NoticeService] 통합 파일 첨부 공지사항 생성 실패 - 잘못된 파일: {}", e.getMessage());
-			return ResponseData.error("F400", e.getMessage());
-		} catch (Exception e) {
-			log.error("[NoticeService] 통합 파일 첨부 공지사항 생성 실패: {}", e.getMessage(), e);
-			return ResponseData.error("N500", "파일 첨부 공지사항 생성에 실패했습니다: " + e.getMessage());
-		}
-	}
+    @Override
+    @Transactional
+    public Response deleteNotice(Long id) {
+        log.info("[NoticeService] 공지사항 삭제 시작. ID={}", id);
+        
+        Notice notice = findNoticeById(id);
+        String title = notice.getTitle();
+        
+        noticeRepository.delete(notice);
+        
+        log.info("[NoticeService] 공지사항 삭제 완료. ID={}, 제목={}", id, title);
+        
+        return Response.ok("0000", "공지사항이 삭제되었습니다.");
+    }
 
-	/**
-	 * 파일 첨부 공지사항 수정 (통합 API용).
-	 */
-	@Override
-	@Transactional
-	public Response updateWithFiles(Long id, RequestNoticeUpdate request, List<MultipartFile> files) {
-		log.info("[NoticeService] 통합 파일 첨부 공지사항 수정 시작. ID={}, 파일개수={}", 
-				id, files != null ? files.size() : 0);
-		
-		return noticeRepository.findById(id)
-				.map(notice -> {
-					try {
-						// 공지사항 기본 정보 수정
-						notice.update(request.getTitle(), request.getContent(),
-								request.getPinned(), request.getPublished());
-						
-						// 새로운 파일이 있는 경우 업로드
-						if (files != null && !files.isEmpty()) {
-							String fileGroupKey = notice.getFileGroupKey();
-							
-							// 파일 그룹키가 없으면 새로 생성
-							if (fileGroupKey == null) {
-								fileGroupKey = UUID.randomUUID().toString();
-								notice.updateFileGroupKey(fileGroupKey);
-							}
-							
-							// 파일 업로드 (기존 파일들은 유지, 공지사항 컨텍스트)
-							List<UploadFileDto> uploadedFiles = fileUploadService.uploadFiles(files, fileGroupKey, FileContext.NOTICE);
-							log.info("[NoticeService] 추가 파일 업로드 완료. 업로드된 파일 수: {}", uploadedFiles.size());
-						}
-						
-						log.info("[NoticeService] 통합 파일 첨부 공지사항 수정 완료. ID={}", id);
-						return Response.ok("0000", "공지사항이 수정되었습니다.");
-						
-					} catch (IllegalArgumentException e) {
-						log.warn("[NoticeService] 통합 파일 첨부 공지사항 수정 실패 - 잘못된 파일: {}", e.getMessage());
-						return Response.error("F400", e.getMessage());
-					} catch (Exception e) {
-						log.error("[NoticeService] 통합 파일 첨부 공지사항 수정 실패: {}", e.getMessage(), e);
-						return Response.error("N500", "파일 첨부 공지사항 수정에 실패했습니다: " + e.getMessage());
-					}
-				})
-				.orElseGet(() -> {
-					log.warn("[NoticeService] 수정 대상 공지사항 미존재. ID={}", id);
-					return Response.error("N404", "공지사항을 찾을 수 없습니다. ID: " + id);
-				});
-	}
+    @Override
+    @Transactional
+    public Response incrementViewCount(Long id) {
+        log.info("[NoticeService] 조회수 증가 시작. ID={}", id);
+        
+        int updatedCount = noticeRepository.incrementViewCount(id);
+        if (updatedCount == 0) {
+            log.warn("[NoticeService] 조회수 증가 실패 - 공지사항을 찾을 수 없음. ID={}", id);
+            throw new BusinessException(ErrorCode.NOTICE_NOT_FOUND);
+        }
+        
+        log.debug("[NoticeService] 조회수 증가 완료. ID={}", id);
+        
+        return Response.ok("0000", "조회수가 증가되었습니다.");
+    }
+
+    @Override
+    @Transactional
+    public Response toggleImportant(Long id, Boolean isImportant) {
+        log.info("[NoticeService] 중요 공지 상태 변경 시작. ID={}, 중요공지={}", id, isImportant);
+        
+        int updatedCount = noticeRepository.updateImportantStatus(id, isImportant);
+        if (updatedCount == 0) {
+            log.warn("[NoticeService] 중요 공지 상태 변경 실패 - 공지사항을 찾을 수 없음. ID={}", id);
+            throw new BusinessException(ErrorCode.NOTICE_NOT_FOUND);
+        }
+        
+        log.info("[NoticeService] 중요 공지 상태 변경 완료. ID={}, 중요공지={}", id, isImportant);
+        
+        String message = isImportant ? "중요 공지로 설정되었습니다." : "중요 공지가 해제되었습니다.";
+        return Response.ok("0000", message);
+    }
+
+    @Override
+    @Transactional
+    public Response togglePublished(Long id, Boolean isPublished) {
+        log.info("[NoticeService] 공개 상태 변경 시작. ID={}, 공개여부={}", id, isPublished);
+        
+        // 비공개 → 공개 변경 시 특별 처리를 위해 엔티티를 조회
+        if (isPublished) {
+            Notice notice = findNoticeById(id);
+            notice.togglePublished();
+            log.debug("[NoticeService] 공개 상태 변경 (특별 처리 포함). ID={}, 노출타입={}", 
+                    id, notice.getExposureType());
+        } else {
+            int updatedCount = noticeRepository.updatePublishedStatus(id, isPublished);
+            if (updatedCount == 0) {
+                log.warn("[NoticeService] 공개 상태 변경 실패 - 공지사항을 찾을 수 없음. ID={}", id);
+                throw new BusinessException(ErrorCode.NOTICE_NOT_FOUND);
+            }
+        }
+        
+        log.info("[NoticeService] 공개 상태 변경 완료. ID={}, 공개여부={}", id, isPublished);
+        
+        String message = isPublished ? "공지사항이 공개되었습니다." : "공지사항이 비공개되었습니다.";
+        return Response.ok("0000", message);
+    }
+
+    @Override
+    public ResponseData<List<ResponseNoticeSimple>> getRecentNotices(int limit) {
+        log.info("[NoticeService] 최근 공지사항 조회 시작. 개수={}", limit);
+        
+        List<Notice> notices = noticeRepository.findRecentNotices(limit);
+        List<ResponseNoticeSimple> response = noticeMapper.toSimpleResponseList(notices);
+        
+        log.debug("[NoticeService] 최근 공지사항 조회 완료. 반환개수={}", response.size());
+        
+        return ResponseData.ok(response);
+    }
+
+    @Override
+    public ResponseData<List<Object[]>> getNoticeStatsByCategory() {
+        log.info("[NoticeService] 카테고리별 공지사항 통계 조회 시작");
+        
+        List<Object[]> stats = noticeRepository.getNoticeStatsByCategory();
+        
+        log.debug("[NoticeService] 카테고리별 통계 조회 완료. 카테고리수={}", stats.size());
+        
+        return ResponseData.ok(stats);
+    }
+
+    /**
+     * 공지사항 조회 도우미 메서드.
+     */
+    private Notice findNoticeById(Long id) {
+        return noticeRepository.findById(id)
+                .orElseThrow(() -> {
+                    log.warn("[NoticeService] 공지사항을 찾을 수 없음. ID={}", id);
+                    return new BusinessException(ErrorCode.NOTICE_NOT_FOUND);
+                });
+    }
+
+    /**
+     * 카테고리 조회 도우미 메서드.
+     */
+    private Category findCategoryById(Long categoryId) {
+        return categoryRepository.findById(categoryId)
+                .orElseThrow(() -> {
+                    log.warn("[NoticeService] 카테고리를 찾을 수 없음. ID={}", categoryId);
+                    return new BusinessException(ErrorCode.CATEGORY_NOT_FOUND);
+                });
+    }
 }

@@ -52,8 +52,8 @@ public class NoticeQueryRepository extends BaseSearchRepository<Notice, Response
     private static final Map<String, Path<?>> ALLOWED_SORT_FIELDS = Map.of(
             "id", notice.id,
             "title", notice.title,
-            "pinned", notice.pinned,
-            "published", notice.published,
+            "pinned", notice.isImportant,
+            "published", notice.isPublished,
             "viewCount", notice.viewCount,
             "createdAt", notice.createdAt,
             "updatedAt", notice.updatedAt
@@ -94,8 +94,8 @@ public class NoticeQueryRepository extends BaseSearchRepository<Notice, Response
                 notice.id,          // 공지사항 고유 식별자
                 notice.title,       // 제목
                 notice.content,     // 내용
-                notice.pinned,      // 고정 여부
-                notice.published,   // 발행 상태
+                notice.isImportant, // 고정 여부
+                notice.isPublished,// 발행 상태
                 notice.viewCount,   // 조회수
                 notice.createdAt,   // 생성일시
                 notice.updatedAt    // 수정일시
@@ -135,10 +135,10 @@ public class NoticeQueryRepository extends BaseSearchRepository<Notice, Response
         predicates.add(PredicateBuilder.likeContains(notice.content, criteria.getContentLike()));
         
         // 발행 상태 필터 - 인덱스 활용 가능한 등호 조건을 우선 배치
-        predicates.add(PredicateBuilder.eqIfPresent(notice.published, criteria.getPublished()));
+        predicates.add(PredicateBuilder.eqIfPresent(notice.isPublished, criteria.getPublished()));
         
         // 고정 여부 필터 - 중요 공지사항 분류
-        predicates.add(PredicateBuilder.eqIfPresent(notice.pinned, criteria.getPinned()));
+        predicates.add(PredicateBuilder.eqIfPresent(notice.isImportant, criteria.getPinned()));
         
         // 생성일 범위 검색 - 날짜별 공지사항 조회
         predicates.add(PredicateBuilder.betweenIfPresent(notice.createdAt, 
@@ -166,8 +166,8 @@ public class NoticeQueryRepository extends BaseSearchRepository<Notice, Response
     @Override
     protected List<OrderSpecifier<?>> defaultOrders() {
         return List.of(
-                notice.pinned.desc(),    // 고정 공지사항 우선 (true > false)
-                notice.createdAt.desc()  // 최신 생성일 우선
+                notice.isImportant.desc(), // 고정 공지사항 우선 (true > false)
+                notice.createdAt.desc()    // 최신 생성일 우선
         );
     }
 

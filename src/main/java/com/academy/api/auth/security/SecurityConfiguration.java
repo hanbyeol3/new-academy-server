@@ -77,6 +77,8 @@ public class SecurityConfiguration {
                 .requestMatchers("/api/qna-simple/**").permitAll()
                 
                 // 공지사항 공개 API 허용 (비회원도 사용 가능)
+                .requestMatchers("/api/notices").permitAll()
+                .requestMatchers("/api/notices/**").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
                 
                 // 설명회 공개 API 허용 (비회원도 사용 가능)

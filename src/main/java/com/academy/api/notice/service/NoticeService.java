@@ -1,103 +1,139 @@
 package com.academy.api.notice.service;
 
-import com.academy.api.notice.model.RequestNoticeCreate;
-import com.academy.api.notice.model.RequestNoticeUpdate;
 import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
-import com.academy.api.notice.model.ResponseNotice;
+import com.academy.api.notice.dto.RequestNoticeCreate;
+import com.academy.api.notice.dto.RequestNoticeSearch;
+import com.academy.api.notice.dto.RequestNoticeUpdate;
+import com.academy.api.notice.dto.ResponseNotice;
+import com.academy.api.notice.dto.ResponseNoticeSimple;
 import org.springframework.data.domain.Pageable;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
 /**
- * 공지사항 비즈니스 로직을 처리하는 서비스 인터페이스.
+ * 공지사항 서비스 인터페이스.
  * 
- * - 공지사항의 CRUD 작업을 담당
- * - 컨트롤러와 리포지토리 계층 사이의 비즈니스 로직 추상화
- * - 통일된 응답 포맷(Response, ResponseData, ResponseList) 사용
+ * 공지사항 도메인의 모든 비즈니스 로직을 정의합니다.
+ * CLAUDE.md 표준에 따라 설계되었습니다.
  * 
- * 모든 메서드는 다음 원칙을 따름:
- *  1) 목록 조회 → ResponseList<T>
- *  2) 단건 조회 → ResponseData<T> 
- *  3) 생성 → ResponseData<Long> (생성된 ID 반환)
- *  4) 수정/삭제 → Response (단순 성공/실패)
+ * 주요 기능:
+ * - 공지사항 CRUD 작업
+ * - 검색 및 페이징 처리
+ * - 조회수 증가
+ * - 중요 공지 관리
+ * - 공개/비공개 상태 관리
+ * - 파일 연계 처리
  */
 public interface NoticeService {
 
-	/** 
-	 * 공지사항 목록 조회 (페이지네이션 포함).
-	 * - 검색 조건에 따른 필터링 및 정렬 지원
-	 * - 결과는 ResponseList 형태로 페이지 정보와 함께 반환
-	 * 
-	 * @param cond 검색 조건 (제목, 내용, 발행상태 등)
-	 * @param pageable 페이지네이션 정보 (페이지 번호, 크기, 정렬)
-	 * @return 검색된 공지사항 목록과 페이지 정보를 포함한 ResponseList
-	 */
-	ResponseList<ResponseNotice> list(ResponseNotice.Criteria cond, Pageable pageable);
+    /**
+     * 공지사항 목록 조회 (검색 + 페이징).
+     * 
+     * @param searchCondition 검색 조건
+     * @param pageable 페이징 정보
+     * @return 검색 결과
+     */
+    ResponseList<ResponseNoticeSimple> getNoticeList(RequestNoticeSearch searchCondition, Pageable pageable);
 
-	/** 
-	 * 공지사항 단건 조회.
-	 * - ID로 특정 공지사항을 조회하며 조회수 자동 증가
-	 * - 존재하지 않는 경우 에러 응답 반환
-	 * 
-	 * @param id 조회할 공지사항 ID
-	 * @return 조회된 공지사항 정보 또는 에러 응답
-	 */
-	ResponseData<ResponseNotice> get(Long id);
+    /**
+     * 관리자용 공지사항 목록 조회 (모든 상태 포함).
+     * 
+     * @param searchCondition 검색 조건
+     * @param pageable 페이징 정보
+     * @return 검색 결과
+     */
+    ResponseList<ResponseNoticeSimple> getNoticeListForAdmin(RequestNoticeSearch searchCondition, Pageable pageable);
 
-	/** 
-	 * 새로운 공지사항 생성.
-	 * - 입력 데이터 검증 후 공지사항 엔티티 생성
-	 * - 생성된 공지사항의 ID를 응답으로 반환
-	 * 
-	 * @param request 공지사항 생성 요청 데이터
-	 * @return 생성된 공지사항의 ID 또는 에러 응답
-	 */
-	ResponseData<Long> create(RequestNoticeCreate request);
+    /**
+     * 공개용 공지사항 목록 조회 (노출 가능한 것만).
+     * 
+     * @param searchCondition 검색 조건
+     * @param pageable 페이징 정보
+     * @return 검색 결과
+     */
+    ResponseList<ResponseNoticeSimple> getExposableNoticeList(RequestNoticeSearch searchCondition, Pageable pageable);
 
-	/** 
-	 * 기존 공지사항 수정.
-	 * - ID로 공지사항을 찾아 요청 데이터로 업데이트
-	 * - 존재하지 않는 경우 에러 응답 반환
-	 * 
-	 * @param id 수정할 공지사항 ID
-	 * @param request 공지사항 수정 요청 데이터
-	 * @return 수정 성공/실패 응답
-	 */
-	Response update(Long id, RequestNoticeUpdate request);
+    /**
+     * 공지사항 상세 조회.
+     * 
+     * @param id 공지사항 ID
+     * @return 공지사항 상세 정보
+     */
+    ResponseData<ResponseNotice> getNotice(Long id);
 
-	/** 
-	 * 공지사항 삭제.
-	 * - ID로 공지사항을 찾아 삭제 처리
-	 * - 존재하지 않는 경우 에러 응답 반환
-	 * 
-	 * @param id 삭제할 공지사항 ID
-	 * @return 삭제 성공/실패 응답
-	 */
-	Response delete(Long id);
+    /**
+     * 공지사항 상세 조회 (조회수 증가).
+     * 
+     * @param id 공지사항 ID
+     * @return 공지사항 상세 정보
+     */
+    ResponseData<ResponseNotice> getNoticeWithViewCount(Long id);
 
+    /**
+     * 공지사항 생성.
+     * 
+     * @param request 생성 요청 데이터
+     * @return 생성된 공지사항 ID
+     */
+    ResponseData<Long> createNotice(RequestNoticeCreate request);
 
-	/** 
-	 * 파일 첨부 공지사항 생성 (통합 API용).
-	 * - 통합된 컨트롤러에서 사용하는 오버로드 메서드
-	 * 
-	 * @param request 공지사항 생성 요청 데이터 (일반 모델)
-	 * @param files 첨부할 파일 목록
-	 * @return 생성된 공지사항의 ID 또는 에러 응답
-	 */
-	ResponseData<Long> createWithFiles(RequestNoticeCreate request, List<MultipartFile> files);
+    /**
+     * 공지사항 수정.
+     * 
+     * @param id 공지사항 ID
+     * @param request 수정 요청 데이터
+     * @return 수정 결과
+     */
+    Response updateNotice(Long id, RequestNoticeUpdate request);
 
+    /**
+     * 공지사항 삭제.
+     * 
+     * @param id 공지사항 ID
+     * @return 삭제 결과
+     */
+    Response deleteNotice(Long id);
 
-	/** 
-	 * 파일 첨부 공지사항 수정 (통합 API용).
-	 * - 통합된 컨트롤러에서 사용하는 오버로드 메서드
-	 * 
-	 * @param id 수정할 공지사항 ID
-	 * @param request 공지사항 수정 요청 데이터 (일반 모델)
-	 * @param files 새로 첨부할 파일 목록
-	 * @return 수정 성공/실패 응답
-	 */
-	Response updateWithFiles(Long id, RequestNoticeUpdate request, List<MultipartFile> files);
+    /**
+     * 조회수 증가.
+     * 
+     * @param id 공지사항 ID
+     * @return 증가 결과
+     */
+    Response incrementViewCount(Long id);
+
+    /**
+     * 중요 공지 설정/해제.
+     * 
+     * @param id 공지사항 ID
+     * @param isImportant 중요 공지 여부
+     * @return 변경 결과
+     */
+    Response toggleImportant(Long id, Boolean isImportant);
+
+    /**
+     * 공개/비공개 상태 변경.
+     * 
+     * @param id 공지사항 ID
+     * @param isPublished 공개 여부
+     * @return 변경 결과
+     */
+    Response togglePublished(Long id, Boolean isPublished);
+
+    /**
+     * 최근 공지사항 조회.
+     * 
+     * @param limit 조회할 개수
+     * @return 최근 공지사항 목록
+     */
+    ResponseData<List<ResponseNoticeSimple>> getRecentNotices(int limit);
+
+    /**
+     * 카테고리별 공지사항 통계.
+     * 
+     * @return 카테고리별 통계 정보
+     */
+    ResponseData<List<Object[]>> getNoticeStatsByCategory();
 }
