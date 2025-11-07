@@ -63,8 +63,12 @@ public class SecurityConfiguration {
                 // Actuator health 체크 허용
                 .requestMatchers("/actuator/health").permitAll()
                 
-                // Swagger UI 허용
+                // Swagger UI 허용 (커스텀 JS/CSS 포함)
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**").permitAll()
+                .requestMatchers("/swagger-ui-custom.js", "/swagger-ui-custom.css", "/swagger-helper.js").permitAll()
+                
+                // 인증 테스트 페이지 허용
+                .requestMatchers("/auth-test.html").permitAll()
                 
                 // H2 콘솔 허용 (개발용)
                 .requestMatchers("/h2-console/**").permitAll()

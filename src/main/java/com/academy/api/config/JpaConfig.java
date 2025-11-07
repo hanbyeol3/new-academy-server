@@ -33,7 +33,7 @@ public class JpaConfig {
     @Autowired
     private HibernateProperties hibernateProperties;
 
-    @Bean
+    @Bean(name = "entityManagerFactory")
     @Primary
     @Profile("!local")
     public LocalContainerEntityManagerFactoryBean entityManagerFactory(
@@ -74,7 +74,7 @@ public class JpaConfig {
                 .build();
     }
 
-    @Bean
+    @Bean(name = "entityManagerFactory")
     @Primary
     @Profile("local")
     public LocalContainerEntityManagerFactoryBean localEntityManagerFactory(
@@ -88,7 +88,7 @@ public class JpaConfig {
         properties.put("hibernate.hbm2ddl.auto", "create-drop");
         properties.put("hibernate.show_sql", true);
         properties.put("hibernate.format_sql", true);
-        properties.put("spring.sql.init.mode", "always");
+        properties.put("spring.sql.init.mode", "never");
 
         return builder
                 .dataSource(localDataSource)

@@ -44,6 +44,9 @@ management:
 springdoc:
   swagger-ui:
     path: /swagger-ui
+    display-request-duration: true
+    try-it-out-enabled: true
+    filter: true
   api-docs:
     path: /v3/api-docs
 

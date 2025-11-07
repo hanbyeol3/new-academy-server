@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>인증 테스트</title>
+    <script>
+        let accessToken = '';
+        
+        async function login() {
+            try {
+                const response = await fetch('/api/auth/sign-in', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: 'superadmin',
+                        password: 'password123!'
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    accessToken = data.data.accessToken;
+                    document.getElementById('token').textContent = accessToken.substring(0, 50) + '...';
+                    document.getElementById('loginStatus').textContent = '로그인 성공!';
+                    document.getElementById('loginStatus').style.color = 'green';
+                } else {
+                    document.getElementById('loginStatus').textContent = '로그인 실패: ' + data.error.message;
+                    document.getElementById('loginStatus').style.color = 'red';
+                }
+            } catch (error) {
+                document.getElementById('loginStatus').textContent = '로그인 오류: ' + error.message;
+                document.getElementById('loginStatus').style.color = 'red';
+            }
+        }
+        
+        async function testApi() {
+            try {
+                const response = await fetch('/api/admin/categories/groups', {
+                    headers: {
+                        'Authorization': 'Bearer ' + accessToken
+                    }
+                });
+                
+                const data = await response.json();
+                document.getElementById('apiResult').textContent = JSON.stringify(data, null, 2);
+                
+                if (data.success !== false) {
+                    document.getElementById('apiStatus').textContent = 'API 호출 성공!';
+                    document.getElementById('apiStatus').style.color = 'green';
+                } else {
+                    document.getElementById('apiStatus').textContent = 'API 호출 실패: ' + data.error.message;
+                    document.getElementById('apiStatus').style.color = 'red';
+                }
+            } catch (error) {
+                document.getElementById('apiStatus').textContent = 'API 오류: ' + error.message;
+                document.getElementById('apiStatus').style.color = 'red';
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>🔐 JWT 인증 테스트</h1>
+    
+    <div style="margin: 20px 0;">
+        <button onclick="login()">1. 로그인</button>
+        <div id="loginStatus"></div>
+        <div><strong>토큰:</strong> <span id="token">없음</span></div>
+    </div>
+    
+    <div style="margin: 20px 0;">
+        <button onclick="testApi()">2. API 테스트 (/api/admin/categories/groups)</button>
+        <div id="apiStatus"></div>
+        <pre id="apiResult"></pre>
+    </div>
+    
+    <div style="margin: 20px 0;">
+        <h3>📋 테스트 결과:</h3>
+        <ol>
+            <li>로그인 버튼을 클릭하여 토큰을 받으세요</li>
+            <li>API 테스트 버튼을 클릭하여 인증이 작동하는지 확인하세요</li>
+            <li>브라우저 개발자도구(F12) → Network 탭에서 실제 헤더를 확인하세요</li>
+        </ol>
+    </div>
+</body>
+</html>

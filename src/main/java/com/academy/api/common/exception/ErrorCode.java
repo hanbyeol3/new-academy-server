@@ -43,7 +43,15 @@ public enum ErrorCode {
 
     // 학사일정 관련 에러
     SCHEDULE_NOT_FOUND(HttpStatus.NOT_FOUND, "SCHEDULE_NOT_FOUND", "학사일정을 찾을 수 없습니다."),
-    INVALID_DATE_RANGE(HttpStatus.BAD_REQUEST, "INVALID_DATE_RANGE", "시작 일자는 종료 일자보다 늦을 수 없습니다.");
+    INVALID_DATE_RANGE(HttpStatus.BAD_REQUEST, "INVALID_DATE_RANGE", "시작 일자는 종료 일자보다 늦을 수 없습니다."),
+
+    // 카테고리 관련 에러
+    CATEGORY_GROUP_NOT_FOUND(HttpStatus.NOT_FOUND, "CATEGORY_GROUP_NOT_FOUND", "카테고리 그룹을 찾을 수 없습니다."),
+    CATEGORY_GROUP_ALREADY_EXISTS(HttpStatus.CONFLICT, "CATEGORY_GROUP_ALREADY_EXISTS", "이미 존재하는 카테고리 그룹명입니다."),
+    CATEGORY_GROUP_HAS_CATEGORIES(HttpStatus.BAD_REQUEST, "CATEGORY_GROUP_HAS_CATEGORIES", "하위 카테고리가 존재하여 삭제할 수 없습니다."),
+    CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "CATEGORY_NOT_FOUND", "카테고리를 찾을 수 없습니다."),
+    CATEGORY_SLUG_ALREADY_EXISTS(HttpStatus.CONFLICT, "CATEGORY_SLUG_ALREADY_EXISTS", "같은 그룹 내에서 이미 사용 중인 슬러그입니다."),
+    INVALID_SLUG_FORMAT(HttpStatus.BAD_REQUEST, "INVALID_SLUG_FORMAT", "슬러그는 영문, 숫자, 하이픈만 사용 가능합니다.");
 
     private final HttpStatus httpStatus;
     private final String code;

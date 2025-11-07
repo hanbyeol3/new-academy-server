@@ -40,9 +40,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         
         try {
             String token = extractTokenFromRequest(request);
+            log.debug("[JwtFilter] 요청 URL: {}, 토큰 존재: {}", request.getRequestURI(), token != null);
             
-            if (StringUtils.hasText(token) && jwtProvider.isValidToken(token)) {
-                setAuthenticationFromToken(token);
+            if (StringUtils.hasText(token)) {
+                log.debug("[JwtFilter] 토큰 내용: {}...", token.substring(0, Math.min(20, token.length())));
+                
+                if (jwtProvider.isValidToken(token)) {
+                    setAuthenticationFromToken(token);
+                    log.debug("[JwtFilter] 토큰 검증 성공, 인증 설정 완료");
+                } else {
+                    log.warn("[JwtFilter] 토큰 검증 실패");
+                }
+            } else {
+                log.debug("[JwtFilter] 토큰이 없음");
             }
         } catch (JwtTokenException e) {
             log.warn("JWT 토큰 인증 실패: {}", e.getMessage());
@@ -63,6 +73,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      */
     private String extractTokenFromRequest(HttpServletRequest request) {
         String bearerToken = request.getHeader(AUTHORIZATION_HEADER);
+        
+        // 디버그: 헤더 정보 로깅
+        log.debug("[JwtFilter] Authorization 헤더: '{}'", bearerToken);
         
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(BEARER_PREFIX)) {
             return bearerToken.substring(BEARER_PREFIX.length());

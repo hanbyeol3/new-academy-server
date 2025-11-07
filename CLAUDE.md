@@ -41,7 +41,7 @@ domain/
 #### 3. DTO 패턴 통일
 - **사용 금지**: `model` 패키지
 - **필수 사용**: `dto` 패키지
-- 요청 DTO: `Request` 접두사
+- 요청 DTO: `Request` 접두사 + `@Setter` 필수
 - 응답 DTO: `Response` 접두사
 
 #### 4. Controller 분리 원칙
@@ -82,6 +82,8 @@ auth/
 - [ ] `service` 패키지 존재
 - [ ] Admin/Public Controller 적절히 분리
 - [ ] 네이밍 컨벤션 준수
+- [ ] Request DTO에 `@Setter` 어노테이션 추가
+- [ ] Spring Data JPA 메서드명 vs @Query 어노테이션 사용 적절히 선택
 
 ## 📐 Response DTO 설계 표준
 
@@ -203,6 +205,70 @@ public class ResponseDomain {
 }
 ```
 
+## 🗄️ Spring Data JPA 개발 주의사항
+
+### ❌ 잘못된 메서드명 예시
+```java
+// 잘못된 예시 - 연관관계 필드의 속성에 직접 접근
+Optional<Category> findByCategoryGroupIdAndSlug(Long categoryGroupId, String slug);
+```
+**문제점**: `categoryGroupId`라는 필드가 존재하지 않음. 실제로는 `categoryGroup`이라는 연관관계 필드가 있고, 그것의 `id` 속성에 접근해야 함.
+
+### ✅ 올바른 해결법
+
+#### 1. @Query 어노테이션 사용 (권장)
+```java
+@Query("SELECT c FROM Category c WHERE c.categoryGroup.id = :categoryGroupId AND c.slug = :slug")
+Optional<Category> findByCategoryGroupIdAndSlug(@Param("categoryGroupId") Long categoryGroupId, @Param("slug") String slug);
+```
+
+#### 2. 메서드명 규칙 준수
+```java
+// 언더스코어를 사용하여 중첩 속성 접근
+Optional<Category> findByCategoryGroup_IdAndSlug(Long categoryGroupId, String slug);
+```
+
+### 🎯 언제 어떤 방법을 사용할까?
+
+#### @Query 어노테이션 사용 권장 상황:
+- 연관관계가 복잡한 경우
+- 복합 조건이 많은 경우
+- JPQL이 더 명확하게 의도를 표현하는 경우
+- COUNT, EXISTS 등 특별한 쿼리가 필요한 경우
+
+#### 메서드명 규칙 사용 권장 상황:
+- 단순한 조건 검색
+- 단일 필드 검색
+- Spring Data JPA가 자동 생성할 수 있는 범위 내
+
+### 📋 구현 시 체크리스트
+- [ ] 연관관계 필드명 정확히 파악
+- [ ] 복잡한 조건은 @Query 사용
+- [ ] @Param 어노테이션으로 파라미터 명시
+- [ ] Repository 메서드 테스트 작성
+
+### 💡 EntityManagerFactory 빈 설정 주의사항
+
+JPA 설정에서 `@Bean` 이름을 명시적으로 지정하지 않으면 Spring이 빈을 찾지 못할 수 있습니다.
+
+#### ❌ 문제가 되는 코드:
+```java
+@Bean
+@Primary
+@Profile("local")  
+public LocalContainerEntityManagerFactoryBean localEntityManagerFactory(...) {
+```
+
+#### ✅ 올바른 코드:
+```java
+@Bean(name = "entityManagerFactory")
+@Primary
+@Profile("local")
+public LocalContainerEntityManagerFactoryBean localEntityManagerFactory(...) {
+```
+
+**이유**: Spring Boot는 기본적으로 `entityManagerFactory`라는 이름의 빈을 찾는데, 메서드명과 빈 이름이 다를 경우 오류가 발생할 수 있습니다.
+
 #### B. 용도별 특화 Response DTO
 ```java
 // 목록 전용 (간소화된 필드)
@@ -285,6 +351,7 @@ public class RequestDomainAction {
 
 ##### 2. 기본 어노테이션
 - [ ] **@Getter**: 필수 (불변성 유지) ✓
+- [ ] **@Setter**: 테스트와 Jackson 역직렬화용 필수 ✓
 - [ ] **@NoArgsConstructor**: Jackson 역직렬화용 필수 ✓
 - [ ] **@Schema**: 클래스 레벨 description 필수 ✓
 
@@ -307,8 +374,8 @@ public class RequestDomainAction {
 4. **영어 에러 메시지** - 반드시 한국어 사용
 
 #### 지양 사항
-1. **`@Data` 사용** - `@Getter`만 사용 권장
-2. **과도한 `@Setter`** - 불변성 해치는 setter 남용
+1. **`@Data` 사용** - `@Getter`, `@Setter` 조합 사용 권장
+2. **검증 없는 setter** - 테스트용 setter는 허용하되 비즈니스 로직에서는 신중히 사용
 3. **모호한 네이밍** - `SignInRequest` 같은 불일치 패턴
 4. **검증 메시지 누락** - Bean Validation에 message 필수
 
@@ -343,6 +410,7 @@ RequestAuthTokenRefresh   // 토큰 갱신
 #### A. 기본 템플릿 (단순 CRUD)
 ```java
 @Getter
+@Setter
 @NoArgsConstructor
 @Schema(description = "{도메인명} {작업명} 요청")
 public class Request{Domain}{Action} {
@@ -361,6 +429,7 @@ public class Request{Domain}{Action} {
 #### B. 고급 템플릿 (복잡한 검증)
 ```java
 @Getter
+@Setter
 @NoArgsConstructor  
 @Schema(description = "도메인 작업 요청")
 @DateRange  // 클래스 레벨 검증
@@ -407,22 +476,25 @@ public class DomainAdminController {
     description = """
             상세 설명
             
-            규칙:
-            - 규칙 1
-            - 규칙 2
+            필수 입력 사항:
+            - 필드1 (형식)
+            - 필드2 (조건)
+            
+            선택 입력 사항:
+            - 필드3 (기본값)
             
             주의사항:
-            - 주의 1
-            """,
-    security = @SecurityRequirement(name = "bearerAuth")  // 인증 필요시
+            - 삭제된 데이터는 복구할 수 없습니다
+            - 하위 데이터가 존재하는 경우 삭제 불가
+            - 실제 운영에서는 soft delete 고려 권장
+            """
 )
-@ApiResponses({
-    @ApiResponse(responseCode = "201", description = "생성 성공"),
-    @ApiResponse(responseCode = "400", description = "입력 데이터 검증 실패"),
-    @ApiResponse(responseCode = "401", description = "인증 필요"),
-    @ApiResponse(responseCode = "403", description = "관리자 권한 필요")
-})
 ```
+
+**⚠️ 중요**: `responses = { @ApiResponse(...) }` 섹션은 **제거**하여 문서를 깔끔하게 유지합니다.
+- 복잡한 응답 코드 예시는 Swagger UI를 복잡하게 만듦
+- 상세한 description만으로 충분한 설명 제공
+- HTTP 상태 코드는 Spring의 기본 동작으로 자동 표시됨
 
 ##### 3. 메서드 표준 패턴
 ```java
@@ -548,15 +620,16 @@ log.info("도메인 목록 조회 요청. keyword={}, page={}, size={}",
 
 #### 절대 금지
 1. **@Tag 누락** - 모든 컨트롤러에 필수
-2. **@ApiResponse 미작성** - 상태 코드별 설명 필수
+2. **@Operation description 누락** - 상세한 설명 및 주의사항 필수
 3. **@Parameter 없는 파라미터** - 모든 파라미터 문서화
 4. **로그 없는 메서드** - 핵심 정보 로깅 필수
 
 #### 지양 사항
 1. **간단한 @Operation** - 상세한 description 작성 권장
-2. **일반적인 에러 메시지** - 구체적인 상황별 메시지
-3. **ResponseEntity 혼용** - 기존 Response 패턴 유지
-4. **불필요한 분리** - 단순 CRUD는 Admin/Public으로 충분
+2. **복잡한 ApiResponse 나열** - description만으로 충분, UI가 복잡해짐
+3. **일반적인 에러 메시지** - 구체적인 상황별 메시지
+4. **ResponseEntity 혼용** - 기존 Response 패턴 유지
+5. **불필요한 분리** - 단순 CRUD는 Admin/Public으로 충분
 
 ## ⚙️ Service Implementation 설계 표준
 
@@ -892,6 +965,37 @@ class ExampleAdminControllerTest {
 
 #### 4. 커버리지 목표
 - **서비스 레이어**: 90% 이상
+
+### 🔧 테스트 실무 팁
+
+#### Entity ID 설정 (테스트용)
+테스트에서 Entity ID가 필요한 경우 리플렉션 사용:
+
+```java
+// Entity ID 설정을 위한 리플렉션 패턴
+CategoryGroup savedCategoryGroup = CategoryGroup.builder()
+        .name("테스트 그룹")
+        .build();
+        
+// ID 설정 (테스트 전용)
+try {
+    var idField = CategoryGroup.class.getDeclaredField("id");
+    idField.setAccessible(true);
+    idField.set(savedCategoryGroup, 1L);
+} catch (Exception e) {
+    // 테스트에서 리플렉션 오류 무시
+}
+```
+
+#### ErrorCode 확장
+새 도메인 추가 시 ErrorCode enum에 관련 에러 코드 추가:
+
+```java
+// 카테고리 관련 에러 (예시)
+CATEGORY_GROUP_NOT_FOUND(HttpStatus.NOT_FOUND, "CATEGORY_GROUP_NOT_FOUND", "카테고리 그룹을 찾을 수 없습니다."),
+CATEGORY_GROUP_ALREADY_EXISTS(HttpStatus.CONFLICT, "CATEGORY_GROUP_ALREADY_EXISTS", "이미 존재하는 카테고리 그룹명입니다."),
+CATEGORY_SLUG_ALREADY_EXISTS(HttpStatus.CONFLICT, "CATEGORY_SLUG_ALREADY_EXISTS", "같은 그룹 내에서 이미 사용 중인 슬러그입니다."),
+```
 
 ## 🎯 Custom Validation 설계 표준
 
