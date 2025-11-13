@@ -27,7 +27,7 @@ import java.util.List;
 
 /**
  * 공지사항 관리자 API 컨트롤러.
- * 
+ *
  * 공지사항의 생성, 수정, 삭제 등 관리자 전용 기능을 제공합니다.
  * 모든 API는 ADMIN 권한이 필요합니다.
  */
@@ -42,6 +42,13 @@ public class NoticeAdminController {
 
     private final NoticeService noticeService;
 
+	/**
+	 * 관리자용 공지사항 목록 조회 (모든 상태 포함).
+	 *
+	 * @param searchCondition 검색 조건
+	 * @param pageable 페이징 정보
+	 * @return 검색 결과
+	 */
     @Operation(
         summary = "공지사항 목록 조회 (관리자)",
         description = """
@@ -74,6 +81,12 @@ public class NoticeAdminController {
         return noticeService.getNoticeListForAdmin(searchCondition, pageable);
     }
 
+	/**
+	 * 공지사항 상세 조회.
+	 *
+	 * @param id 공지사항 ID
+	 * @return 공지사항 상세 정보
+	 */
     @Operation(
         summary = "공지사항 상세 조회 (관리자)",
         description = """
@@ -93,6 +106,12 @@ public class NoticeAdminController {
         return noticeService.getNotice(id);
     }
 
+	/**
+	 * 공지사항 생성.
+	 *
+	 * @param request 생성 요청 데이터
+	 * @return 생성된 공지사항 ID
+	 */
     @Operation(
         summary = "공지사항 생성",
         description = """
@@ -118,12 +137,6 @@ public class NoticeAdminController {
     )
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    /**
-     * 공지사항 생성.
-     * 
-     * @param request 생성 요청 데이터
-     * @return 생성된 공지사항 ID
-     */
     public ResponseData<Long> createNotice(
             @Parameter(description = "공지사항 생성 요청 데이터")
             @RequestBody @Valid RequestNoticeCreate request) {
@@ -132,6 +145,13 @@ public class NoticeAdminController {
         return noticeService.createNotice(request);
     }
 
+	/**
+	 * 공지사항 수정.
+	 *
+	 * @param id 공지사항 ID
+	 * @param request 수정 요청 데이터
+	 * @return 수정 결과
+	 */
     @Operation(
         summary = "공지사항 수정",
         description = """
@@ -152,13 +172,6 @@ public class NoticeAdminController {
                 """
     )
     @PutMapping("/{id}")
-    /**
-     * 공지사항 수정.
-     * 
-     * @param id 공지사항 ID
-     * @param request 수정 요청 데이터
-     * @return 수정 결과
-     */
     public Response updateNotice(
             @Parameter(description = "공지사항 ID", example = "1") @PathVariable Long id,
             @Parameter(description = "공지사항 수정 요청 데이터")
@@ -169,6 +182,12 @@ public class NoticeAdminController {
         return noticeService.updateNotice(id, request);
     }
 
+	/**
+	 * 공지사항 삭제.
+	 *
+	 * @param id 공지사항 ID
+	 * @return 삭제 결과
+	 */
     @Operation(
         summary = "공지사항 삭제",
         description = """
@@ -182,12 +201,6 @@ public class NoticeAdminController {
                 """
     )
     @DeleteMapping("/{id}")
-    /**
-     * 공지사항 삭제.
-     * 
-     * @param id 삭제할 공지사항 ID
-     * @return 삭제 결과
-     */
     public Response deleteNotice(
             @Parameter(description = "공지사항 ID", example = "1") @PathVariable Long id) {
         
@@ -195,6 +208,12 @@ public class NoticeAdminController {
         return noticeService.deleteNotice(id);
     }
 
+	/**
+	 * 조회수 증가.
+	 *
+	 * @param id 공지사항 ID
+	 * @return 증가 결과
+	 */
     @Operation(
         summary = "조회수 수동 증가",
         description = """
@@ -217,6 +236,13 @@ public class NoticeAdminController {
         return noticeService.incrementViewCount(id);
     }
 
+	/**
+	 * 중요 공지 설정/해제.
+	 *
+	 * @param id 공지사항 ID
+	 * @param isImportant 중요 공지 여부
+	 * @return 변경 결과
+	 */
     @Operation(
         summary = "중요 공지 설정/해제",
         description = """
@@ -240,6 +266,13 @@ public class NoticeAdminController {
         return noticeService.toggleImportant(id, isImportant);
     }
 
+	/**
+	 * 공개/비공개 상태 변경.
+	 *
+	 * @param id 공지사항 ID
+	 * @param isPublished 공개 여부
+	 * @return 변경 결과
+	 */
     @Operation(
         summary = "공개/비공개 상태 변경",
         description = """
@@ -263,6 +296,11 @@ public class NoticeAdminController {
         return noticeService.togglePublished(id, isPublished);
     }
 
+	/**
+	 * 카테고리별 공지사항 통계.
+	 *
+	 * @return 카테고리별 통계 정보
+	 */
     @Operation(
         summary = "카테고리별 공지사항 통계",
         description = """
