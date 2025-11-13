@@ -22,7 +22,7 @@ import org.springframework.context.annotation.Configuration;
                         1. **로그인**: `/api/auth/sign-in` 실행
                            ```json
                            {
-                             "username": "superadmin", 
+                             "username": "testadmin", 
                              "password": "password123!"
                            }
                            ```
@@ -34,7 +34,7 @@ import org.springframework.context.annotation.Configuration;
                         4. **완료**: 모든 관리자 API 사용 가능!
                         
                         ## 📋 테스트 계정
-                        - 관리자: `superadmin` / `password123!`
+                        - 관리자: `testadmin` / `password123!`
                         - 확인용: http://localhost:8080/auth-test.html
                         """
         ),

@@ -270,7 +270,7 @@ CREATE TABLE academic_schedules (
 
 -- 기본 데이터 삽입
 INSERT INTO users (username, password, email, name, role) VALUES
-('superadmin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iYqiSfkFEwpOm.DKrOKpqNaMHJj6', 'admin@academy.com', '최고관리자', 'ADMIN'),
+('testadmin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iYqiSfkFEwpOm.DKrOKpqNaMHJj6', 'admin@academy.com', '최고관리자', 'ADMIN'),
 ('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iYqiSfkFEwpOm.DKrOKpqNaMHJj6', 'manager@academy.com', '관리자', 'MANAGER'),
 ('user1', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iYqiSfkFEwpOm.DKrOKpqNaMHJj6', 'user1@academy.com', '일반사용자1', 'USER');
 
@@ -394,7 +394,7 @@ curl -s http://localhost:8080/actuator/health | grep -q "UP" && echo "✅ 애플
 # API 테스트
 curl -s -X POST http://localhost:8080/api/auth/sign-in \
   -H "Content-Type: application/json" \
-  -d '{"username": "superadmin", "password": "password123!"}' | grep -q "accessToken" && echo "✅ API 연결 정상" || echo "❌ API 연결 실패"
+  -d '{"username": "testadmin", "password": "password123!"}' | grep -q "accessToken" && echo "✅ API 연결 정상" || echo "❌ API 연결 실패"
 
 # 애플리케이션 종료
 kill $APP_PID

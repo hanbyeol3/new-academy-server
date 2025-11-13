@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "로그인 요청")
 public class SignInRequest {
 
-    @Schema(description = "사용자명", example = "superadmin")
+    @Schema(description = "사용자명", example = "testadmin")
     @NotBlank(message = "사용자명을 입력해주세요")
     private String username;
 

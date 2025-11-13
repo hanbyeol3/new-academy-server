@@ -140,7 +140,7 @@ CREATE TABLE academic_schedules (
 
 -- 기본 데이터 삽입
 INSERT INTO users (username, password, email, name, role) VALUES
-('superadmin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iYqiSfkFEwpOm.DKrOKpqNaMHJj6', 'admin@academy.com', '최고관리자', 'ADMIN'),
+('testadmin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iYqiSfkFEwpOm.DKrOKpqNaMHJj6', 'admin@academy.com', '최고관리자', 'ADMIN'),
 ('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iYqiSfkFEwpOm.DKrOKpqNaMHJj6', 'manager@academy.com', '관리자', 'MANAGER'),
 ('user1', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iYqiSfkFEwpOm.DKrOKpqNaMHJj6', 'user1@academy.com', '일반사용자1', 'USER');
 

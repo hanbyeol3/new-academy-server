@@ -1700,7 +1700,7 @@ SPRING_PROFILES_ACTIVE=local ./gradlew bootRun
 
 #### 기존 관리자 계정 (절대 수정 금지)
 다음 계정들은 **절대 수정, 삭제, 비밀번호 변경을 해서는 안 됩니다**:
-- `superadmin` (최고 관리자)
+- `testadmin` (최고 관리자)
 - `admin001` (관리자)
 - 기타 production에서 사용 중인 관리자 계정들
 

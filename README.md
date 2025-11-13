@@ -51,7 +51,7 @@ Spring Boot와 JWT를 기반으로 구축된 학원 관리 시스템의 백엔�
 
 ### 관리자 계정 (ADMIN)
 ```
-사용자명: superadmin
+사용자명: testadmin
 비밀번호: password123!
 권한: ADMIN
 - 모든 API 접근 가능
@@ -238,7 +238,7 @@ DELETE /api/admin/qna/answers/{id}              # 답변 삭제
 curl -X POST "http://localhost:8080/api/auth/sign-in" \
      -H "Content-Type: application/json" \
      -d '{
-       "username": "superadmin",
+       "username": "testadmin",
        "password": "password123!"
      }'
 ```

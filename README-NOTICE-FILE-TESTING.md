@@ -290,7 +290,7 @@ WHERE l.file_id IS NULL;
 # 1. 인증 토큰 획득
 TOKEN=$(curl -s -X POST "http://localhost:8080/api/auth/sign-in" \
   -H "Content-Type: application/json" \
-  -d '{"username":"superadmin","password":"admin123!"}' \
+  -d '{"username":"testadmin","password":"admin123!"}' \
   | jq -r '.data.accessToken')
 
 # 2. 테스트 파일 생성
