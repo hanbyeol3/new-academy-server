@@ -18,12 +18,11 @@ public class AcademicScheduleMapper {
      */
     public AcademicSchedule toEntity(RequestAcademicScheduleCreate request) {
         return AcademicSchedule.builder()
-                .category(request.getCategory())
+                .title(request.getTitle())
+                .description(null) // DTO에 description 필드가 없으므로 null
                 .startDate(request.getStartDate())
                 .endDate(request.getEndDate())
-                .title(request.getTitle())
-                .published(request.getPublished())
-                .color(request.getColor())
+                .createdBy(null) // DTO에 createdBy 필드가 없으므로 null
                 .build();
     }
 
@@ -33,12 +32,9 @@ public class AcademicScheduleMapper {
     public ResponseAcademicScheduleListItem toResponse(AcademicSchedule entity) {
         return ResponseAcademicScheduleListItem.builder()
                 .id(entity.getId())
-                .category(entity.getCategory())
+                .title(entity.getTitle())
                 .startDate(entity.getStartDate())
                 .endDate(entity.getEndDate())
-                .title(entity.getTitle())
-                .published(entity.getPublished())
-                .color(entity.getColor())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();

@@ -21,40 +21,42 @@ public class ImageSourceValidator implements ConstraintValidator<ImageSourceVali
             return true; // null은 다른 validation에서 처리
         }
 
-        String imageFileId = null;
-        String imageUrl = null;
+        // TODO: 이미지 필드가 활성화되면 아래 검증 로직 사용
+        // String imageFileId = null;
+        // String imageUrl = null;
 
-        if (value instanceof RequestGalleryCreate request) {
-            imageFileId = request.getImageFileId();
-            imageUrl = request.getImageUrl();
-        } else if (value instanceof RequestGalleryUpdate request) {
-            imageFileId = request.getImageFileId();
-            imageUrl = request.getImageUrl();
-        } else {
-            return true; // 지원하지 않는 타입은 통과
-        }
+        // if (value instanceof RequestGalleryCreate request) {
+        //     imageFileId = request.getImageFileId();
+        //     imageUrl = request.getImageUrl();
+        // } else if (value instanceof RequestGalleryUpdate request) {
+        //     imageFileId = request.getImageFileId();
+        //     imageUrl = request.getImageUrl();
+        // } else {
+        //     return true; // 지원하지 않는 타입은 통과
+        // }
 
-        boolean hasFileId = isNotBlank(imageFileId);
-        boolean hasUrl = isNotBlank(imageUrl);
+        // boolean hasFileId = isNotBlank(imageFileId);
+        // boolean hasUrl = isNotBlank(imageUrl);
 
-        // 둘 다 없으면 IMAGE_SOURCE_REQUIRED 에러
-        if (!hasFileId && !hasUrl) {
-            context.disableDefaultConstraintViolation();
-            context.buildConstraintViolationWithTemplate("이미지 파일 ID 또는 이미지 URL이 필요합니다")
-                   .addPropertyNode("imageSource")
-                   .addConstraintViolation();
-            return false;
-        }
+        // // 둘 다 없으면 IMAGE_SOURCE_REQUIRED 에러
+        // if (!hasFileId && !hasUrl) {
+        //     context.disableDefaultConstraintViolation();
+        //     context.buildConstraintViolationWithTemplate("이미지 파일 ID 또는 이미지 URL이 필요합니다")
+        //            .addPropertyNode("imageSource")
+        //            .addConstraintViolation();
+        //     return false;
+        // }
 
-        // 둘 다 있으면 IMAGE_SOURCE_CONFLICT 에러
-        if (hasFileId && hasUrl) {
-            context.disableDefaultConstraintViolation();
-            context.buildConstraintViolationWithTemplate("이미지 파일 ID와 이미지 URL을 동시에 지정할 수 없습니다")
-                   .addPropertyNode("imageSource")
-                   .addConstraintViolation();
-            return false;
-        }
+        // // 둘 다 있으면 IMAGE_SOURCE_CONFLICT 에러
+        // if (hasFileId && hasUrl) {
+        //     context.disableDefaultConstraintViolation();
+        //     context.buildConstraintViolationWithTemplate("이미지 파일 ID와 이미지 URL을 동시에 지정할 수 없습니다")
+        //            .addPropertyNode("imageSource")
+        //            .addConstraintViolation();
+        //     return false;
+        // }
 
+        // 임시로 항상 true 반환 (이미지 필드 주석 처리됨)
         return true;
     }
 

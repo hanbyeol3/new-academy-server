@@ -74,3 +74,6 @@ Thumbs.db
 logs/
 temp/
 tmp/
+
+# Upload files
+uploads/

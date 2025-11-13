@@ -5,6 +5,10 @@ import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
 import io.swagger.v3.oas.annotations.info.Info;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import io.swagger.v3.oas.annotations.servers.Server;
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.info.Contact;
+import org.springdoc.core.customizers.OpenApiCustomizer;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @OpenAPIDefinition(
@@ -48,4 +52,21 @@ import org.springframework.context.annotation.Configuration;
 )
 @Configuration
 public class OpenApiConfig {
+
+    /**
+     * OpenAPI 커스터마이저.
+     * 
+     * - 태그를 ABC 순으로 정렬
+     * - 스웨거 UI에서 아코디언을 기본 접힌 상태로 설정
+     */
+    @Bean
+    public OpenApiCustomizer openApiCustomizer() {
+        return openApi -> {
+            // 태그를 ABC 순으로 정렬
+            if (openApi.getTags() != null) {
+                openApi.getTags().sort((tag1, tag2) -> 
+                    tag1.getName().compareToIgnoreCase(tag2.getName()));
+            }
+        };
+    }
 }

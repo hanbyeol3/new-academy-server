@@ -47,8 +47,7 @@ public class GalleryServiceImpl implements GalleryService {
     @Override
     @Transactional
     public ResponseData<ResponseGalleryItem> createGalleryItem(RequestGalleryCreate request) {
-        log.info("갤러리 항목 생성 요청. title={}, imageFileId={}, imageUrl={}", 
-                request.getTitle(), request.getImageFileId(), request.getImageUrl());
+        log.info("갤러리 항목 생성 요청. title={}", request.getTitle());
         
         GalleryItem galleryItem = galleryMapper.toEntity(request);
         GalleryItem savedItem = galleryItemRepository.save(galleryItem);
@@ -69,12 +68,9 @@ public class GalleryServiceImpl implements GalleryService {
         
         galleryItem.update(
                 request.getTitle(),
-                request.getDescription(),
-                request.getImageFileId(),
-                request.getImageUrl(),
-                request.getFileGroupKey(),
                 request.getSortOrder(),
-                request.getPublished()
+                request.getPublished(),
+                null  // DTO에 updatedBy 필드가 없으므로 null
         );
         
         log.info("갤러리 항목 수정 완료. id={}, title={}", id, galleryItem.getTitle());

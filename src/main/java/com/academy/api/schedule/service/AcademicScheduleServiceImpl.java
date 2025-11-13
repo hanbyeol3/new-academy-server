@@ -43,8 +43,8 @@ public class AcademicScheduleServiceImpl implements AcademicScheduleService {
     @Override
     @Transactional
     public ResponseData<ResponseAcademicScheduleListItem> createSchedule(RequestAcademicScheduleCreate request) {
-        log.info("학사일정 등록 요청. category={}, title={}, startDate={}, endDate={}", 
-                request.getCategory(), request.getTitle(), request.getStartDate(), request.getEndDate());
+        log.info("학사일정 등록 요청. title={}, startDate={}, endDate={}", 
+                request.getTitle(), request.getStartDate(), request.getEndDate());
         
         AcademicSchedule schedule = scheduleMapper.toEntity(request);
         AcademicSchedule savedSchedule = scheduleRepository.save(schedule);
@@ -64,12 +64,11 @@ public class AcademicScheduleServiceImpl implements AcademicScheduleService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_NOT_FOUND));
         
         schedule.update(
-                request.getCategory(),
+                request.getTitle(),
+                null, // DTO에 description 필드가 없으므로 null
                 request.getStartDate(),
                 request.getEndDate(),
-                request.getTitle(),
-                request.getPublished(),
-                request.getColor()
+                null  // DTO에 updatedBy 필드가 없으므로 null
         );
         
         log.info("학사일정 수정 완료. id={}, title={}", id, schedule.getTitle());

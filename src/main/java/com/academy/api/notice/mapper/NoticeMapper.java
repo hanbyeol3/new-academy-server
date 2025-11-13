@@ -33,7 +33,6 @@ public class NoticeMapper {
                 .exposureStartAt(request.getExposureStartAt())
                 .exposureEndAt(request.getExposureEndAt())
                 .category(category)
-                .fileGroupKey(request.getFileGroupKey())
                 .createdBy(null) // 추후 SecurityContext에서 가져오도록 수정
                 .build();
     }
@@ -97,7 +96,6 @@ public class NoticeMapper {
                 request.getExposureStartAt() != null ? request.getExposureStartAt() : notice.getExposureStartAt(),
                 request.getExposureEndAt() != null ? request.getExposureEndAt() : notice.getExposureEndAt(),
                 category != null ? category : notice.getCategory(),
-                request.getFileGroupKey() != null ? request.getFileGroupKey() : notice.getFileGroupKey(),
                 null // 추후 SecurityContext에서 가져오도록 수정
         );
     }

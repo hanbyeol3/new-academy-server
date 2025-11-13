@@ -1,8 +1,6 @@
 package com.academy.api.explanation.model;
 
-import com.academy.api.explanation.domain.ExplanationDivision;
 import com.academy.api.explanation.domain.ExplanationEvent;
-import com.academy.api.explanation.domain.ExplanationEventStatus;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -21,37 +19,30 @@ public class ResponseExplanationEventListItem {
     @Schema(description = "설명회 ID", example = "101")
     private Long id;
 
-    @Schema(description = "설명회 구분", example = "HIGH")
-    private ExplanationDivision division;
-
     @Schema(description = "설명회 제목", example = "2025학년도 설명회")
     private String title;
 
-    @Schema(description = "설명회 시작 일시", example = "2025-01-10T14:00:00")
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    private LocalDateTime startAt;
+    @Schema(description = "상세 설명", example = "대입 설명회 상세 내용입니다.")
+    private String description;
 
-    @Schema(description = "설명회 종료 일시", example = "2025-01-10T16:00:00")
+    @Schema(description = "대상 학년", example = "중3, 고1~2")
+    private String targetGrade;
+
+    @Schema(description = "설명회 일시", example = "2025-01-10T14:00:00")
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    private LocalDateTime endAt;
+    private LocalDateTime eventDate;
 
     @Schema(description = "설명회 장소", example = "대치 학원")
     private String location;
 
-    @Schema(description = "예약 상태", example = "RESERVABLE")
-    private ExplanationEventStatus status;
-
-    @Schema(description = "예약 가능 인원 (0은 무제한)", example = "120")
+    @Schema(description = "예약 가능 인원 (null은 무제한)", example = "120")
     private Integer capacity;
 
-    @Schema(description = "현재 예약된 인원수", example = "87")
-    private Integer reservedCount;
-
-    @Schema(description = "상단 고정 여부", example = "true")
-    private Boolean pinned;
-
     @Schema(description = "게시 여부", example = "true")
-    private Boolean published;
+    private Boolean isPublished;
+
+    @Schema(description = "조회수", example = "150")
+    private Long viewCount;
 
     @Schema(description = "생성 일시", example = "2025-01-01T10:00:00")
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
@@ -60,16 +51,14 @@ public class ResponseExplanationEventListItem {
     public static ResponseExplanationEventListItem from(ExplanationEvent event) {
         return ResponseExplanationEventListItem.builder()
                 .id(event.getId())
-                .division(event.getDivision())
                 .title(event.getTitle())
-                .startAt(event.getStartAt())
-                .endAt(event.getEndAt())
+                .description(event.getDescription())
+                .targetGrade(event.getTargetGrade())
+                .eventDate(event.getEventDate())
                 .location(event.getLocation())
-                .status(event.getStatus())
                 .capacity(event.getCapacity())
-                .reservedCount(event.getReservedCount())
-                .pinned(event.getPinned())
-                .published(event.getPublished())
+                .isPublished(event.getIsPublished())
+                .viewCount(event.getViewCount())
                 .createdAt(event.getCreatedAt())
                 .build();
     }

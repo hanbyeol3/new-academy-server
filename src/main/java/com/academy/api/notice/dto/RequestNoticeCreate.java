@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 공지사항 생성 요청 DTO.
@@ -46,6 +47,9 @@ public class RequestNoticeCreate {
     @Schema(description = "카테고리 ID", example = "1")
     private Long categoryId;
 
-    @Schema(description = "첨부 파일 그룹 ID", example = "550e8400-e29b-41d4-a716-446655440000")
-    private String fileGroupKey;
+    @Schema(description = "첨부파일 ID 목록", example = "[\"uuid-a\", \"uuid-b\"]")
+    private List<String> attachments;
+
+    @Schema(description = "본문 이미지 ID 목록", example = "[\"uuid-c\"]")
+    private List<String> inlineImages;
 }

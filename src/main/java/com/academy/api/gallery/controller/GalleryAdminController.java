@@ -70,8 +70,7 @@ public class GalleryAdminController {
             @Parameter(description = "갤러리 항목 생성 요청") 
             @RequestBody @Valid RequestGalleryCreate request) {
         
-        log.info("갤러리 항목 등록 요청. title={}, imageFileId={}, imageUrl={}", 
-                request.getTitle(), request.getImageFileId(), request.getImageUrl());
+        log.info("갤러리 항목 등록 요청. title={}", request.getTitle());
         
         return galleryService.createGalleryItem(request);
     }

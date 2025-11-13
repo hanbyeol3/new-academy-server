@@ -20,8 +20,9 @@ public class ResponseGalleryItem {
     @Schema(description = "갤러리 제목", example = "학원 전경")
     private String title;
 
-    @Schema(description = "갤러리 설명", example = "아름다운 가을 캠퍼스 전경입니다.")
-    private String description;
+    // TODO: 엔티티에서 활성화되면 주석 해제
+    // @Schema(description = "갤러리 설명", example = "아름다운 가을 캠퍼스 전경입니다.")
+    // private String description;
 
     @Schema(description = "이미지 URL", example = "https://example.com/api/public/files/download/f6a1e3b2-1234-5678-9abc-def012345678")
     private String imageUrl;

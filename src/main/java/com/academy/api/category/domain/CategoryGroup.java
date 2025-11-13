@@ -37,6 +37,10 @@ public class CategoryGroup {
     @Column(name = "id")
     private Long id;
 
+    /** 슬러그 (URL 식별자) */
+    @Column(name = "slug", nullable = false, length = 50, unique = true)
+    private String slug;
+
     /** 카테고리 그룹명 */
     @Column(name = "name", nullable = false, length = 120, unique = true)
     private String name;
@@ -66,12 +70,14 @@ public class CategoryGroup {
     /**
      * 카테고리 그룹 생성자.
      * 
+     * @param slug 슬러그 (필수)
      * @param name 카테고리 그룹명 (필수)
      * @param description 그룹 설명 (선택)
      * @param createdBy 등록자 관리자 ID (선택)
      */
     @Builder
-    private CategoryGroup(String name, String description, Long createdBy) {
+    private CategoryGroup(String slug, String name, String description, Long createdBy) {
+        this.slug = slug;
         this.name = name;
         this.description = description;
         this.createdBy = createdBy;

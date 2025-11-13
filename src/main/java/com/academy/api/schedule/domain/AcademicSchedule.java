@@ -14,10 +14,12 @@ import java.time.LocalDateTime;
 
 /**
  * 학사일정 엔티티.
+ * 
+ * academic_schedules 테이블과 매핑되며 학사 일정을 관리합니다.
  */
 @Entity
 @Table(name = "academic_schedules", indexes = {
-    @Index(name = "idx_academic_schedules_pub_month", columnList = "published, start_date, end_date")
+    @Index(name = "idx_academic_schedules_date", columnList = "start_date, end_date")
 })
 @EntityListeners(AuditingEntityListener.class)
 @Getter
@@ -29,54 +31,72 @@ public class AcademicSchedule {
     @Column(name = "id")
     private Long id;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "category", nullable = false)
-    private ScheduleCategory category;
-
-    @Column(name = "start_date", nullable = false)
-    private LocalDate startDate;
-
-    @Column(name = "end_date", nullable = false)
-    private LocalDate endDate;
-
+    /** 일정 제목 */
     @Column(name = "title", nullable = false, length = 255)
     private String title;
 
-    @Column(name = "published", nullable = false)
-    private Boolean published = true;
+    /** 상세 설명 (옵션) */
+    @Column(name = "description", length = 500)
+    private String description;
 
-    @Column(name = "color", length = 20)
-    private String color;
+    /** 시작일 */
+    @Column(name = "start_date", nullable = false)
+    private LocalDate startDate;
 
+    /** 종료일 */
+    @Column(name = "end_date", nullable = false)
+    private LocalDate endDate;
+
+    /** 등록자 */
+    @Column(name = "created_by")
+    private Long createdBy;
+
+    /** 등록일시 */
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    /** 수정자 */
+    @Column(name = "updated_by")
+    private Long updatedBy;
+
+    /** 수정일시 */
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    /**
+     * 학사일정 생성자.
+     * 
+     * @param title 일정 제목 (필수)
+     * @param description 상세 설명 (선택)
+     * @param startDate 시작일 (필수)
+     * @param endDate 종료일 (필수)
+     * @param createdBy 등록자 (선택)
+     */
     @Builder
-    public AcademicSchedule(ScheduleCategory category, LocalDate startDate, LocalDate endDate, 
-                           String title, Boolean published, String color) {
-        this.category = category;
+    public AcademicSchedule(String title, String description, LocalDate startDate, LocalDate endDate, Long createdBy) {
+        this.title = title;
+        this.description = description;
         this.startDate = startDate;
         this.endDate = endDate;
-        this.title = title;
-        this.published = published != null ? published : true;
-        this.color = color;
+        this.createdBy = createdBy;
     }
 
     /**
      * 학사일정 정보를 업데이트합니다.
+     * 
+     * @param title 일정 제목
+     * @param description 상세 설명
+     * @param startDate 시작일
+     * @param endDate 종료일
+     * @param updatedBy 수정자
      */
-    public void update(ScheduleCategory category, LocalDate startDate, LocalDate endDate,
-                      String title, Boolean published, String color) {
-        this.category = category;
+    public void update(String title, String description, LocalDate startDate, LocalDate endDate, Long updatedBy) {
+        this.title = title;
+        this.description = description;
         this.startDate = startDate;
         this.endDate = endDate;
-        this.title = title;
-        this.published = published != null ? published : true;
-        this.color = color;
+        this.updatedBy = updatedBy;
     }
 }

@@ -447,6 +447,112 @@ public class RequestDomainAction {
 }
 ```
 
+## 📦 Response 데이터 형식 표준
+
+### 🎯 필수 Response 타입
+
+모든 API 엔드포인트는 반드시 다음 3가지 Response 타입 중 하나를 사용해야 합니다:
+
+#### 1. ResponseList\<T> - 목록 조회용
+```java
+// 페이징이 포함된 목록 조회 결과
+public ResponseList<ResponseNoticeSimple> getNoticeList(..., Pageable pageable) {
+    Page<Notice> noticePage = repository.searchNotices(searchCondition, pageable);
+    return noticeMapper.toSimpleResponseList(noticePage);
+}
+
+// ResponseList 응답 예시:
+{
+  "success": true,
+  "data": [...],
+  "totalElements": 150,
+  "pageNumber": 0,
+  "pageSize": 20,
+  "message": "목록 조회 성공"
+}
+```
+
+#### 2. ResponseData\<T> - 단건 조회/생성용
+```java
+// 단건 상세 조회
+public ResponseData<ResponseNotice> getNotice(Long id) {
+    Notice notice = findNoticeById(id);
+    ResponseNotice response = noticeMapper.toResponse(notice);
+    return ResponseData.ok(response);
+}
+
+// 생성 결과 (ID 반환)
+public ResponseData<Long> createNotice(RequestNoticeCreate request) {
+    Notice savedNotice = repository.save(notice);
+    return ResponseData.ok("0000", "공지사항이 생성되었습니다.", savedNotice.getId());
+}
+
+// ResponseData 응답 예시:
+{
+  "success": true,
+  "code": "0000",
+  "message": "조회 성공",
+  "data": { ... }
+}
+```
+
+#### 3. Response - 수정/삭제/상태변경용
+```java
+// 수정/삭제 결과 (단순 성공/실패)
+public Response updateNotice(Long id, RequestNoticeUpdate request) {
+    // 수정 로직...
+    return Response.ok("0000", "공지사항이 수정되었습니다.");
+}
+
+public Response deleteNotice(Long id) {
+    // 삭제 로직...
+    return Response.ok("0000", "공지사항이 삭제되었습니다.");
+}
+
+// Response 응답 예시:
+{
+  "success": true,
+  "code": "0000", 
+  "message": "수정이 완료되었습니다."
+}
+```
+
+### 🔍 Response 타입 선택 기준
+
+| 상황 | Response 타입 | 사용 예시 |
+|------|---------------|-----------|
+| 목록 조회 (페이징) | `ResponseList<T>` | 공지사항 목록, 갤러리 목록, 학사일정 목록 |
+| 단건 조회 | `ResponseData<T>` | 공지사항 상세, 사용자 정보 |
+| 생성 (ID 반환) | `ResponseData<Long>` | 공지사항 생성, 카테고리 생성 |
+| 생성 (객체 반환) | `ResponseData<T>` | 파일 업로드 결과 |
+| 수정 | `Response` | 공지사항 수정, 사용자 정보 수정 |
+| 삭제 | `Response` | 공지사항 삭제, 파일 삭제 |
+| 상태 변경 | `Response` | 공개/비공개, 중요공지 설정 |
+
+### ⚠️ Response 타입 금지 사항
+
+#### 절대 사용 금지
+- **ResponseEntity\<T>**: Spring 기본 타입 사용 금지
+- **Map\<String, Object>**: 타입 안전성 없는 응답 금지
+- **String, void**: Raw 타입 반환 금지
+- **커스텀 Response 클래스**: 표준 3종 외 사용 금지
+
+#### 지양 사항
+- **null 반환**: 모든 메서드는 적절한 Response 타입 반환 필수
+- **타입 혼재**: 동일한 Controller 내에서 Response 타입 일관성 유지
+- **빈 Response**: success, code, message는 항상 포함
+
+### 📋 Response 타입 체크리스트
+
+새로운 API 메서드 작성 시 다음을 확인:
+
+- [ ] **목록 조회**: `ResponseList<T>` 사용 ✓
+- [ ] **단건 조회/생성**: `ResponseData<T>` 사용 ✓  
+- [ ] **수정/삭제/상태변경**: `Response` 사용 ✓
+- [ ] **성공 메시지**: 적절한 한국어 메시지 포함 ✓
+- [ ] **에러 코드**: "0000" (성공) 또는 적절한 에러 코드 ✓
+- [ ] **타입 일관성**: Controller 내 메서드별 적절한 타입 선택 ✓
+
 ## 🎮 Controller 설계 표준
 
 ### 🏆 표준 기준
@@ -500,6 +606,12 @@ public class DomainAdminController {
 ```java
 @PostMapping
 @ResponseStatus(HttpStatus.CREATED)  // 201 명시적 설정
+/**
+ * 도메인 생성.
+ * 
+ * @param request 생성 요청 데이터
+ * @return 생성된 도메인 정보 또는 ID
+ */
 public ResponseData<Response{Domain}> create{Domain}(
     @Parameter(description = "요청 객체 설명") 
     @RequestBody @Valid Request{Domain}Create request) {
@@ -511,6 +623,13 @@ public ResponseData<Response{Domain}> create{Domain}(
 }
 
 @PutMapping("/{id}")
+/**
+ * 도메인 수정.
+ * 
+ * @param id 수정할 도메인 ID
+ * @param request 수정 요청 데이터
+ * @return 수정 결과
+ */
 public ResponseData<Response{Domain}> update{Domain}(
     @Parameter(description = "수정할 ID", example = "1") 
     @PathVariable Long id,
@@ -522,6 +641,12 @@ public ResponseData<Response{Domain}> update{Domain}(
 }
 
 @DeleteMapping("/{id}")
+/**
+ * 도메인 삭제.
+ * 
+ * @param id 삭제할 도메인 ID
+ * @return 삭제 결과
+ */
 public Response delete{Domain}(
     @Parameter(description = "삭제할 ID", example = "1") 
     @PathVariable Long id) {
@@ -616,6 +741,27 @@ log.info("도메인 목록 조회 요청. keyword={}, page={}, size={}",
         keyword, pageable.getPageNumber(), pageable.getPageSize());
 ```
 
+##### 5. JavaDoc 표준 패턴
+```java
+/**
+ * 작업 설명 (한국어).
+ * 
+ * @param paramName 파라미터 설명
+ * @return 반환값 설명
+ */
+@PostMapping
+@ResponseStatus(HttpStatus.CREATED)
+public ResponseData<Long> createDomain(@RequestBody @Valid RequestCreate request) {
+    // 메서드 구현
+}
+```
+
+**JavaDoc 작성 규칙:**
+- **첫 줄**: 간단한 작업 설명 (한국어)
+- **@param**: 모든 파라미터에 대한 설명
+- **@return**: 반환값에 대한 설명
+- **빈 줄**: 설명과 @param 사이에 빈 줄 필수
+
 ### 🚫 피해야 할 패턴
 
 #### 절대 금지
@@ -623,6 +769,7 @@ log.info("도메인 목록 조회 요청. keyword={}, page={}, size={}",
 2. **@Operation description 누락** - 상세한 설명 및 주의사항 필수
 3. **@Parameter 없는 파라미터** - 모든 파라미터 문서화
 4. **로그 없는 메서드** - 핵심 정보 로깅 필수
+5. **JavaDoc 누락** - 모든 public 메서드에 JavaDoc 주석 필수
 
 #### 지양 사항
 1. **간단한 @Operation** - 상세한 description 작성 권장
@@ -745,6 +892,12 @@ return ResponseData.error("N404", "구체적인 에러 상황 설명");
 ##### 7. Mapper 패턴 활용
 ```java
 // Entity ↔ DTO 변환은 Mapper에 위임
+/**
+ * 도메인 생성.
+ * 
+ * @param request 생성 요청 데이터
+ * @return 생성된 도메인 정보
+ */
 @Override
 @Transactional
 public ResponseData<Response{Domain}> create(Request{Domain}Create request) {
@@ -883,6 +1036,7 @@ if (entity.isNotEditable()) {
 2. **로깅 없는 핵심 메서드** - 디버깅 불가
 3. **Exception 무시** - try-catch로 예외 삼키기
 4. **Controller 로직 혼입** - HTTP 관련 로직 포함
+5. **JavaDoc 누락** - 모든 public 메서드에 JavaDoc 주석 필수
 
 #### 지양 사항
 1. **과도한 비즈니스 로직** - 엔티티 메서드 활용 권장
@@ -1542,6 +1696,24 @@ SPRING_PROFILES_ACTIVE=local ./gradlew bootRun
 - **JPA Auditing**: 활성화됨
 - **QueryDSL**: Q클래스 자동 생성
 
+### 🔐 테스트 계정 관리 지침
+
+#### 기존 관리자 계정 (절대 수정 금지)
+다음 계정들은 **절대 수정, 삭제, 비밀번호 변경을 해서는 안 됩니다**:
+- `superadmin` (최고 관리자)
+- `admin001` (관리자)
+- 기타 production에서 사용 중인 관리자 계정들
+
+#### 테스트용 계정 사용
+테스트나 개발 시에는 다음과 같은 별도 계정을 생성하여 사용:
+- `testadmin` (테스트용 관리자 - username: testadmin, password: password123!)
+- 기타 test로 시작하는 계정들
+
+#### 계정 관리 원칙
+- **기존 계정 보호**: production 관리자 계정은 절대 건드리지 않음
+- **테스트 계정 분리**: 테스트용으로 별도 계정 생성 및 사용
+- **권한 최소화**: 테스트 시에만 일시적으로 권한 부여
+
 ---
-📅 **최종 업데이트**: 2024.11.07  
-🎯 **목표**: 모든 도메인의 아키텍처 일관성 확보
+📅 **최종 업데이트**: 2024.11.13  
+🎯 **목표**: 모든 도메인의 아키텍처 일관성 확보 및 안전한 테스트 환경 구축

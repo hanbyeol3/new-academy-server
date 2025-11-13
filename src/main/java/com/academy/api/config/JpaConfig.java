@@ -78,16 +78,26 @@ public class JpaConfig {
     @Primary
     @Profile("local")
     public LocalContainerEntityManagerFactoryBean localEntityManagerFactory(
-            EntityManagerFactoryBuilder builder, DataSource localDataSource) {
+            EntityManagerFactoryBuilder builder, DataSource localDataSource) throws SQLException {
         
-        log.info("[JpaConfig] Local 프로파일: H2 Dialect를 사용합니다.");
+        // 데이터소스 타입에 따라 Dialect 설정
+        String dialectClass;
+        String jdbcUrl = localDataSource.getConnection().getMetaData().getURL();
+        
+        if (jdbcUrl.contains("mysql")) {
+            dialectClass = "org.hibernate.dialect.MySQLDialect";
+            log.info("[JpaConfig] Local 프로파일: MySQL Dialect를 사용합니다.");
+        } else {
+            dialectClass = "org.hibernate.dialect.H2Dialect"; 
+            log.info("[JpaConfig] Local 프로파일: H2 Dialect를 사용합니다.");
+        }
         
         Map<String, Object> properties = hibernateProperties.determineHibernateProperties(
                 jpaProperties.getProperties(), new HibernateSettings());
-        properties.put("hibernate.dialect", "org.hibernate.dialect.H2Dialect");
-        properties.put("hibernate.hbm2ddl.auto", "create-drop");
-        properties.put("hibernate.show_sql", true);
-        properties.put("hibernate.format_sql", true);
+        properties.put("hibernate.dialect", dialectClass);
+        properties.put("hibernate.hbm2ddl.auto", "none");
+        properties.put("hibernate.show_sql", false);
+        properties.put("hibernate.format_sql", false);
         properties.put("spring.sql.init.mode", "never");
 
         return builder

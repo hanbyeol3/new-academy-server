@@ -66,7 +66,7 @@ public class ResponseNoticeSimple {
                 .categoryId(notice.getCategory() != null ? notice.getCategory().getId() : null)
                 .categoryName(notice.getCategory() != null ? notice.getCategory().getName() : null)
                 .viewCount(notice.getViewCount())
-                .hasAttachment(notice.getFileGroupKey() != null && !notice.getFileGroupKey().trim().isEmpty())
+                .hasAttachment(false)
                 .exposable(notice.isExposable())
                 .createdAt(notice.getCreatedAt())
                 .updatedAt(notice.getUpdatedAt())

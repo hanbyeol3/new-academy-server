@@ -4,7 +4,7 @@ import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.file.dto.Base64FileUploadRequest;
 import com.academy.api.file.dto.FileUploadResponse;
 import com.academy.api.file.service.FileService;
-import com.academy.api.file.service.FileUploadService;
+// import com.academy.api.file.service.FileUploadService; // 임시 비활성화
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -41,7 +41,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class FileController {
 
     private final FileService fileService;
-    private final FileUploadService fileUploadService;
+    // private final FileUploadService fileUploadService; // 임시 비활성화
 
     /**
      * Multipart 파일 업로드.
@@ -106,7 +106,7 @@ public class FileController {
         
         log.info("파일 다운로드 요청. 파일ID={}", fileId);
         
-        return fileUploadService.downloadFile(fileId);
+        return fileService.downloadFile(fileId);
     }
 
     /**
@@ -170,9 +170,11 @@ public class FileController {
         return ResponseData.ok(exists);
     }
 
-    /**
-     * 그룹키와 파일명으로 파일 다운로드.
+    /*
+     * FileUploadService 비활성화로 인해 임시 주석처리
+     * 현재 공지사항 시스템은 FileServiceImpl을 사용
      */
+    /*
     @Operation(
         summary = "그룹키와 파일명으로 파일 다운로드", 
         description = "파일 그룹키와 파일명을 사용하여 파일을 다운로드합니다. 공지사항 첨부파일 등에 사용됩니다."
@@ -191,4 +193,5 @@ public class FileController {
         
         return fileUploadService.downloadFileByGroupKeyAndName(groupKey, fileName);
     }
+    */
 }

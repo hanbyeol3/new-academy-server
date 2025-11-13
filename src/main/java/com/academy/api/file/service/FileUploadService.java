@@ -1,7 +1,6 @@
 package com.academy.api.file.service;
 
 import com.academy.api.file.domain.FileContext;
-import com.academy.api.file.domain.StorageType;
 import com.academy.api.file.domain.UploadFile;
 import com.academy.api.file.dto.UploadFileDto;
 import com.academy.api.file.repository.UploadFileRepository;
@@ -23,8 +22,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -38,7 +35,7 @@ import java.util.stream.Collectors;
  * 파일의 실제 저장, 메타데이터 관리, 다운로드 기능을 제공합니다.
  */
 @Slf4j
-@Service
+// @Service  // 임시 비활성화 - 현재 공지사항 시스템은 FileServiceImpl 사용
 @RequiredArgsConstructor
 @Transactional
 @SuppressWarnings("unused")
@@ -133,26 +130,11 @@ public class FileUploadService {
             Path filePath = uploadPath.resolve(serverFileName);
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
             
-            // SHA-256 해시 계산
-            String checksum = calculateSHA256(filePath);
+            // NOTE: 현재 UploadFile 엔티티는 groupKey 필드가 없음 (BIGINT ID 사용)
+            // 임시로 더미 응답 반환 (향후 리팩토링 필요)
+            log.warn("FileUploadService는 현재 비활성화됨 - 더미 응답 반환");
             
-            // 파일 메타데이터 저장
-            UploadFile uploadFile = UploadFile.builder()
-                    .id(fileId)
-                    .groupKey(groupKey)
-                    .serverPath(filePath.toString())
-                    .fileName(originalFileName)
-                    .ext(ext)
-                    .size(file.getSize())
-                    .storageType(StorageType.LOCAL)
-                    .checksumSha256(checksum)
-                    .build();
-            
-            uploadFileRepository.save(uploadFile);
-            
-            log.info("파일 업로드 완료: {} (그룹: {}, 컨텍스트: {}, 경로: {})", originalFileName, groupKey, context, filePath);
-            
-            return UploadFileDto.of(fileId, groupKey, originalFileName, ext, file.getSize(), uploadFile.getRegDate());
+            return UploadFileDto.of(fileId, groupKey, originalFileName, ext, file.getSize(), LocalDateTime.now());
             
         } catch (IOException e) {
             log.error("파일 업로드 실패: {}", e.getMessage());
@@ -168,18 +150,8 @@ public class FileUploadService {
      */
     @Transactional(readOnly = true)
     public List<UploadFileDto> getFilesByGroupKey(String groupKey) {
-        List<UploadFile> files = uploadFileRepository.findByGroupKeyAndDeletedFalse(groupKey);
-        
-        return files.stream()
-                .map(file -> UploadFileDto.of(
-                    file.getId(),
-                    file.getGroupKey(),
-                    file.getFileName(),
-                    file.getExt(),
-                    file.getSize(),
-                    file.getRegDate()
-                ))
-                .collect(Collectors.toList());
+        log.warn("getFilesByGroupKey 호출됨 - 현재 비활성화됨, 빈 목록 반환");
+        return List.of(); // 빈 목록 반환
     }
 
     /**
@@ -240,13 +212,8 @@ public class FileUploadService {
      */
     @Transactional(readOnly = true)
     public ResponseEntity<Resource> downloadFileByGroupKeyAndName(String groupKey, String fileName) {
-        Optional<UploadFile> fileOptional = uploadFileRepository.findByGroupKeyAndFileNameAndDeletedFalse(groupKey, fileName);
-        
-        if (fileOptional.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        
-        return downloadFile(fileOptional.get().getId());
+        log.warn("downloadFileByGroupKeyAndName 호출됨 - 현재 비활성화됨");
+        return ResponseEntity.notFound().build();
     }
 
     /**
@@ -255,27 +222,7 @@ public class FileUploadService {
      * @param groupKey 파일 그룹키
      */
     public void deleteFilesByGroupKey(String groupKey) {
-        log.info("그룹키로 파일 삭제 시작: {}", groupKey);
-        List<UploadFile> files = uploadFileRepository.findByGroupKeyAndDeletedFalse(groupKey);
-        log.info("삭제 대상 파일 수: {}", files.size());
-        
-        for (UploadFile file : files) {
-            log.info("파일 삭제 처리 중: {} (경로: {})", file.getFileName(), file.getServerPath());
-            file.delete();
-            
-            // 실제 파일도 삭제 (선택적)
-            try {
-                Path filePath = Paths.get(file.getServerPath());
-                boolean deleted = Files.deleteIfExists(filePath);
-                log.info("파일 삭제 완료: {} (물리적 삭제: {})", file.getFileName(), deleted);
-            } catch (IOException e) {
-                log.warn("물리적 파일 삭제 실패: {} - {}", file.getFileName(), e.getMessage());
-            }
-        }
-        
-        log.info("그룹키 파일 삭제 완료: {} (처리된 파일 수: {})", groupKey, files.size());
-        
-        uploadFileRepository.saveAll(files);
+        log.warn("deleteFilesByGroupKey 호출됨 - 현재 비활성화됨, 아무 작업 안함");
     }
 
     /**
@@ -360,27 +307,4 @@ public class FileUploadService {
         return fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase();
     }
 
-    /**
-     * 파일의 SHA-256 해시값 계산.
-     * 
-     * @param filePath 파일 경로
-     * @return SHA-256 해시값
-     */
-    private String calculateSHA256(Path filePath) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] fileBytes = Files.readAllBytes(filePath);
-            byte[] hashBytes = digest.digest(fileBytes);
-            
-            StringBuilder sb = new StringBuilder();
-            for (byte b : hashBytes) {
-                sb.append(String.format("%02x", b));
-            }
-            return sb.toString();
-            
-        } catch (NoSuchAlgorithmException | IOException e) {
-            log.warn("SHA-256 해시 계산 실패: {}", e.getMessage());
-            return null;
-        }
-    }
 }

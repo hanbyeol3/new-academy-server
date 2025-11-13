@@ -23,14 +23,20 @@ public class ResponseReservation {
     @Schema(description = "설명회 ID", example = "101")
     private Long eventId;
 
-    @Schema(description = "회원 ID (회원 예약인 경우)", example = "1001")
-    private Long memberId;
+    @Schema(description = "예약자 이름", example = "홍길동")
+    private String name;
 
-    @Schema(description = "비회원 이름 (비회원 예약인 경우)", example = "홍길동")
-    private String guestName;
+    @Schema(description = "전화번호 마스킹", example = "010-****-5678")
+    private String phoneMasked;
 
-    @Schema(description = "비회원 전화번호 마스킹 (비회원 예약인 경우)", example = "010-****-5678")
-    private String guestPhoneMasked;
+    @Schema(description = "학생 이름", example = "홍철수")
+    private String studentName;
+
+    @Schema(description = "학생 학년", example = "고2")
+    private String grade;
+
+    @Schema(description = "비고/관리자 메모", example = "특이사항 없음")
+    private String memo;
 
     @Schema(description = "예약 상태", example = "CONFIRMED")
     private ExplanationReservationStatus status;
@@ -47,9 +53,11 @@ public class ResponseReservation {
         return ResponseReservation.builder()
                 .id(reservation.getId())
                 .eventId(reservation.getEventId())
-                .memberId(reservation.getMemberId())
-                .guestName(reservation.getGuestName())
-                .guestPhoneMasked(maskPhoneNumber(reservation.getGuestPhone()))
+                .name(reservation.getName())
+                .phoneMasked(maskPhoneNumber(reservation.getPhone()))
+                .studentName(reservation.getStudentName())
+                .grade(reservation.getGrade())
+                .memo(reservation.getMemo())
                 .status(reservation.getStatus())
                 .createdAt(reservation.getCreatedAt())
                 .updatedAt(reservation.getUpdatedAt())

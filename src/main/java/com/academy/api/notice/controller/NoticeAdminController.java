@@ -118,6 +118,12 @@ public class NoticeAdminController {
     )
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    /**
+     * 공지사항 생성.
+     * 
+     * @param request 생성 요청 데이터
+     * @return 생성된 공지사항 ID
+     */
     public ResponseData<Long> createNotice(
             @Parameter(description = "공지사항 생성 요청 데이터")
             @RequestBody @Valid RequestNoticeCreate request) {
@@ -146,12 +152,20 @@ public class NoticeAdminController {
                 """
     )
     @PutMapping("/{id}")
+    /**
+     * 공지사항 수정.
+     * 
+     * @param id 공지사항 ID
+     * @param request 수정 요청 데이터
+     * @return 수정 결과
+     */
     public Response updateNotice(
             @Parameter(description = "공지사항 ID", example = "1") @PathVariable Long id,
             @Parameter(description = "공지사항 수정 요청 데이터")
             @RequestBody @Valid RequestNoticeUpdate request) {
         
-        log.info("[NoticeAdminController] 공지사항 수정 요청. ID={}", id);
+        log.info("🔄🔄🔄 [NoticeAdminController] 공지사항 수정 요청!!! ID={}, 첨부파일={}", 
+                id, request.getAttachments());
         return noticeService.updateNotice(id, request);
     }
 
@@ -168,6 +182,12 @@ public class NoticeAdminController {
                 """
     )
     @DeleteMapping("/{id}")
+    /**
+     * 공지사항 삭제.
+     * 
+     * @param id 삭제할 공지사항 ID
+     * @return 삭제 결과
+     */
     public Response deleteNotice(
             @Parameter(description = "공지사항 ID", example = "1") @PathVariable Long id) {
         

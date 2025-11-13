@@ -1,0 +1,33 @@
+version: '3.8'
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: academy-mysql-secure
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: 'SuperSecureRootPass2024!'
+      MYSQL_DATABASE: 'academy'
+      MYSQL_USER: 'academy_app'
+      MYSQL_PASSWORD: 'AcademyApp2024!'
+      MYSQL_ROOT_HOST: 'localhost'  # root는 컨테이너 내부에서만 접근
+    ports:
+      - "3307:3306"  # 포트 변경으로 충돌 방지
+    volumes:
+      - academy_mysql_data:/var/lib/mysql
+      - ./mysql-init:/docker-entrypoint-initdb.d
+    networks:
+      - academy_network
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --skip-character-set-client-handshake
+      --default-authentication-plugin=mysql_native_password
+      --bind-address=0.0.0.0
+
+volumes:
+  academy_mysql_data:
+    driver: local
+
+networks:
+  academy_network:
+    driver: bridge

@@ -12,9 +12,15 @@ import com.academy.api.notice.dto.RequestNoticeCreate;
 import com.academy.api.notice.dto.RequestNoticeSearch;
 import com.academy.api.notice.dto.RequestNoticeUpdate;
 import com.academy.api.notice.dto.ResponseNotice;
+import com.academy.api.notice.dto.ResponseNoticeListItem;
 import com.academy.api.notice.dto.ResponseNoticeSimple;
 import com.academy.api.notice.mapper.NoticeMapper;
 import com.academy.api.notice.repository.NoticeRepository;
+import com.academy.api.file.domain.FileRole;
+import com.academy.api.file.domain.UploadFileLink;
+import com.academy.api.file.dto.ResponseFileInfo;
+import com.academy.api.file.repository.UploadFileLinkRepository;
+import com.academy.api.file.service.FileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -22,7 +28,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 공지사항 서비스 구현체.
@@ -52,6 +61,77 @@ public class NoticeServiceImpl implements NoticeService {
     private final NoticeRepository noticeRepository;
     private final CategoryRepository categoryRepository;
     private final NoticeMapper noticeMapper;
+    private final UploadFileLinkRepository uploadFileLinkRepository;
+    private final FileService fileService;
+
+    /**
+     * 공지사항 목록 조회 (파일 개수 포함).
+     * 
+     * IN절을 활용한 일괄 조회로 성능을 최적화했습니다.
+     * 각 공지사항의 첨부파일과 본문이미지 개수를 함께 제공합니다.
+     * 
+     * @param searchCondition 검색 조건
+     * @param pageable 페이징 정보
+     * @return 공지사항 목록 (파일 개수 포함)
+     */
+    public ResponseList<ResponseNoticeListItem> getNoticeListWithFileCount(RequestNoticeSearch searchCondition, Pageable pageable) {
+        log.info("[NoticeService] 공지사항 목록 조회 (파일 개수 포함) 시작. 검색조건={}, 페이지={}", searchCondition, pageable);
+        
+        // 1. 공지사항 목록 조회
+        Page<Notice> noticePage = noticeRepository.searchNotices(searchCondition, pageable);
+        List<Notice> notices = noticePage.getContent();
+        
+        if (notices.isEmpty()) {
+            log.debug("[NoticeService] 조회된 공지사항이 없음");
+            return ResponseList.ok(
+                    ResponseNoticeListItem.fromList(notices),
+                    noticePage.getTotalElements(),
+                    noticePage.getNumber(),
+                    noticePage.getSize()
+            );
+        }
+        
+        // 2. 공지사항 ID 목록 추출
+        List<Long> noticeIds = notices.stream()
+                .map(Notice::getId)
+                .toList();
+        
+        // 3. IN절을 활용한 파일 개수 일괄 조회
+        List<Object[]> fileCounts = uploadFileLinkRepository.countFilesByOwnerIdsGroupByRole(
+                "notices", noticeIds);
+        
+        // 4. Map으로 변환: noticeId -> role -> count
+        Map<Long, Map<FileRole, Long>> fileCountMap = fileCounts.stream()
+                .collect(Collectors.groupingBy(
+                        row -> (Long) row[0], // ownerId
+                        Collectors.toMap(
+                                row -> (FileRole) row[1], // role
+                                row -> (Long) row[2]      // count
+                        )
+                ));
+        
+        log.debug("[NoticeService] 공지사항 검색 결과. 전체={}건, 현재페이지={}, 실제반환={}건, 파일연결조회={}건", 
+                noticePage.getTotalElements(), noticePage.getNumber(), notices.size(), fileCounts.size());
+        
+        // 5. DTO 변환 (파일 개수 포함)
+        List<ResponseNoticeListItem> items = notices.stream()
+                .map(notice -> {
+                    Map<FileRole, Long> counts = fileCountMap.getOrDefault(notice.getId(), Map.of());
+                    Long attachmentCount = counts.getOrDefault(FileRole.ATTACHMENT, 0L);
+                    Long inlineImageCount = counts.getOrDefault(FileRole.INLINE, 0L);
+                    
+                    return ResponseNoticeListItem.from(notice)
+                            .withFileCounts(attachmentCount, inlineImageCount);
+                })
+                .toList();
+        
+        return ResponseList.ok(
+                items,
+                noticePage.getTotalElements(),
+                noticePage.getNumber(),
+                noticePage.getSize()
+        );
+    }
 
     @Override
     public ResponseList<ResponseNoticeSimple> getNoticeList(RequestNoticeSearch searchCondition, Pageable pageable) {
@@ -89,17 +169,79 @@ public class NoticeServiceImpl implements NoticeService {
         return noticeMapper.toSimpleResponseList(noticePage);
     }
 
-    @Override
-    public ResponseData<ResponseNotice> getNotice(Long id) {
-        log.info("[NoticeService] 공지사항 상세 조회 시작. ID={}", id);
+    /**
+     * 공지사항 상세 조회 (파일 목록 포함).
+     * 
+     * JOIN을 활용하여 첨부파일과 본문이미지 목록을 함께 조회합니다.
+     * 파일 역할별로 분리하여 제공합니다.
+     * 
+     * @param id 공지사항 ID
+     * @return 공지사항 상세 정보 (파일 목록 포함)
+     */
+    public ResponseData<ResponseNotice> getNoticeWithFiles(Long id) {
+        log.info("[NoticeService] 공지사항 상세 조회 (파일 포함) 시작. ID={}", id);
         
         Notice notice = findNoticeById(id);
         
-        log.debug("[NoticeService] 공지사항 조회 완료. ID={}, 제목={}, 조회수={}", 
-                id, notice.getTitle(), notice.getViewCount());
+        // 첨부파일 목록 조회
+        log.info("[NoticeService] 첨부파일 조회 시작. ownerTable=notices, ownerId={}, role=ATTACHMENT", id);
+        List<Object[]> attachmentData = uploadFileLinkRepository.findFileInfosByOwnerAndRole(
+                "notices", id, FileRole.ATTACHMENT);
+        log.info("[NoticeService] 첨부파일 쿼리 결과 개수: {}", attachmentData.size());
         
-        ResponseNotice response = noticeMapper.toResponse(notice);
+        if (!attachmentData.isEmpty()) {
+            for (int i = 0; i < attachmentData.size(); i++) {
+                Object[] row = attachmentData.get(i);
+                log.info("[NoticeService] 첨부파일[{}] 원본데이터: fileId={}, fileName={}, ext={}, size={}, url={}", 
+                        i, row[0], row[1], row[2], row[3], row[4]);
+            }
+        }
+        
+        List<ResponseFileInfo> attachments = attachmentData.stream()
+                .map(this::mapToResponseFileInfo)
+                .toList();
+        
+        // 본문 이미지 목록 조회  
+        log.info("[NoticeService] 본문이미지 조회 시작. ownerTable=notices, ownerId={}, role=INLINE", id);
+        List<Object[]> inlineImageData = uploadFileLinkRepository.findFileInfosByOwnerAndRole(
+                "notices", id, FileRole.INLINE);
+        log.info("[NoticeService] 본문이미지 쿼리 결과 개수: {}", inlineImageData.size());
+        
+        List<ResponseFileInfo> inlineImages = inlineImageData.stream()
+                .map(this::mapToResponseFileInfo)
+                .toList();
+        
+        log.info("[NoticeService] 공지사항 조회 완료. ID={}, 제목={}, 조회수={}, 첨부파일={}개, 본문이미지={}개", 
+                id, notice.getTitle(), notice.getViewCount(), attachments.size(), inlineImages.size());
+        
+        // ResponseNotice 생성 (파일 목록 포함)
+        ResponseNotice response = ResponseNotice.builder()
+                .id(notice.getId())
+                .title(notice.getTitle())
+                .content(notice.getContent())
+                .isImportant(notice.getIsImportant())
+                .isPublished(notice.getIsPublished())
+                .exposureType(notice.getExposureType())
+                .exposureStartAt(notice.getExposureStartAt())
+                .exposureEndAt(notice.getExposureEndAt())
+                .categoryId(notice.getCategory() != null ? notice.getCategory().getId() : null)
+                .categoryName(notice.getCategory() != null ? notice.getCategory().getName() : null)
+                .viewCount(notice.getViewCount())
+                .attachments(attachments)
+                .inlineImages(inlineImages)
+                .exposable(notice.isExposable())
+                .createdBy(notice.getCreatedBy())
+                .createdAt(notice.getCreatedAt())
+                .updatedBy(notice.getUpdatedBy())
+                .updatedAt(notice.getUpdatedAt())
+                .build();
+        
         return ResponseData.ok(response);
+    }
+
+    @Override
+    public ResponseData<ResponseNotice> getNotice(Long id) {
+        return getNoticeWithFiles(id);
     }
 
     @Override
@@ -116,14 +258,24 @@ public class NoticeServiceImpl implements NoticeService {
         log.debug("[NoticeService] 조회수 증가 완료. ID={}, 이전조회수={}, 현재조회수={}", 
                 id, beforeViewCount, notice.getViewCount());
         
-        ResponseNotice response = noticeMapper.toResponse(notice);
-        return ResponseData.ok(response);
+        // 파일 정보를 포함한 상세 조회
+        return getNoticeWithFiles(id);
     }
 
+
+    /**
+     * 공지사항 생성.
+     * 
+     * @param request 생성 요청 데이터
+     * @return 생성된 공지사항 ID
+     */
     @Override
     @Transactional
     public ResponseData<Long> createNotice(RequestNoticeCreate request) {
-        log.info("[NoticeService] 공지사항 생성 시작. 제목={}, 카테고리ID={}", request.getTitle(), request.getCategoryId());
+        log.info("[NoticeService] 공지사항 생성 시작. 제목={}, 카테고리ID={}, 첨부파일={}개, 본문이미지={}개", 
+                request.getTitle(), request.getCategoryId(), 
+                request.getAttachments() != null ? request.getAttachments().size() : 0,
+                request.getInlineImages() != null ? request.getInlineImages().size() : 0);
         
         // 카테고리 조회 (있는 경우만)
         Category category = null;
@@ -136,16 +288,35 @@ public class NoticeServiceImpl implements NoticeService {
         // 공지사항 생성
         Notice notice = noticeMapper.toEntity(request, category);
         Notice savedNotice = noticeRepository.save(notice);
+        Long noticeId = savedNotice.getId();
+        
+        // 파일 연결 처리
+        createFileLinks(noticeId, request.getAttachments(), FileRole.ATTACHMENT);
+        createFileLinks(noticeId, request.getInlineImages(), FileRole.INLINE);
         
         log.info("[NoticeService] 공지사항 생성 완료. ID={}, 제목={}", savedNotice.getId(), savedNotice.getTitle());
         
         return ResponseData.ok("0000", "공지사항이 생성되었습니다.", savedNotice.getId());
     }
 
+    /**
+     * 공지사항 수정 (파일 치환 포함).
+     * 
+     * 제공해주신 치환 정책을 적용합니다:
+     * 1. 기존 파일 연결 삭제 (DELETE)
+     * 2. 새로운 파일 연결 생성 (INSERT)
+     * 
+     * @param id 공지사항 ID
+     * @param request 수정 요청 정보
+     * @return 응답 정보
+     */
     @Override
     @Transactional
     public Response updateNotice(Long id, RequestNoticeUpdate request) {
-        log.info("[NoticeService] 공지사항 수정 시작. ID={}", id);
+        log.info("🔄 [NoticeService] 공지사항 수정 시작!!! ID={}, 첨부파일={}개, 본문이미지={}개", 
+                id, 
+                request.getAttachments() != null ? request.getAttachments().size() : 0,
+                request.getInlineImages() != null ? request.getInlineImages().size() : 0);
         
         Notice notice = findNoticeById(id);
         
@@ -161,11 +332,29 @@ public class NoticeServiceImpl implements NoticeService {
         // 엔티티 업데이트
         noticeMapper.updateEntity(notice, request, category);
         
+        // 파일 치환 처리 (첨부파일/본문이미지가 있는 경우에만)
+        log.info("🔄 [NoticeService] 파일 치환 처리 시작. attachments={}, inlineImages={}", 
+                request.getAttachments(), request.getInlineImages());
+        if (request.getAttachments() != null) {
+            log.info("🔄 [NoticeService] ATTACHMENT 파일 치환 실행. 파일개수={}", request.getAttachments().size());
+            replaceFileLinks(id, request.getAttachments(), FileRole.ATTACHMENT);
+        }
+        if (request.getInlineImages() != null) {
+            log.info("🔄 [NoticeService] INLINE 파일 치환 실행. 파일개수={}", request.getInlineImages().size());
+            replaceFileLinks(id, request.getInlineImages(), FileRole.INLINE);
+        }
+        
         log.info("[NoticeService] 공지사항 수정 완료. ID={}, 제목={}", id, notice.getTitle());
         
         return Response.ok("0000", "공지사항이 수정되었습니다.");
     }
 
+    /**
+     * 공지사항 삭제.
+     * 
+     * @param id 삭제할 공지사항 ID
+     * @return 삭제 결과
+     */
     @Override
     @Transactional
     public Response deleteNotice(Long id) {
@@ -282,5 +471,109 @@ public class NoticeServiceImpl implements NoticeService {
                     log.warn("[NoticeService] 카테고리를 찾을 수 없음. ID={}", categoryId);
                     return new BusinessException(ErrorCode.CATEGORY_NOT_FOUND);
                 });
+    }
+
+    /**
+     * Object[] 데이터를 ResponseFileInfo로 변환하는 도우미 메서드.
+     * 
+     * @param row [fileId, fileName, ext, size, url] 배열
+     * @return ResponseFileInfo 인스턴스
+     */
+    private ResponseFileInfo mapToResponseFileInfo(Object[] row) {
+        return ResponseFileInfo.builder()
+                .fileId(String.valueOf(row[0]))  // Long을 String으로 변환
+                .fileName((String) row[1])
+                .ext((String) row[2])
+                .size((Long) row[3])
+                .url((String) row[4])
+                .build();
+    }
+
+    /**
+     * 파일 연결 생성 도우미 메서드.
+     * 
+     * CLAUDE.md 가이드: 임시 파일을 정식 파일로 변환하고 DB에 저장한 후 연결 생성
+     * 
+     * @param noticeId 공지사항 ID
+     * @param fileIds 파일 ID 목록
+     * @param role 파일 역할
+     */
+    private void createFileLinks(Long noticeId, List<String> fileIds, FileRole role) {
+        if (fileIds == null || fileIds.isEmpty()) {
+            log.debug("[NoticeService] 연결할 {}파일 없음. noticeId={}", role, noticeId);
+            return;
+        }
+
+        log.info("[NoticeService] {} 파일 연결 생성 시작. noticeId={}, 파일개수={}", role, noticeId, fileIds.size());
+
+        // 임시 파일 ID를 정식 파일 ID로 변환하는 Map
+        Map<String, Long> tempToFormalIdMap = new HashMap<>();
+        
+        // 1단계: 모든 임시 파일을 정식 파일로 변환
+        for (String tempFileId : fileIds) {
+            Long formalFileId = fileService.promoteToFormalFile(tempFileId, extractOriginalFileName(tempFileId));
+            if (formalFileId != null) {
+                tempToFormalIdMap.put(tempFileId, formalFileId);
+                log.debug("[NoticeService] 임시 파일 정식 변환 성공. tempId={} -> formalId={}", tempFileId, formalFileId);
+            } else {
+                log.warn("[NoticeService] 임시 파일 변환 실패로 연결 생략. tempFileId={}, role={}", tempFileId, role);
+            }
+        }
+
+        // 2단계: 성공한 변환들에 대해 파일 연결 객체 생성
+        List<UploadFileLink> successfulLinks = tempToFormalIdMap.values().stream()
+                .map(formalFileId -> {
+                    if (role == FileRole.ATTACHMENT) {
+                        return UploadFileLink.createNoticeAttachment(formalFileId, noticeId);
+                    } else {
+                        return UploadFileLink.createNoticeInlineImage(formalFileId, noticeId);
+                    }
+                })
+                .toList();
+
+        // 3단계: DB에 파일 연결 저장
+        if (!successfulLinks.isEmpty()) {
+            uploadFileLinkRepository.saveAll(successfulLinks);
+        }
+        
+        log.info("[NoticeService] {} 파일 연결 생성 완료. noticeId={}, 요청={}개, 성공={}개", 
+                role, noticeId, fileIds.size(), successfulLinks.size());
+    }
+
+    /**
+     * fileId에서 원본 파일명을 추출.
+     * 임시 파일에서 원본 파일명 정보를 가져옵니다.
+     */
+    private String extractOriginalFileName(String fileId) {
+        try {
+            // 파일 정보 조회를 통해 원본 파일명 획득
+            var fileInfoResponse = fileService.getFileInfo(fileId);
+            if (fileInfoResponse.getData() != null) {
+                return fileInfoResponse.getData().getOriginalFileName();
+            }
+        } catch (Exception e) {
+            log.warn("[NoticeService] 파일 정보 조회 실패. fileId={}, error={}", fileId, e.getMessage());
+        }
+        
+        // 실패 시 기본값
+        return fileId + ".tmp";
+    }
+
+    /**
+     * 파일 연결 치환 도우미 메서드 (DELETE + INSERT).
+     * 
+     * @param noticeId 공지사항 ID
+     * @param fileIds 새로운 파일 ID 목록
+     * @param role 파일 역할
+     */
+    private void replaceFileLinks(Long noticeId, List<String> fileIds, FileRole role) {
+        // 1. 기존 연결 삭제 (DELETE)
+        uploadFileLinkRepository.deleteByOwnerTableAndOwnerIdAndRole(
+                "notices", noticeId, role);
+        
+        log.debug("[NoticeService] 기존 {} 파일 연결 삭제 완료. noticeId={}", role, noticeId);
+
+        // 2. 새로운 연결 생성 (INSERT)
+        createFileLinks(noticeId, fileIds, role);
     }
 }

@@ -5,57 +5,97 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
 /**
  * 설명회 예약 엔티티.
  * 
- * - 회원/비회원 예약 정보 관리
- * - 예약 상태 관리 (CONFIRMED, CANCELED)
- * - 비회원의 경우 이름과 전화번호로 식별
+ * explanation_reservations 테이블과 매핑되며 예약 정보를 관리합니다.
  */
 @Entity
-@Table(name = "explanation_reservations")
+@Table(name = "explanation_reservations", indexes = {
+    @Index(name = "idx_reservations_event_status", columnList = "event_id, status"),
+    @Index(name = "idx_reservations_phone", columnList = "phone")
+})
+@EntityListeners(AuditingEntityListener.class)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ExplanationReservation {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
     private Long id;
 
+    /** 설명회 ID(FK: explanation_events.id) */
     @Column(name = "event_id", nullable = false)
     private Long eventId;
 
-    @Column(name = "member_id")
-    private Long memberId;
+    /** 예약자 이름 */
+    @Column(name = "name", nullable = false, length = 80)
+    private String name;
 
-    @Column(name = "guest_name", length = 100)
-    private String guestName;
+    /** 전화번호(숫자만) */
+    @Column(name = "phone", nullable = false, length = 20)
+    private String phone;
 
-    @Column(name = "guest_phone", length = 20)
-    private String guestPhone;
+    /** 학생 이름(선택) */
+    @Column(name = "student_name", length = 80)
+    private String studentName;
 
+    /** 학생 학년 */
+    @Column(name = "grade", length = 20)
+    private String grade;
+
+    /** 예약 상태 */
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private ExplanationReservationStatus status = ExplanationReservationStatus.CONFIRMED;
+    @Column(name = "status", nullable = false)
+    private ExplanationReservationStatus status = ExplanationReservationStatus.REQUESTED;
 
-    @Column(name = "created_at", nullable = false)
+    /** 비고/관리자 메모 */
+    @Column(name = "memo", length = 255)
+    private String memo;
+
+    /** 신청자 IP(INET6_ATON) */
+    @Column(name = "client_ip", columnDefinition = "VARBINARY(16)")
+    private byte[] clientIp;
+
+    /** 예약일시 */
+    @CreatedDate
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    /** 수정일시 */
+    @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    /**
+     * 설명회 예약 생성자.
+     * 
+     * @param eventId 설명회 ID (필수)
+     * @param name 예약자 이름 (필수)
+     * @param phone 전화번호 (필수)
+     * @param studentName 학생 이름 (선택)
+     * @param grade 학생 학년 (선택)
+     * @param memo 비고 (선택)
+     * @param clientIp 신청자 IP (선택)
+     */
     @Builder
-    public ExplanationReservation(Long eventId, Long memberId, String guestName, String guestPhone) {
+    public ExplanationReservation(Long eventId, String name, String phone, String studentName,
+                                 String grade, String memo, byte[] clientIp) {
         this.eventId = eventId;
-        this.memberId = memberId;
-        this.guestName = guestName;
-        this.guestPhone = guestPhone;
-        this.status = ExplanationReservationStatus.CONFIRMED;
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+        this.name = name;
+        this.phone = phone;
+        this.studentName = studentName;
+        this.grade = grade;
+        this.memo = memo;
+        this.clientIp = clientIp;
+        this.status = ExplanationReservationStatus.REQUESTED;
     }
 
     @PreUpdate
@@ -71,20 +111,6 @@ public class ExplanationReservation {
     }
 
     /**
-     * 회원 예약인지 확인.
-     */
-    public boolean isMemberReservation() {
-        return this.memberId != null;
-    }
-
-    /**
-     * 비회원 예약인지 확인.
-     */
-    public boolean isGuestReservation() {
-        return this.memberId == null && this.guestName != null && this.guestPhone != null;
-    }
-
-    /**
      * 활성 예약인지 확인.
      */
     public boolean isActive() {
@@ -92,17 +118,24 @@ public class ExplanationReservation {
     }
 
     /**
-     * 예약 소유자 확인 (회원).
+     * 예약 소유자 확인.
      */
-    public boolean isOwner(Long memberId) {
-        return this.memberId != null && this.memberId.equals(memberId);
+    public boolean isOwner(String name, String phone) {
+        return this.name != null && this.phone != null
+            && this.name.equals(name) && this.phone.equals(phone);
     }
 
     /**
-     * 예약 소유자 확인 (비회원).
+     * 예약 상태 변경.
      */
-    public boolean isOwner(String guestName, String guestPhone) {
-        return this.guestName != null && this.guestPhone != null
-            && this.guestName.equals(guestName) && this.guestPhone.equals(guestPhone);
+    public void updateStatus(ExplanationReservationStatus status) {
+        this.status = status;
+    }
+
+    /**
+     * 예약 확정.
+     */
+    public void confirm() {
+        this.status = ExplanationReservationStatus.CONFIRMED;
     }
 }

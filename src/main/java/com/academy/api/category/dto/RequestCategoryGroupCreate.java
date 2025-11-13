@@ -16,6 +16,11 @@ import lombok.Setter;
 @Schema(description = "카테고리 그룹 생성 요청")
 public class RequestCategoryGroupCreate {
 
+    @NotBlank(message = "슬러그를 입력해주세요")
+    @Size(max = 50, message = "슬러그는 50자 이하여야 합니다")
+    @Schema(description = "카테고리 그룹 슬러그", example = "notice", requiredMode = Schema.RequiredMode.REQUIRED)
+    private String slug;
+
     @NotBlank(message = "그룹명을 입력해주세요")
     @Size(max = 120, message = "그룹명은 120자 이하여야 합니다")
     @Schema(description = "카테고리 그룹명", example = "교육과정", requiredMode = Schema.RequiredMode.REQUIRED)

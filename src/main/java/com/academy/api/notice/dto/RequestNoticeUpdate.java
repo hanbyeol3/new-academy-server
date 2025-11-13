@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 공지사항 수정 요청 DTO.
@@ -43,6 +44,9 @@ public class RequestNoticeUpdate {
     @Schema(description = "카테고리 ID", example = "2")
     private Long categoryId;
 
-    @Schema(description = "첨부 파일 그룹 ID", example = "550e8400-e29b-41d4-a716-446655440001")
-    private String fileGroupKey;
+    @Schema(description = "첨부파일 ID 목록 (치환방식)", example = "[\"uuid-a\"]")
+    private List<String> attachments;
+
+    @Schema(description = "본문 이미지 ID 목록 (치환방식)", example = "[]")
+    private List<String> inlineImages;
 }

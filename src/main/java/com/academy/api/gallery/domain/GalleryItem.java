@@ -33,21 +33,22 @@ public class GalleryItem {
     @Column(name = "title", nullable = false, length = 255)
     private String title;
 
-    /** 갤러리 설명 */
-    @Column(name = "description", columnDefinition = "TEXT")
-    private String description;
+    // TODO: 테이블에 컬럼 추가 필요
+    // /** 갤러리 설명 */
+    // @Column(name = "description", columnDefinition = "TEXT")
+    // private String description;
 
-    /** 업로드 파일 아이디(UUID) */
-    @Column(name = "image_file_id", length = 36)
-    private String imageFileId;
+    // /** 업로드 파일 아이디(UUID) */
+    // @Column(name = "image_file_id", length = 36)
+    // private String imageFileId;
 
-    /** 이미지 절대/상대 URL */
-    @Column(name = "image_url", length = 500)
-    private String imageUrl;
+    // /** 이미지 절대/상대 URL */
+    // @Column(name = "image_url", length = 500)
+    // private String imageUrl;
 
-    /** 첨부 파일 그룹 아이디 (확장용) */
-    @Column(name = "file_group_key", length = 36)
-    private String fileGroupKey;
+    // /** 첨부 파일 그룹 아이디 (확장용) */
+    // @Column(name = "file_group_key", length = 36)
+    // private String fileGroupKey;
 
     /** 정렬 순서 */
     @Column(name = "sort_order", nullable = false)
@@ -57,10 +58,18 @@ public class GalleryItem {
     @Column(name = "published", nullable = false)
     private Boolean published = true;
 
+    /** 등록자 */
+    @Column(name = "created_by")
+    private Long createdBy;
+
     /** 생성 시각 */
     @CreatedDate
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    /** 수정자 */
+    @Column(name = "updated_by")
+    private Long updatedBy;
 
     /** 수정 시각 */
     @LastModifiedDate
@@ -71,29 +80,21 @@ public class GalleryItem {
      * 갤러리 항목 생성자.
      */
     @Builder
-    private GalleryItem(String title, String description, String imageFileId, 
-                       String imageUrl, String fileGroupKey, Integer sortOrder, Boolean published) {
+    private GalleryItem(String title, Integer sortOrder, Boolean published, Long createdBy) {
         this.title = title;
-        this.description = description;
-        this.imageFileId = imageFileId;
-        this.imageUrl = imageUrl;
-        this.fileGroupKey = fileGroupKey;
         this.sortOrder = sortOrder != null ? sortOrder : 0;
         this.published = published != null ? published : true;
+        this.createdBy = createdBy;
     }
 
     /**
      * 갤러리 항목 정보 업데이트.
      */
-    public void update(String title, String description, String imageFileId, 
-                      String imageUrl, String fileGroupKey, Integer sortOrder, Boolean published) {
+    public void update(String title, Integer sortOrder, Boolean published, Long updatedBy) {
         this.title = title;
-        this.description = description;
-        this.imageFileId = imageFileId;
-        this.imageUrl = imageUrl;
-        this.fileGroupKey = fileGroupKey;
         this.sortOrder = sortOrder != null ? sortOrder : 0;
         this.published = published != null ? published : true;
+        this.updatedBy = updatedBy;
     }
 
     /**
@@ -110,18 +111,19 @@ public class GalleryItem {
         this.sortOrder = sortOrder;
     }
 
-    /**
-     * 이미지 소스가 있는지 확인.
-     */
-    public boolean hasImageSource() {
-        return (imageFileId != null && !imageFileId.trim().isEmpty()) || 
-               (imageUrl != null && !imageUrl.trim().isEmpty());
-    }
+    // TODO: 이미지 관련 기능은 테이블 스키마 업데이트 후 활성화 예정
+    // /**
+    //  * 이미지 소스가 있는지 확인.
+    //  */
+    // public boolean hasImageSource() {
+    //     return (imageFileId != null && !imageFileId.trim().isEmpty()) || 
+    //            (imageUrl != null && !imageUrl.trim().isEmpty());
+    // }
 
-    /**
-     * 파일 ID 기반 이미지인지 확인.
-     */
-    public boolean isFileBasedImage() {
-        return imageFileId != null && !imageFileId.trim().isEmpty();
-    }
+    // /**
+    //  * 파일 ID 기반 이미지인지 확인.
+    //  */
+    // public boolean isFileBasedImage() {
+    //     return imageFileId != null && !imageFileId.trim().isEmpty();
+    // }
 }

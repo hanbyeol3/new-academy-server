@@ -82,9 +82,6 @@ public class Notice {
     @Column(name = "view_count", nullable = false)
     private Long viewCount = 0L;
 
-    /** 첨부 파일 그룹 아이디 */
-    @Column(name = "file_group_key", length = 36)
-    private String fileGroupKey;
 
     /** 등록자 사용자 ID */
     @Column(name = "created_by")
@@ -110,7 +107,7 @@ public class Notice {
     @Builder
     private Notice(String title, String content, Boolean isImportant, Boolean isPublished,
                    ExposureType exposureType, LocalDateTime exposureStartAt, LocalDateTime exposureEndAt,
-                   Category category, String fileGroupKey, Long createdBy) {
+                   Category category, Long createdBy) {
         this.title = title;
         this.content = content;
         this.isImportant = isImportant != null ? isImportant : false;
@@ -119,7 +116,6 @@ public class Notice {
         this.exposureStartAt = exposureStartAt;
         this.exposureEndAt = exposureEndAt;
         this.category = category;
-        this.fileGroupKey = fileGroupKey;
         this.createdBy = createdBy;
     }
 
@@ -128,7 +124,7 @@ public class Notice {
      */
     public void update(String title, String content, Boolean isImportant, Boolean isPublished,
                       ExposureType exposureType, LocalDateTime exposureStartAt, LocalDateTime exposureEndAt,
-                      Category category, String fileGroupKey, Long updatedBy) {
+                      Category category, Long updatedBy) {
         this.title = title;
         this.content = content;
         this.isImportant = isImportant != null ? isImportant : false;
@@ -137,7 +133,6 @@ public class Notice {
         this.exposureStartAt = exposureStartAt;
         this.exposureEndAt = exposureEndAt;
         this.category = category;
-        this.fileGroupKey = fileGroupKey;
         this.updatedBy = updatedBy;
     }
 
@@ -200,12 +195,6 @@ public class Notice {
         return true;
     }
 
-    /**
-     * 파일 그룹 키 업데이트.
-     */
-    public void updateFileGroupKey(String fileGroupKey) {
-        this.fileGroupKey = fileGroupKey;
-    }
 
     /**
      * 카테고리 변경.

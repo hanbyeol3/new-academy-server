@@ -23,23 +23,23 @@ public class ResponseReservationAdminItem {
     @Schema(description = "설명회 ID", example = "101")
     private Long eventId;
 
-    @Schema(description = "회원 ID (회원 예약인 경우)", example = "1001")
-    private Long memberId;
+    @Schema(description = "예약자 이름", example = "홍길동")
+    private String name;
 
-    @Schema(description = "회원명 (회원 예약인 경우)", example = "김회원")
-    private String memberName;
+    @Schema(description = "전화번호", example = "010-1234-5678")
+    private String phone;
 
-    @Schema(description = "비회원 이름 (비회원 예약인 경우)", example = "홍길동")
-    private String guestName;
+    @Schema(description = "학생 이름", example = "홍철수")
+    private String studentName;
 
-    @Schema(description = "비회원 전화번호 (비회원 예약인 경우, 관리자는 마스킹 없음)", example = "010-1234-5678")
-    private String guestPhone;
+    @Schema(description = "학생 학년", example = "고2")
+    private String grade;
+
+    @Schema(description = "비고/관리자 메모", example = "특이사항 없음")
+    private String memo;
 
     @Schema(description = "예약 상태", example = "CONFIRMED")
     private ExplanationReservationStatus status;
-
-    @Schema(description = "예약 유형", example = "회원")
-    private String reservationType;
 
     @Schema(description = "예약 생성 일시", example = "2025-01-05T10:00:00")
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
@@ -49,16 +49,16 @@ public class ResponseReservationAdminItem {
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime updatedAt;
 
-    public static ResponseReservationAdminItem from(ExplanationReservation reservation, String memberName) {
+    public static ResponseReservationAdminItem from(ExplanationReservation reservation) {
         return ResponseReservationAdminItem.builder()
                 .id(reservation.getId())
                 .eventId(reservation.getEventId())
-                .memberId(reservation.getMemberId())
-                .memberName(memberName)
-                .guestName(reservation.getGuestName())
-                .guestPhone(reservation.getGuestPhone())
+                .name(reservation.getName())
+                .phone(reservation.getPhone())
+                .studentName(reservation.getStudentName())
+                .grade(reservation.getGrade())
+                .memo(reservation.getMemo())
                 .status(reservation.getStatus())
-                .reservationType(reservation.isMemberReservation() ? "회원" : "비회원")
                 .createdAt(reservation.getCreatedAt())
                 .updatedAt(reservation.getUpdatedAt())
                 .build();

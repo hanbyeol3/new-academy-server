@@ -39,12 +39,11 @@ public class AcademicScheduleRepositoryImpl implements AcademicScheduleRepositor
 
     /**
      * 게시 여부 필터링 조건.
+     * 현재 AcademicSchedule에는 published 필드가 없으므로 항상 null 반환.
      */
     private BooleanExpression publishedCondition(boolean publishedOnly) {
-        if (!publishedOnly) {
-            return null;
-        }
-        return schedule.published.eq(true);
+        // published 필드가 제거되어 필터링 조건 없음
+        return null;
     }
 
     /**

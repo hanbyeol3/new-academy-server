@@ -51,15 +51,14 @@ public class GalleryItemRepositoryImpl implements GalleryItemRepositoryCustom {
     }
 
     /**
-     * 키워드 검색 조건 (제목, 설명에서 LIKE 검색).
+     * 키워드 검색 조건 (제목에서 LIKE 검색).
      */
     private BooleanExpression keywordCondition(String keyword) {
         if (keyword == null || keyword.trim().isEmpty()) {
             return null;
         }
         String trimmedKeyword = keyword.trim();
-        return galleryItem.title.containsIgnoreCase(trimmedKeyword)
-                .or(galleryItem.description.containsIgnoreCase(trimmedKeyword));
+        return galleryItem.title.containsIgnoreCase(trimmedKeyword);
     }
 
     /**

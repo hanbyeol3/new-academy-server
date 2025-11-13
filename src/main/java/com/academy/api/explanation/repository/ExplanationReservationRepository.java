@@ -15,27 +15,16 @@ import java.util.Optional;
 public interface ExplanationReservationRepository extends JpaRepository<ExplanationReservation, Long> {
 
     /**
-     * 회원의 특정 설명회 활성 예약 조회.
+     * 예약자의 특정 설명회 활성 예약 조회 (이름 + 전화번호).
      */
-    Optional<ExplanationReservation> findByEventIdAndMemberIdAndStatus(
-            Long eventId, Long memberId, ExplanationReservationStatus status);
+    Optional<ExplanationReservation> findByEventIdAndNameAndPhoneAndStatus(
+            Long eventId, String name, String phone, ExplanationReservationStatus status);
 
     /**
-     * 비회원의 특정 설명회 활성 예약 조회.
+     * 예약자 조회 (이름 + 전화번호).
      */
-    Optional<ExplanationReservation> findByEventIdAndGuestNameAndGuestPhoneAndStatus(
-            Long eventId, String guestName, String guestPhone, ExplanationReservationStatus status);
-
-    /**
-     * 비회원 예약 조회 (이름 + 전화번호).
-     */
-    Optional<ExplanationReservation> findByEventIdAndGuestNameAndGuestPhone(
-            Long eventId, String guestName, String guestPhone);
-
-    /**
-     * 회원의 특정 설명회 예약 조회 (상태 무관).
-     */
-    Optional<ExplanationReservation> findByEventIdAndMemberId(Long eventId, Long memberId);
+    Optional<ExplanationReservation> findByEventIdAndNameAndPhone(
+            Long eventId, String name, String phone);
 
     /**
      * 특정 설명회의 모든 예약 목록 조회 (관리자용).

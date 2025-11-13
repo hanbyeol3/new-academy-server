@@ -1,5 +1,6 @@
 package com.academy.api.notice.dto;
 
+import com.academy.api.file.dto.ResponseFileInfo;
 import com.academy.api.notice.domain.ExposureType;
 import com.academy.api.notice.domain.Notice;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -50,8 +51,11 @@ public class ResponseNotice {
     @Schema(description = "조회수", example = "150")
     private Long viewCount;
 
-    @Schema(description = "첨부 파일 그룹 ID", example = "550e8400-e29b-41d4-a716-446655440000")
-    private String fileGroupKey;
+    @Schema(description = "첨부파일 목록")
+    private List<ResponseFileInfo> attachments;
+    
+    @Schema(description = "본문 이미지 목록") 
+    private List<ResponseFileInfo> inlineImages;
 
     @Schema(description = "현재 시점 노출 가능 여부", example = "true")
     private Boolean exposable;
@@ -84,7 +88,8 @@ public class ResponseNotice {
                 .categoryId(notice.getCategory() != null ? notice.getCategory().getId() : null)
                 .categoryName(notice.getCategory() != null ? notice.getCategory().getName() : null)
                 .viewCount(notice.getViewCount())
-                .fileGroupKey(notice.getFileGroupKey())
+                .attachments(null) // 서비스에서 별도 설정
+                .inlineImages(null) // 서비스에서 별도 설정
                 .exposable(notice.isExposable())
                 .createdBy(notice.getCreatedBy())
                 .createdAt(notice.getCreatedAt())

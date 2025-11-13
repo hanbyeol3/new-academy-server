@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
@@ -30,20 +31,26 @@ import java.time.LocalDateTime;
 public class UploadFile {
 
     @Id
-    @Column(name = "id", length = 36)
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Long id;
 
-    /** 파일 그룹 아이디 (공지사항, 게시판 등 묶음 단위) */
-    @Column(name = "group_key", length = 36)
-    private String groupKey;
 
     /** 서버 파일 경로 (실제 저장 위치) */
     @Column(name = "server_path", length = 500, nullable = false)
     private String serverPath;
 
-    /** 사용자가 업로드한 원본 파일명 */
+    /** 서버 저장 파일명 */
     @Column(name = "file_name", length = 255, nullable = false)
     private String fileName;
+
+    /** 사용자가 업로드한 원본 파일명 */
+    @Column(name = "original_name", length = 255)
+    private String originalName;
+
+    /** MIME 타입 */
+    @Column(name = "mime_type", length = 100)
+    private String mimeType;
 
     /** 파일 확장자 */
     @Column(name = "ext", length = 20)
@@ -53,64 +60,50 @@ public class UploadFile {
     @Column(name = "size", nullable = false)
     private Long size;
 
+    /** 등록자 ID */
+    @Column(name = "created_by")
+    private Long createdBy;
+
     /** 등록 일시 */
     @CreatedDate
-    @Column(name = "reg_date", nullable = false)
-    private LocalDateTime regDate;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
-    /** 삭제 여부 (0: 사용, 1: 삭제) */
-    @Column(name = "deleted", nullable = false)
-    private Boolean deleted = false;
+    /** 수정자 ID */
+    @Column(name = "updated_by")
+    private Long updatedBy;
 
-    /** 저장소 유형 (LOCAL, S3 등) */
-    @Enumerated(EnumType.STRING)
-    @Column(name = "storage_type", length = 20, nullable = false)
-    private StorageType storageType = StorageType.LOCAL;
+    /** 수정 일시 */
+    @LastModifiedDate
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 
-    /** SHA-256 해시값 (무결성, 중복 확인) */
-    @Column(name = "checksum_sha256", length = 64)
-    private String checksumSha256;
+
+
 
     /**
      * 파일 생성자.
      * 
-     * @param id 파일 ID (UUID)
-     * @param groupKey 파일 그룹키
      * @param serverPath 서버 저장 경로
-     * @param fileName 원본 파일명
+     * @param fileName 서버 저장 파일명
+     * @param originalName 원본 파일명
+     * @param mimeType MIME 타입
      * @param ext 파일 확장자
      * @param size 파일 크기
-     * @param storageType 저장소 유형
-     * @param checksumSha256 SHA-256 해시값
+     * @param createdBy 등록자 ID
      */
     @Builder
-    private UploadFile(String id, String groupKey, String serverPath, String fileName,
-                      String ext, Long size, StorageType storageType, String checksumSha256) {
-        this.id = id;
-        this.groupKey = groupKey;
+    private UploadFile(String serverPath, String fileName, String originalName,
+                      String mimeType, String ext, Long size, Long createdBy) {
         this.serverPath = serverPath;
         this.fileName = fileName;
+        this.originalName = originalName;
+        this.mimeType = mimeType;
         this.ext = ext;
         this.size = size;
-        this.storageType = storageType != null ? storageType : StorageType.LOCAL;
-        this.checksumSha256 = checksumSha256;
+        this.createdBy = createdBy;
     }
 
-    /**
-     * 파일 논리적 삭제 처리.
-     */
-    public void delete() {
-        this.deleted = true;
-    }
-
-    /**
-     * 파일이 삭제되었는지 확인.
-     * 
-     * @return 삭제되었으면 true
-     */
-    public boolean isDeleted() {
-        return this.deleted;
-    }
 
     /**
      * 파일 다운로드 URL 생성.

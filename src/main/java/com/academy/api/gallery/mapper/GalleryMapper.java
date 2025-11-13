@@ -22,10 +22,6 @@ public class GalleryMapper {
     public GalleryItem toEntity(RequestGalleryCreate request) {
         return GalleryItem.builder()
                 .title(request.getTitle())
-                .description(request.getDescription())
-                .imageFileId(request.getImageFileId())
-                .imageUrl(request.getImageUrl())
-                .fileGroupKey(request.getFileGroupKey())
                 .sortOrder(request.getSortOrder())
                 .published(request.getPublished())
                 .build();
@@ -38,7 +34,6 @@ public class GalleryMapper {
         return ResponseGalleryItem.builder()
                 .id(entity.getId())
                 .title(entity.getTitle())
-                .description(entity.getDescription())
                 .imageUrl(imageUrlResolver.resolveImageUrl(entity))
                 .sortOrder(entity.getSortOrder())
                 .published(entity.getPublished())

@@ -24,6 +24,7 @@ public class CategoryGroupMapper {
      */
     public CategoryGroup toEntity(RequestCategoryGroupCreate request) {
         return CategoryGroup.builder()
+                .slug(request.getSlug())
                 .name(request.getName())
                 .description(request.getDescription())
                 .createdBy(request.getCreatedBy())
