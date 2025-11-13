@@ -1,6 +1,5 @@
 package com.academy.api.file.service;
 
-import com.academy.api.data.responses.ResponseResult;
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.file.domain.FileContext;
 import com.academy.api.file.domain.UploadFile;
@@ -57,7 +56,6 @@ public class FileServiceImpl implements FileService {
             String extension = getFileExtension(originalFileName);
             String serverFileName = fileId + "." + extension;
             
-            // CLAUDE.md 가이드: 임시 파일 업로드 - 파일 시스템에만 저장
             // 실제 DB 저장은 공지사항 생성 시 수행
             LocalDateTime now = LocalDateTime.now();
             String year = String.valueOf(now.getYear());

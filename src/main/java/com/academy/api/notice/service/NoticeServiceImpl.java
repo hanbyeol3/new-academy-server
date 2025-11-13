@@ -35,10 +35,6 @@ import java.util.stream.Collectors;
 
 /**
  * 공지사항 서비스 구현체.
- * 
- * 공지사항 도메인의 모든 비즈니스 로직을 구현합니다.
- * CLAUDE.md 표준에 따라 설계되었습니다.
- * 
  * 주요 특징:
  * - 트랜잭션 경계 관리 (@Transactional)
  * - 체계적인 로깅 (info: 주요 비즈니스, debug: 상세 정보)
@@ -492,8 +488,7 @@ public class NoticeServiceImpl implements NoticeService {
     /**
      * 파일 연결 생성 도우미 메서드.
      * 
-     * CLAUDE.md 가이드: 임시 파일을 정식 파일로 변환하고 DB에 저장한 후 연결 생성
-     * 
+     *
      * @param noticeId 공지사항 ID
      * @param fileIds 파일 ID 목록
      * @param role 파일 역할

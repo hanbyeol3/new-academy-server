@@ -72,8 +72,6 @@ public interface FileService {
     /**
      * 임시 파일을 정식 파일로 변환하여 데이터베이스에 저장.
      * 
-     * CLAUDE.md 가이드: 공지사항 생성 시 임시 파일을 정식 파일로 이동하고 DB에 메타데이터 저장
-     * 
      * @param tempFileId 임시 파일 ID (String UUID)
      * @param originalFileName 원본 파일명 (사용자가 업로드한 파일명)
      * @return 정식 파일 ID (Long), 실패시 null

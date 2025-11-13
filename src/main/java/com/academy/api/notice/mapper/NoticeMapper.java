@@ -14,8 +14,6 @@ import java.util.List;
 
 /**
  * 공지사항 엔티티 ↔ DTO 매핑 유틸리티.
- * 
- * CLAUDE.md 표준에 따라 Entity와 DTO 간의 모든 변환을 담당합니다.
  */
 @Component
 public class NoticeMapper {
