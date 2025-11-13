@@ -47,6 +47,9 @@ springdoc:
     display-request-duration: true
     try-it-out-enabled: true
     filter: true
+    doc-expansion: none  # 아코디언을 접힌 상태로 표시
+    tags-sorter: alpha   # 태그를 알파벳 순으로 정렬
+    operations-sorter: alpha  # 오퍼레이션도 알파벳 순으로 정렬
   api-docs:
     path: /v3/api-docs
 
