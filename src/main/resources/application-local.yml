@@ -1,19 +1,28 @@
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/academy?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-    username: root
-    password: root
+    url: jdbc:mysql://localhost:3307/academy?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: academy_app
+    password: AcademyApp2024!
     hikari:
+      connection-timeout: 30000
+      idle-timeout: 300000
+      max-lifetime: 1200000
       maximum-pool-size: 10
       minimum-idle: 5
   
   jpa:
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: none
+    show-sql: false
     defer-datasource-initialization: false
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
         dialect: org.hibernate.dialect.MySQLDialect
+        hbm2ddl:
+          auto: none
+        schema_update:
+          unique_constraint_schema_update_strategy: skip
+        globally_quoted_identifiers: false
+        auto_quote_keyword: false
