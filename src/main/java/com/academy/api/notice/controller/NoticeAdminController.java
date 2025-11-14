@@ -75,7 +75,9 @@ public class NoticeAdminController {
     @GetMapping
     public ResponseList<ResponseNoticeSimple> getNoticeList(
             @Parameter(description = "검색 조건") RequestNoticeSearch searchCondition,
-            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+            @Parameter(description = "페이징 정보", 
+                      example = "{\"page\":0,\"size\":15,\"sort\":[\"createdAt\"]}")
+            @PageableDefault(size = 15, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         
         log.info("[NoticeAdminController] 관리자 공지사항 목록 조회 요청");
         return noticeService.getNoticeListForAdmin(searchCondition, pageable);
