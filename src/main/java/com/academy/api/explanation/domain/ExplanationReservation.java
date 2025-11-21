@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "explanation_reservations", indexes = {
     @Index(name = "idx_reservations_event_status", columnList = "event_id, status"),
-    @Index(name = "idx_reservations_phone", columnList = "phone")
+    @Index(name = "idx_reservations_phone", columnList = "phone_number")
 })
 @EntityListeners(AuditingEntityListener.class)
 @Getter
@@ -40,8 +40,8 @@ public class ExplanationReservation {
     private String name;
 
     /** 전화번호(숫자만) */
-    @Column(name = "phone", nullable = false, length = 20)
-    private String phone;
+    @Column(name = "phone_number", nullable = false, length = 20)
+    private String phoneNumber;
 
     /** 학생 이름(선택) */
     @Column(name = "student_name", length = 80)
@@ -79,18 +79,18 @@ public class ExplanationReservation {
      * 
      * @param eventId 설명회 ID (필수)
      * @param name 예약자 이름 (필수)
-     * @param phone 전화번호 (필수)
+     * @param phoneNumber 전화번호 (필수)
      * @param studentName 학생 이름 (선택)
      * @param grade 학생 학년 (선택)
      * @param memo 비고 (선택)
      * @param clientIp 신청자 IP (선택)
      */
     @Builder
-    public ExplanationReservation(Long eventId, String name, String phone, String studentName,
+    public ExplanationReservation(Long eventId, String name, String phoneNumber, String studentName,
                                  String grade, String memo, byte[] clientIp) {
         this.eventId = eventId;
         this.name = name;
-        this.phone = phone;
+        this.phoneNumber = phoneNumber;
         this.studentName = studentName;
         this.grade = grade;
         this.memo = memo;
@@ -120,9 +120,9 @@ public class ExplanationReservation {
     /**
      * 예약 소유자 확인.
      */
-    public boolean isOwner(String name, String phone) {
-        return this.name != null && this.phone != null
-            && this.name.equals(name) && this.phone.equals(phone);
+    public boolean isOwner(String name, String phoneNumber) {
+        return this.name != null && this.phoneNumber != null
+            && this.name.equals(name) && this.phoneNumber.equals(phoneNumber);
     }
 
     /**

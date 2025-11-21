@@ -54,7 +54,7 @@ public class ResponseReservation {
                 .id(reservation.getId())
                 .eventId(reservation.getEventId())
                 .name(reservation.getName())
-                .phoneMasked(maskPhoneNumber(reservation.getPhone()))
+                .phoneMasked(maskPhoneNumber(reservation.getPhoneNumber()))
                 .studentName(reservation.getStudentName())
                 .grade(reservation.getGrade())
                 .memo(reservation.getMemo())

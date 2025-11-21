@@ -134,7 +134,7 @@ public class ExplanationServiceImpl implements ExplanationService {
             ExplanationReservation reservation = ExplanationReservation.builder()
                     .eventId(eventId)
                     .name("임시 이름") // request에서 실제 값으로 변경 필요
-                    .phone("010-0000-0000") // request에서 실제 값으로 변경 필요
+                    .phoneNumber("010-0000-0000") // request에서 실제 값으로 변경 필요
                     .build();
             
             // 7. 예약 저장 (예약자 수 증가 로직 제거 - ExplanationEvent에 해당 필드 없음)

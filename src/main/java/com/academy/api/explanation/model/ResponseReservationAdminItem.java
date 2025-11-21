@@ -54,7 +54,7 @@ public class ResponseReservationAdminItem {
                 .id(reservation.getId())
                 .eventId(reservation.getEventId())
                 .name(reservation.getName())
-                .phone(reservation.getPhone())
+                .phone(reservation.getPhoneNumber())
                 .studentName(reservation.getStudentName())
                 .grade(reservation.getGrade())
                 .memo(reservation.getMemo())
