@@ -5,8 +5,7 @@ import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
 import io.swagger.v3.oas.annotations.info.Info;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import io.swagger.v3.oas.annotations.servers.Server;
-import io.swagger.v3.oas.models.OpenAPI;
-import io.swagger.v3.oas.models.info.Contact;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
 import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -57,6 +56,7 @@ public class OpenApiConfig {
      * OpenAPI 커스터마이저.
      * 
      * - 태그를 ABC 순으로 정렬
+     * - 전역 Security Requirement 설정
      * - 스웨거 UI에서 아코디언을 기본 접힌 상태로 설정
      */
     @Bean
@@ -66,6 +66,22 @@ public class OpenApiConfig {
             if (openApi.getTags() != null) {
                 openApi.getTags().sort((tag1, tag2) -> 
                     tag1.getName().compareToIgnoreCase(tag2.getName()));
+            }
+            
+            // 전역 Security Requirement 설정 (Admin API용)
+            SecurityRequirement securityRequirement = new SecurityRequirement().addList("bearerAuth");
+            
+            // 모든 경로에 대해 Security Requirement 추가 (admin API는 자동으로 적용)
+            if (openApi.getPaths() != null) {
+                openApi.getPaths().values().forEach(pathItem -> {
+                    pathItem.readOperations().forEach(operation -> {
+                        // Admin API 또는 auth 보호 API에만 적용
+                        if (operation.getTags() != null && operation.getTags().stream()
+                                .anyMatch(tag -> tag.contains("(Admin)") || tag.contains("Auth API"))) {
+                            operation.addSecurityItem(securityRequirement);
+                        }
+                    });
+                });
             }
         };
     }

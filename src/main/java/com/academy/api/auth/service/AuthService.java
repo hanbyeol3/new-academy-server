@@ -201,6 +201,25 @@ public class AuthService {
     }
 
     /**
+     * 현재 로그인한 사용자 정보 조회 (간소화).
+     * 
+     * @param memberId 회원 ID
+     * @return 현재 사용자 기본 정보
+     */
+    public ResponseCurrentUser getCurrentUser(Long memberId) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+        return ResponseCurrentUser.builder()
+                .userId(member.getId())
+                .username(member.getUsername())
+                .memberName(member.getMemberName())
+                .role(member.getRole().name())
+                .status(member.getStatus().name())
+                .build();
+    }
+
+    /**
      * 비밀번호 변경.
      * 
      * @param memberId 회원 ID

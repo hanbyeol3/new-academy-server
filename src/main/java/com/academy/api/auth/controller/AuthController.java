@@ -4,6 +4,7 @@ import com.academy.api.auth.dto.*;
 import com.academy.api.auth.security.JwtAuthenticationToken;
 import com.academy.api.auth.service.AuthService;
 import com.academy.api.common.response.ApiResponse;
+import com.academy.api.data.responses.common.ResponseData;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -22,7 +23,7 @@ import org.springframework.web.bind.annotation.*;
  * 
  * 회원 가입, 로그인, 토큰 재발급, 로그아웃 등 인증 관련 API를 제공합니다.
  */
-@Tag(name = "인증 API", description = "회원 가입, 로그인, 토큰 관리")
+@Tag(name = "Auth API", description = "회원 가입, 로그인, 토큰 관리")
 @Slf4j
 @RestController
 @RequestMapping("/api/auth")
@@ -136,6 +137,32 @@ public class AuthController {
         MemberProfileResponse response = authService.getMyProfile(memberId);
         
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * 현재 로그인한 사용자 정보 조회 (간소화).
+     */
+    @Operation(
+        summary = "현재 사용자 정보 조회", 
+        description = "현재 로그인한 사용자의 기본 정보(ID, 사용자명, 권한 등)를 조회합니다.",
+        security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @GetMapping("/current-user")
+    public ResponseData<ResponseCurrentUser> getCurrentUser() {
+        
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !(authentication instanceof JwtAuthenticationToken)) {
+            log.error("인증 정보가 없거나 올바르지 않습니다: {}", authentication);
+            return ResponseData.error("AUTH_REQUIRED", "인증이 필요합니다.");
+        }
+        
+        JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) authentication;
+        Long memberId = jwtAuth.getMemberId();
+        log.info("현재 사용자 정보 조회: memberId={}", memberId);
+        
+        ResponseCurrentUser response = authService.getCurrentUser(memberId);
+        
+        return ResponseData.ok("0000", "조회 성공", response);
     }
 
     /**
