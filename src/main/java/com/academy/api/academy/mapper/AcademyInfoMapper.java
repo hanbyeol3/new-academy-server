@@ -168,8 +168,11 @@ public class AcademyInfoMapper {
                 updatedBy
         );
 
-        // 도메인 URL 별도 업데이트 (업데이트 메서드가 없으므로 직접 설정)
-        // 향후 AcademyInfo 엔티티에 updateDomainUrl 메서드 추가 고려
+        // 도메인 URL 업데이트
+        entity.updateDomainUrl(
+                request.getDomainUrl(),
+                updatedBy
+        );
     }
 
     /**

@@ -262,4 +262,12 @@ public class AcademyInfo {
         this.instagramUrl = instagramUrl;
         this.updatedBy = updatedBy;
     }
+
+    /**
+     * 도메인 URL 업데이트.
+     */
+    public void updateDomainUrl(String domainUrl, Long updatedBy) {
+        this.domainUrl = domainUrl;
+        this.updatedBy = updatedBy;
+    }
 }
