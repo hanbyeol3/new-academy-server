@@ -105,4 +105,23 @@ public class ShuttleRoute {
         this.sortOrder = sortOrder != null ? sortOrder : 1;
         this.updatedBy = updatedBy;
     }
+
+    /**
+     * 공개/비공개 상태 토글.
+     */
+    public void togglePublished() {
+        this.isPublished = !this.isPublished;
+    }
+
+    /**
+     * 정류장 목록 교체 (풀 교체 방식).
+     * 
+     * @param newStops 새로운 정류장 목록
+     */
+    public void replaceStops(List<ShuttleRouteStop> newStops) {
+        this.stops.clear();
+        if (newStops != null) {
+            this.stops.addAll(newStops);
+        }
+    }
 }

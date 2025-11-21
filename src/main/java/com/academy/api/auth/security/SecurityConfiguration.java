@@ -68,6 +68,7 @@ public class SecurityConfiguration {
 						.requestMatchers("/api/gallery/**").permitAll()
 						.requestMatchers("/api/academic-schedules/**").permitAll()
 						.requestMatchers("/api/facility/**").permitAll()
+						.requestMatchers("/api/shuttle-routes/**").permitAll()
 
 						// ✅ 관리자 API (ADMIN 권한 필요)
 						.requestMatchers("/api/admin/**").hasRole("ADMIN")
