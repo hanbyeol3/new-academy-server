@@ -32,7 +32,7 @@ public class SecurityConfiguration {
 
 		http
 				// =====================
-				// 🔥 1. CORS (Security에서만 설정)
+				// 🔥 1. CORS + CSRF
 				// =====================
 				.cors(cors -> cors.configurationSource(corsConfigSource()))
 				.csrf(AbstractHttpConfigurer::disable)
@@ -51,14 +51,16 @@ public class SecurityConfiguration {
 				// =====================
 				.authorizeHttpRequests(auth -> auth
 
-						// 인증 불필요
+						// ✅ 인증 불필요 (로그인/회원가입/토큰)
 						.requestMatchers("/api/auth/**").permitAll()
+
+						// ✅ 헬스체크/문서/콘솔
 						.requestMatchers("/actuator/health").permitAll()
 						.requestMatchers("/v3/api-docs/**", "/swagger-ui/**").permitAll()
 						.requestMatchers("/swagger-ui.html", "/swagger-ui-custom.js", "/swagger-helper.js").permitAll()
 						.requestMatchers("/h2-console/**").permitAll()
 
-						// 공개 API
+						// ✅ 공개 API
 						.requestMatchers("/api/qna-simple/**").permitAll()
 						.requestMatchers("/api/notices/**").permitAll()
 						.requestMatchers("/api/public/**").permitAll()
@@ -67,10 +69,10 @@ public class SecurityConfiguration {
 						.requestMatchers("/api/academic-schedules/**").permitAll()
 						.requestMatchers("/api/facility/**").permitAll()
 
-						// 관리자 권한 필요
+						// ✅ 관리자 API (ADMIN 권한 필요)
 						.requestMatchers("/api/admin/**").hasRole("ADMIN")
 
-						// 나머지는 인증 필요
+						// ✅ 그 외는 모두 인증 필요
 						.anyRequest().authenticated()
 				)
 
@@ -98,16 +100,21 @@ public class SecurityConfiguration {
 	}
 
 	// =====================
-	// 🔥 정석 CORS 설정 (여기 한 군데만!)
+	// 🔥 CORS 설정 (여기 한 군데만!)
 	// =====================
 	@Bean
 	public CorsConfigurationSource corsConfigSource() {
 		CorsConfiguration config = new CorsConfiguration();
 
+		// ⚠️ 여기 Origin에 네 프론트 포트를 전부 추가
 		config.setAllowedOriginPatterns(List.of(
-				"http://localhost:3000",
+				"http://localhost:3000",   // web
+				"http://localhost:3001",   // 혹시 다른 dev
+				"http://localhost:3002",   // admin (지금 이거 중요)
 				"http://localhost:5173",
 				"http://127.0.0.1:3000",
+				"http://127.0.0.1:3001",
+				"http://127.0.0.1:3002",
 				"http://127.0.0.1:5173"
 		));
 
@@ -117,11 +124,14 @@ public class SecurityConfiguration {
 		config.setMaxAge(3600L);
 
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-		// 🔥 API 전체 허용해야 프론트에서 403 안 뜸
+		// 전체 경로에 CORS 적용
 		source.registerCorsConfiguration("/**", config);
 		return source;
 	}
 
+	// =====================
+	// 🔒 비밀번호 인코더
+	// =====================
 	@Bean
 	public PasswordEncoder passwordEncoder() {
 		return new BCryptPasswordEncoder(12);
