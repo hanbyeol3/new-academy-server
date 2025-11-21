@@ -1,6 +1,7 @@
 package com.academy.api.notice.mapper;
 
 import com.academy.api.category.domain.Category;
+import com.academy.api.common.util.SecurityUtils;
 import com.academy.api.data.responses.common.ResponseList;
 import com.academy.api.notice.domain.Notice;
 import com.academy.api.notice.dto.RequestNoticeCreate;
@@ -31,7 +32,7 @@ public class NoticeMapper {
                 .exposureStartAt(request.getExposureStartAt())
                 .exposureEndAt(request.getExposureEndAt())
                 .category(category)
-                .createdBy(null) // 추후 SecurityContext에서 가져오도록 수정
+                .createdBy(SecurityUtils.getCurrentUserId()) // 실제 로그인 사용자 ID
                 .build();
     }
 
@@ -94,7 +95,7 @@ public class NoticeMapper {
                 request.getExposureStartAt() != null ? request.getExposureStartAt() : notice.getExposureStartAt(),
                 request.getExposureEndAt() != null ? request.getExposureEndAt() : notice.getExposureEndAt(),
                 category != null ? category : notice.getCategory(),
-                null // 추후 SecurityContext에서 가져오도록 수정
+                SecurityUtils.getCurrentUserId() // 실제 로그인 사용자 ID (수정자)
         );
     }
 

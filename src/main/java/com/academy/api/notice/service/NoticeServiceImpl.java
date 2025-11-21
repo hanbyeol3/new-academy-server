@@ -4,6 +4,7 @@ import com.academy.api.category.domain.Category;
 import com.academy.api.category.repository.CategoryRepository;
 import com.academy.api.common.exception.BusinessException;
 import com.academy.api.common.exception.ErrorCode;
+import com.academy.api.common.util.SecurityUtils;
 import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
@@ -387,7 +388,8 @@ public class NoticeServiceImpl implements NoticeService {
     public Response toggleImportant(Long id, Boolean isImportant) {
         log.info("[NoticeService] 중요 공지 상태 변경 시작. ID={}, 중요공지={}", id, isImportant);
         
-        int updatedCount = noticeRepository.updateImportantStatus(id, isImportant);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        int updatedCount = noticeRepository.updateImportantStatus(id, isImportant, currentUserId);
         if (updatedCount == 0) {
             log.warn("[NoticeService] 중요 공지 상태 변경 실패 - 공지사항을 찾을 수 없음. ID={}", id);
             throw new BusinessException(ErrorCode.NOTICE_NOT_FOUND);
@@ -404,14 +406,19 @@ public class NoticeServiceImpl implements NoticeService {
     public Response togglePublished(Long id, Boolean isPublished) {
         log.info("[NoticeService] 공개 상태 변경 시작. ID={}, 공개여부={}", id, isPublished);
         
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        
         // 비공개 → 공개 변경 시 특별 처리를 위해 엔티티를 조회
         if (isPublished) {
             Notice notice = findNoticeById(id);
             notice.togglePublished();
-            log.debug("[NoticeService] 공개 상태 변경 (특별 처리 포함). ID={}, 노출타입={}", 
-                    id, notice.getExposureType());
+            // 변경사항을 저장하고 updatedBy 설정을 위해 Repository 업데이트 호출
+            noticeRepository.save(notice);
+            noticeRepository.updatePublishedStatus(id, isPublished, currentUserId);
+            log.debug("[NoticeService] 공개 상태 변경 (특별 처리 포함). ID={}, 노출타입={}, 수정자ID={}", 
+                    id, notice.getExposureType(), currentUserId);
         } else {
-            int updatedCount = noticeRepository.updatePublishedStatus(id, isPublished);
+            int updatedCount = noticeRepository.updatePublishedStatus(id, isPublished, currentUserId);
             if (updatedCount == 0) {
                 log.warn("[NoticeService] 공개 상태 변경 실패 - 공지사항을 찾을 수 없음. ID={}", id);
                 throw new BusinessException(ErrorCode.NOTICE_NOT_FOUND);

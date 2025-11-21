@@ -60,13 +60,13 @@ public interface NoticeRepository extends JpaRepository<Notice, Long>, NoticeRep
      * 중요 공지 설정/해제.
      */
     @Modifying
-    @Query("UPDATE Notice n SET n.isImportant = :isImportant WHERE n.id = :id")
-    int updateImportantStatus(@Param("id") Long id, @Param("isImportant") Boolean isImportant);
+    @Query("UPDATE Notice n SET n.isImportant = :isImportant, n.updatedBy = :updatedBy, n.updatedAt = CURRENT_TIMESTAMP WHERE n.id = :id")
+    int updateImportantStatus(@Param("id") Long id, @Param("isImportant") Boolean isImportant, @Param("updatedBy") Long updatedBy);
 
     /**
      * 공개/비공개 상태 변경.
      */
     @Modifying
-    @Query("UPDATE Notice n SET n.isPublished = :isPublished WHERE n.id = :id")
-    int updatePublishedStatus(@Param("id") Long id, @Param("isPublished") Boolean isPublished);
+    @Query("UPDATE Notice n SET n.isPublished = :isPublished, n.updatedBy = :updatedBy, n.updatedAt = CURRENT_TIMESTAMP WHERE n.id = :id")
+    int updatePublishedStatus(@Param("id") Long id, @Param("isPublished") Boolean isPublished, @Param("updatedBy") Long updatedBy);
 }
