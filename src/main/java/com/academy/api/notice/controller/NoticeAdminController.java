@@ -31,7 +31,7 @@ import java.util.List;
  * 공지사항의 생성, 수정, 삭제 등 관리자 전용 기능을 제공합니다.
  * 모든 API는 ADMIN 권한이 필요합니다.
  */
-@Tag(name = "공지사항 관리 (관리자)", description = "공지사항 CRUD 및 관리자 전용 기능 API")
+@Tag(name = "Notice (Admin)", description = "공지사항 CRUD 및 관리자 전용 기능 API")
 @SecurityRequirement(name = "bearerAuth")
 @Slf4j
 @RestController

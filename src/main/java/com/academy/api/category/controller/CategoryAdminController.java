@@ -24,7 +24,7 @@ import java.util.List;
  * 카테고리 그룹과 카테고리의 CRUD 기능을 제공합니다.
  * 모든 API는 ADMIN 권한이 필요합니다.
  */
-@Tag(name = "카테고리 관리 (관리자)", description = "카테고리 그룹 및 카테고리 CRUD API")
+@Tag(name = "Category (Admin)", description = "카테고리 그룹 및 카테고리 CRUD API")
 @SecurityRequirement(name = "bearerAuth")
 @Slf4j
 @RestController

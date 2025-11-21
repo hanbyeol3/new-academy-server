@@ -24,7 +24,7 @@ import java.util.List;
  * 일반 사용자가 접근 가능한 공지사항 조회 기능을 제공합니다.
  * 인증 없이 접근 가능하며, 공개된 공지사항만 조회됩니다.
  */
-@Tag(name = "공지사항 조회 (공개)", description = "일반 사용자용 공지사항 조회 API")
+@Tag(name = "Notice (Public)", description = "일반 사용자용 공지사항 조회 API")
 @Slf4j
 @RestController
 @RequestMapping("/api/notices")

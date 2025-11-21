@@ -33,7 +33,7 @@ import org.springframework.web.multipart.MultipartFile;
  *  - GET /api/public/files/{fileId}: 파일 정보 조회
  *  - DELETE /api/public/files/{fileId}: 파일 삭제
  */
-@Tag(name = "파일 관리 API", description = "파일 업로드, 다운로드, 관리 기능을 제공하는 API")
+@Tag(name = "File API", description = "파일 업로드, 다운로드, 관리 기능을 제공하는 API")
 @Slf4j
 @RestController
 @RequestMapping("/api/public/files")
