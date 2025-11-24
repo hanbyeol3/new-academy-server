@@ -21,8 +21,7 @@ public interface AcademyInfoService {
      * 학원 정보 수정.
      * 
      * @param request 수정 요청 데이터
-     * @param updatedBy 수정자 ID
      * @return 수정 결과
      */
-    Response updateAcademyInfo(RequestAcademyInfoUpdate request, Long updatedBy);
+    Response updateAcademyInfo(RequestAcademyInfoUpdate request);
 }

@@ -78,11 +78,9 @@ public class AcademyInfoAdminController {
             @Parameter(description = "학원 정보 수정 요청") 
             @RequestBody @Valid RequestAcademyInfoUpdate request) {
         
-        Long updatedBy = 1L; // TODO: 실제 로그인 사용자 ID로 변경
+        log.info("학원 정보 수정 요청. academyName={}", 
+                request.getAcademyName());
         
-        log.info("학원 정보 수정 요청. academyName={}, updatedBy={}", 
-                request.getAcademyName(), updatedBy);
-        
-        return academyInfoService.updateAcademyInfo(request, updatedBy);
+        return academyInfoService.updateAcademyInfo(request);
     }
 }

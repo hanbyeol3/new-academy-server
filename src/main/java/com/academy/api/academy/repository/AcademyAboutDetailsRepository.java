@@ -71,9 +71,8 @@ public interface AcademyAboutDetailsRepository extends JpaRepository<AcademyAbou
      * 
      * @param id 상세 정보 ID
      * @param sortOrder 새로운 정렬 순서
-     * @param updatedBy 수정자 ID
      */
     @Modifying
-    @Query("UPDATE AcademyAboutDetails d SET d.sortOrder = :sortOrder, d.updatedBy = :updatedBy WHERE d.id = :id")
-    void updateSortOrder(@Param("id") Long id, @Param("sortOrder") Integer sortOrder, @Param("updatedBy") Long updatedBy);
+    @Query("UPDATE AcademyAboutDetails d SET d.sortOrder = :sortOrder WHERE d.id = :id")
+    void updateSortOrder(@Param("id") Long id, @Param("sortOrder") Integer sortOrder);
 }

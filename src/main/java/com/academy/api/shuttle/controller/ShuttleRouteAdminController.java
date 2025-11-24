@@ -130,9 +130,7 @@ public class ShuttleRouteAdminController {
         log.info("[ShuttleRouteAdminController] 노선 생성 요청. routeName={}, stopCount={}", 
                 request.getRouteName(), request.getStops() != null ? request.getStops().size() : 0);
 
-        Long createdBy = 1L; // TODO: 실제 로그인 사용자 ID로 변경
-
-        return shuttleRouteService.createRoute(request, createdBy);
+        return shuttleRouteService.createRoute(request);
     }
 
     @PutMapping("/{id}")
@@ -169,9 +167,7 @@ public class ShuttleRouteAdminController {
         log.info("[ShuttleRouteAdminController] 노선 수정 요청. routeId={}, routeName={}, stopCount={}", 
                 id, request.getRouteName(), request.getStops() != null ? request.getStops().size() : 0);
 
-        Long updatedBy = 1L; // TODO: 실제 로그인 사용자 ID로 변경
-
-        return shuttleRouteService.updateRoute(id, request, updatedBy);
+        return shuttleRouteService.updateRoute(id, request);
     }
 
     @PatchMapping("/{id}/toggle-published")

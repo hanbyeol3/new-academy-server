@@ -3,6 +3,7 @@ package com.academy.api.academy.mapper;
 import com.academy.api.academy.domain.AcademyAbout;
 import com.academy.api.academy.domain.AcademyAboutDetails;
 import com.academy.api.academy.dto.*;
+import com.academy.api.common.util.SecurityUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.stereotype.Component;
@@ -48,10 +49,9 @@ public class AcademyAboutMapper {
      * Request DTO → AcademyAbout Entity 변환 (생성용).
      * 
      * @param request 수정 요청 DTO
-     * @param createdBy 등록자 ID
      * @return 학원 소개 엔티티
      */
-    public AcademyAbout toEntity(RequestAcademyAboutUpdate request, Long createdBy) {
+    public AcademyAbout toEntity(RequestAcademyAboutUpdate request) {
         if (request == null) {
             return null;
         }
@@ -61,7 +61,7 @@ public class AcademyAboutMapper {
                 .mainPointTitle(request.getMainPointTitle())
                 .mainDescription(request.getMainDescription())
                 .mainImagePath(request.getMainImagePath())
-                .createdBy(createdBy)
+                .createdBy(SecurityUtils.getCurrentUserId())
                 .build();
     }
 
@@ -70,9 +70,8 @@ public class AcademyAboutMapper {
      * 
      * @param entity 기존 엔티티
      * @param request 수정 요청 DTO
-     * @param updatedBy 수정자 ID
      */
-    public void updateEntity(AcademyAbout entity, RequestAcademyAboutUpdate request, Long updatedBy) {
+    public void updateEntity(AcademyAbout entity, RequestAcademyAboutUpdate request) {
         if (entity == null || request == null) {
             return;
         }
@@ -82,23 +81,22 @@ public class AcademyAboutMapper {
                 request.getMainPointTitle(), 
                 request.getMainDescription(),
                 request.getMainImagePath(),
-                updatedBy
+                SecurityUtils.getCurrentUserId()
         );
     }
 
     /**
      * 기본 학원 소개 정보 생성.
      * 
-     * @param createdBy 등록자 ID
      * @return 기본값으로 설정된 학원 소개 엔티티
      */
-    public AcademyAbout createDefaultAcademyAbout(Long createdBy) {
+    public AcademyAbout createDefaultAcademyAbout() {
         return AcademyAbout.builder()
                 .mainTitle("학원 소개 타이틀을 입력하세요")
                 .mainPointTitle("포인트 타이틀을 입력하세요")
                 .mainDescription("학원 소개 내용을 입력하세요")
                 .mainImagePath("")
-                .createdBy(createdBy)
+                .createdBy(SecurityUtils.getCurrentUserId())
                 .build();
     }
 
@@ -173,10 +171,9 @@ public class AcademyAboutMapper {
      * 
      * @param request 생성 요청 DTO
      * @param about 연관된 학원 소개 정보
-     * @param createdBy 등록자 ID
      * @return 학원 소개 상세 엔티티
      */
-    public AcademyAboutDetails toDetailsEntity(RequestAcademyAboutDetailsCreate request, AcademyAbout about, Long createdBy) {
+    public AcademyAboutDetails toDetailsEntity(RequestAcademyAboutDetailsCreate request, AcademyAbout about) {
         if (request == null) {
             return null;
         }
@@ -186,7 +183,7 @@ public class AcademyAboutMapper {
                 .detailTitle(request.getDetailTitle())
                 .detailDescription(request.getDetailDescription())
                 .sortOrder(request.getSortOrder())
-                .createdBy(createdBy)
+                .createdBy(SecurityUtils.getCurrentUserId())
                 .build();
     }
 
@@ -195,9 +192,8 @@ public class AcademyAboutMapper {
      * 
      * @param entity 기존 엔티티
      * @param request 수정 요청 DTO
-     * @param updatedBy 수정자 ID
      */
-    public void updateDetailsEntity(AcademyAboutDetails entity, RequestAcademyAboutDetailsUpdate request, Long updatedBy) {
+    public void updateDetailsEntity(AcademyAboutDetails entity, RequestAcademyAboutDetailsUpdate request) {
         if (entity == null || request == null) {
             return;
         }
@@ -206,7 +202,7 @@ public class AcademyAboutMapper {
                 request.getDetailTitle(),
                 request.getDetailDescription(),
                 request.getSortOrder(),
-                updatedBy
+                SecurityUtils.getCurrentUserId()
         );
     }
 }

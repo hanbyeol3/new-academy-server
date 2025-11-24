@@ -1,5 +1,6 @@
 package com.academy.api.facility.mapper;
 
+import com.academy.api.common.util.SecurityUtils;
 import com.academy.api.data.responses.common.ResponseList;
 import com.academy.api.facility.domain.Facility;
 import com.academy.api.facility.dto.RequestFacilityCreate;
@@ -33,10 +34,9 @@ public class FacilityMapper {
      * Request DTO → Entity 변환 (생성용).
      * 
      * @param request 시설 생성 요청 DTO
-     * @param createdBy 등록자 ID
      * @return 시설 엔티티
      */
-    public Facility toEntity(RequestFacilityCreate request, Long createdBy) {
+    public Facility toEntity(RequestFacilityCreate request) {
         if (request == null) {
             return null;
         }
@@ -44,7 +44,7 @@ public class FacilityMapper {
         return Facility.builder()
                 .title(request.getTitle())
                 .isPublished(request.getIsPublished())
-                .createdBy(createdBy)
+                .createdBy(SecurityUtils.getCurrentUserId())
                 .build();
     }
 
@@ -117,9 +117,8 @@ public class FacilityMapper {
      * 
      * @param entity 기존 엔티티
      * @param request 수정 요청 DTO
-     * @param updatedBy 수정자 ID
      */
-    public void updateEntity(Facility entity, RequestFacilityUpdate request, Long updatedBy) {
+    public void updateEntity(Facility entity, RequestFacilityUpdate request) {
         if (entity == null || request == null) {
             return;
         }
@@ -127,7 +126,7 @@ public class FacilityMapper {
         entity.update(
                 request.getTitle(),
                 request.getIsPublished(),
-                updatedBy
+                SecurityUtils.getCurrentUserId()
         );
     }
 

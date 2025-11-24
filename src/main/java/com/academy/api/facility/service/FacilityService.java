@@ -52,29 +52,26 @@ public interface FacilityService {
      * 시설 등록.
      * 
      * @param request 시설 등록 요청 데이터
-     * @param createdBy 등록자 ID
      * @return 등록된 시설 ID
      */
-    ResponseData<Long> createFacility(RequestFacilityCreate request, Long createdBy);
+    ResponseData<Long> createFacility(RequestFacilityCreate request);
 
     /**
      * 시설 수정.
      * 
      * @param id 시설 ID
      * @param request 시설 수정 요청 데이터
-     * @param updatedBy 수정자 ID
      * @return 수정 결과
      */
-    Response updateFacility(Long id, RequestFacilityUpdate request, Long updatedBy);
+    Response updateFacility(Long id, RequestFacilityUpdate request);
 
     /**
      * 시설 공개/비공개 상태 전환.
      * 
      * @param id 시설 ID
-     * @param updatedBy 수정자 ID
      * @return 전환 결과
      */
-    Response toggleFacilityPublished(Long id, Long updatedBy);
+    Response toggleFacilityPublished(Long id);
 
     /**
      * 시설 삭제.

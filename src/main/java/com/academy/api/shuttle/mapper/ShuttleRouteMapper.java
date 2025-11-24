@@ -1,5 +1,6 @@
 package com.academy.api.shuttle.mapper;
 
+import com.academy.api.common.util.SecurityUtils;
 import com.academy.api.data.responses.common.ResponseList;
 import com.academy.api.shuttle.domain.ShuttleRoute;
 import com.academy.api.shuttle.domain.ShuttleRouteStop;
@@ -24,10 +25,9 @@ public class ShuttleRouteMapper {
      * Request DTO → Entity 변환 (생성용).
      * 
      * @param request 셔틀 노선 생성 요청 DTO
-     * @param createdBy 등록자 ID
      * @return 셔틀 노선 엔티티
      */
-    public ShuttleRoute toEntity(RequestShuttleRouteCreate request, Long createdBy) {
+    public ShuttleRoute toEntity(RequestShuttleRouteCreate request) {
         if (request == null) {
             return null;
         }
@@ -40,7 +40,7 @@ public class ShuttleRouteMapper {
                 .weekdayMask(request.getWeekdayMask())
                 .isPublished(request.getIsPublished())
                 .sortOrder(request.getSortOrder())
-                .createdBy(createdBy)
+                .createdBy(SecurityUtils.getCurrentUserId())
                 .build();
     }
 
@@ -49,10 +49,9 @@ public class ShuttleRouteMapper {
      * 
      * @param request 정류장 생성 요청 DTO
      * @param route 소속 노선
-     * @param createdBy 등록자 ID
      * @return 정류장 엔티티
      */
-    public ShuttleRouteStop toStopEntity(RequestShuttleRouteStopCreate request, ShuttleRoute route, Long createdBy) {
+    public ShuttleRouteStop toStopEntity(RequestShuttleRouteStopCreate request, ShuttleRoute route) {
         if (request == null || route == null) {
             return null;
         }
@@ -64,7 +63,7 @@ public class ShuttleRouteMapper {
                 .stopName(request.getStopName())
                 .stopSublabel(request.getStopSublabel())
                 .note(request.getNote())
-                .createdBy(createdBy)
+                .createdBy(SecurityUtils.getCurrentUserId())
                 .build();
     }
 
@@ -73,16 +72,15 @@ public class ShuttleRouteMapper {
      * 
      * @param stopRequests 정류장 생성 요청 DTO 리스트
      * @param route 소속 노선
-     * @param createdBy 등록자 ID
      * @return 정류장 엔티티 리스트
      */
-    public List<ShuttleRouteStop> toStopEntities(List<RequestShuttleRouteStopCreate> stopRequests, ShuttleRoute route, Long createdBy) {
+    public List<ShuttleRouteStop> toStopEntities(List<RequestShuttleRouteStopCreate> stopRequests, ShuttleRoute route) {
         if (stopRequests == null || route == null) {
             return List.of();
         }
 
         return stopRequests.stream()
-                .map(request -> toStopEntity(request, route, createdBy))
+                .map(request -> toStopEntity(request, route))
                 .collect(Collectors.toList());
     }
 
@@ -203,9 +201,8 @@ public class ShuttleRouteMapper {
      * 
      * @param entity 기존 엔티티
      * @param request 수정 요청 DTO
-     * @param updatedBy 수정자 ID
      */
-    public void updateEntity(ShuttleRoute entity, RequestShuttleRouteUpdate request, Long updatedBy) {
+    public void updateEntity(ShuttleRoute entity, RequestShuttleRouteUpdate request) {
         if (entity == null || request == null) {
             return;
         }
@@ -218,7 +215,7 @@ public class ShuttleRouteMapper {
                 request.getWeekdayMask(),
                 request.getIsPublished(),
                 request.getSortOrder(),
-                updatedBy
+                SecurityUtils.getCurrentUserId()
         );
     }
 }

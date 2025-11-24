@@ -49,20 +49,18 @@ public interface ShuttleRouteService {
      * 셔틀 노선 등록.
      * 
      * @param request 노선 생성 요청
-     * @param createdBy 등록자 ID
      * @return 등록된 노선 ID
      */
-    ResponseData<Long> createRoute(RequestShuttleRouteCreate request, Long createdBy);
+    ResponseData<Long> createRoute(RequestShuttleRouteCreate request);
 
     /**
      * 셔틀 노선 수정 (풀 교체 방식).
      * 
      * @param routeId 노선 ID
      * @param request 노선 수정 요청
-     * @param updatedBy 수정자 ID
      * @return 수정 결과
      */
-    Response updateRoute(Long routeId, RequestShuttleRouteUpdate request, Long updatedBy);
+    Response updateRoute(Long routeId, RequestShuttleRouteUpdate request);
 
     /**
      * 셔틀 노선 공개/비공개 전환.

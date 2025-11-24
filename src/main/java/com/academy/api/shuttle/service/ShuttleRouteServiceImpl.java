@@ -154,20 +154,20 @@ public class ShuttleRouteServiceImpl implements ShuttleRouteService {
      */
     @Override
     @Transactional
-    public ResponseData<Long> createRoute(RequestShuttleRouteCreate request, Long createdBy) {
-        log.info("[ShuttleRouteService] 노선 등록 시작. routeName={}, stopCount={}, createdBy={}", 
-                request.getRouteName(), request.getStops() != null ? request.getStops().size() : 0, createdBy);
+    public ResponseData<Long> createRoute(RequestShuttleRouteCreate request) {
+        log.info("[ShuttleRouteService] 노선 등록 시작. routeName={}, stopCount={}", 
+                request.getRouteName(), request.getStops() != null ? request.getStops().size() : 0);
 
         try {
             // 노선 엔티티 생성 및 저장
-            ShuttleRoute route = shuttleRouteMapper.toEntity(request, createdBy);
+            ShuttleRoute route = shuttleRouteMapper.toEntity(request);
             ShuttleRoute savedRoute = shuttleRouteRepository.save(route);
             
             log.debug("[ShuttleRouteService] 노선 저장 완료. routeId={}", savedRoute.getRouteId());
 
             // 정류장 목록 생성 및 저장
             if (request.getStops() != null && !request.getStops().isEmpty()) {
-                List<ShuttleRouteStop> stops = shuttleRouteMapper.toStopEntities(request.getStops(), savedRoute, createdBy);
+                List<ShuttleRouteStop> stops = shuttleRouteMapper.toStopEntities(request.getStops(), savedRoute);
                 shuttleRouteStopRepository.saveAll(stops);
                 
                 log.debug("[ShuttleRouteService] 정류장 저장 완료. routeId={}, stopCount={}", 
@@ -190,15 +190,15 @@ public class ShuttleRouteServiceImpl implements ShuttleRouteService {
      */
     @Override
     @Transactional
-    public Response updateRoute(Long routeId, RequestShuttleRouteUpdate request, Long updatedBy) {
-        log.info("[ShuttleRouteService] 노선 수정 시작. routeId={}, routeName={}, stopCount={}, updatedBy={}", 
-                routeId, request.getRouteName(), request.getStops() != null ? request.getStops().size() : 0, updatedBy);
+    public Response updateRoute(Long routeId, RequestShuttleRouteUpdate request) {
+        log.info("[ShuttleRouteService] 노선 수정 시작. routeId={}, routeName={}, stopCount={}", 
+                routeId, request.getRouteName(), request.getStops() != null ? request.getStops().size() : 0);
 
         return shuttleRouteRepository.findById(routeId)
                 .map(route -> {
                     try {
                         // 노선 정보 업데이트
-                        shuttleRouteMapper.updateEntity(route, request, updatedBy);
+                        shuttleRouteMapper.updateEntity(route, request);
                         ShuttleRoute savedRoute = shuttleRouteRepository.save(route);
                         
                         log.debug("[ShuttleRouteService] 노선 정보 업데이트 완료. routeId={}", routeId);
@@ -212,7 +212,7 @@ public class ShuttleRouteServiceImpl implements ShuttleRouteService {
                             // 새 정류장 생성
                             if (!request.getStops().isEmpty()) {
                                 List<ShuttleRouteStop> newStops = shuttleRouteMapper.toStopEntities(
-                                        request.getStops(), savedRoute, updatedBy);
+                                        request.getStops(), savedRoute);
                                 shuttleRouteStopRepository.saveAll(newStops);
                                 log.debug("[ShuttleRouteService] 새 정류장 생성 완료. routeId={}, stopCount={}", 
                                         routeId, newStops.size());

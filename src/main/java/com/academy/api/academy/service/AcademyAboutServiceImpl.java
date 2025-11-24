@@ -76,9 +76,9 @@ public class AcademyAboutServiceImpl implements AcademyAboutService {
      */
     @Override
     @Transactional
-    public Response updateAcademyAbout(RequestAcademyAboutUpdate request, Long updatedBy) {
-        log.info("[AcademyAboutService] 학원 소개 정보 수정 시작. mainTitle={}, updatedBy={}", 
-                request.getMainTitle(), updatedBy);
+    public Response updateAcademyAbout(RequestAcademyAboutUpdate request) {
+        log.info("[AcademyAboutService] 학원 소개 정보 수정 시작. mainTitle={}", 
+                request.getMainTitle());
 
         try {
             // 기존 학원 소개 정보 조회 (없으면 기본값 생성)
@@ -89,7 +89,7 @@ public class AcademyAboutServiceImpl implements AcademyAboutService {
                     });
 
             // 엔티티 업데이트
-            academyAboutMapper.updateEntity(academyAbout, request, updatedBy);
+            academyAboutMapper.updateEntity(academyAbout, request);
 
             // 저장
             AcademyAbout savedAcademyAbout = academyAboutRepository.save(academyAbout);
@@ -162,9 +162,9 @@ public class AcademyAboutServiceImpl implements AcademyAboutService {
      */
     @Override
     @Transactional
-    public ResponseData<Long> createDetails(RequestAcademyAboutDetailsCreate request, Long createdBy) {
-        log.info("[AcademyAboutService] 학원 소개 상세 정보 생성 시작. detailTitle={}, createdBy={}", 
-                request.getDetailTitle(), createdBy);
+    public ResponseData<Long> createDetails(RequestAcademyAboutDetailsCreate request) {
+        log.info("[AcademyAboutService] 학원 소개 상세 정보 생성 시작. detailTitle={}", 
+                request.getDetailTitle());
 
         try {
             // 기본 학원 소개 정보 조회/생성
@@ -182,7 +182,7 @@ public class AcademyAboutServiceImpl implements AcademyAboutService {
             }
 
             // 엔티티 생성 및 저장
-            AcademyAboutDetails detailsEntity = academyAboutMapper.toDetailsEntity(request, academyAbout, createdBy);
+            AcademyAboutDetails detailsEntity = academyAboutMapper.toDetailsEntity(request, academyAbout);
             AcademyAboutDetails savedDetails = academyAboutDetailsRepository.save(detailsEntity);
 
             log.debug("[AcademyAboutService] 학원 소개 상세 정보 생성 완료. id={}, detailTitle={}", 
@@ -201,9 +201,9 @@ public class AcademyAboutServiceImpl implements AcademyAboutService {
      */
     @Override
     @Transactional
-    public Response updateDetails(Long id, RequestAcademyAboutDetailsUpdate request, Long updatedBy) {
-        log.info("[AcademyAboutService] 학원 소개 상세 정보 수정 시작. id={}, detailTitle={}, updatedBy={}", 
-                id, request.getDetailTitle(), updatedBy);
+    public Response updateDetails(Long id, RequestAcademyAboutDetailsUpdate request) {
+        log.info("[AcademyAboutService] 학원 소개 상세 정보 수정 시작. id={}, detailTitle={}", 
+                id, request.getDetailTitle());
 
         try {
             // 기존 상세 정보 조회
@@ -216,7 +216,7 @@ public class AcademyAboutServiceImpl implements AcademyAboutService {
             }
 
             // 엔티티 업데이트
-            academyAboutMapper.updateDetailsEntity(details, request, updatedBy);
+            academyAboutMapper.updateDetailsEntity(details, request);
 
             // 저장
             AcademyAboutDetails savedDetails = academyAboutDetailsRepository.save(details);
@@ -265,14 +265,14 @@ public class AcademyAboutServiceImpl implements AcademyAboutService {
      */
     @Override
     @Transactional
-    public Response updateDetailsOrder(RequestDetailsOrderUpdate request, Long updatedBy) {
-        log.info("[AcademyAboutService] 학원 소개 상세 정보 순서 변경 시작. 변경 항목 수={}, updatedBy={}", 
-                request.getItems().size(), updatedBy);
+    public Response updateDetailsOrder(RequestDetailsOrderUpdate request) {
+        log.info("[AcademyAboutService] 학원 소개 상세 정보 순서 변경 시작. 변경 항목 수={}", 
+                request.getItems().size());
 
         try {
             // 일괄 순서 업데이트
             for (RequestDetailsOrderUpdate.OrderItem item : request.getItems()) {
-                academyAboutDetailsRepository.updateSortOrder(item.getId(), item.getSortOrder(), updatedBy);
+                academyAboutDetailsRepository.updateSortOrder(item.getId(), item.getSortOrder());
                 log.debug("[AcademyAboutService] 순서 업데이트: id={}, sortOrder={}", 
                         item.getId(), item.getSortOrder());
             }
@@ -318,7 +318,7 @@ public class AcademyAboutServiceImpl implements AcademyAboutService {
     private AcademyAbout createDefaultAcademyAbout() {
         log.info("[AcademyAboutService] 기본 학원 소개 정보 생성 및 저장");
 
-        AcademyAbout defaultAbout = academyAboutMapper.createDefaultAcademyAbout(1L); // 시스템 생성자 ID: 1
+        AcademyAbout defaultAbout = academyAboutMapper.createDefaultAcademyAbout();
         AcademyAbout savedAbout = academyAboutRepository.save(defaultAbout);
 
         log.debug("[AcademyAboutService] 기본 학원 소개 정보 생성 완료. id={}", savedAbout.getId());

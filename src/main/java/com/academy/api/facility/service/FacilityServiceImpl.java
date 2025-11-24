@@ -154,13 +154,13 @@ public class FacilityServiceImpl implements FacilityService {
      */
     @Override
     @Transactional
-    public ResponseData<Long> createFacility(RequestFacilityCreate request, Long createdBy) {
-        log.info("[FacilityService] 시설 등록 시작. title={}, coverImageFileId={}, createdBy={}", 
-                request.getTitle(), request.getCoverImageFileId(), createdBy);
+    public ResponseData<Long> createFacility(RequestFacilityCreate request) {
+        log.info("[FacilityService] 시설 등록 시작. title={}, coverImageFileId={}", 
+                request.getTitle(), request.getCoverImageFileId());
 
         try {
             // 시설 엔티티 생성 및 저장
-            Facility facility = facilityMapper.toEntity(request, createdBy);
+            Facility facility = facilityMapper.toEntity(request);
             Facility savedFacility = facilityRepository.save(facility);
             
             log.debug("[FacilityService] 시설 저장 완료. id={}", savedFacility.getId());
@@ -183,15 +183,15 @@ public class FacilityServiceImpl implements FacilityService {
      */
     @Override
     @Transactional
-    public Response updateFacility(Long id, RequestFacilityUpdate request, Long updatedBy) {
-        log.info("[FacilityService] 시설 수정 시작. id={}, title={}, updatedBy={}", 
-                id, request.getTitle(), updatedBy);
+    public Response updateFacility(Long id, RequestFacilityUpdate request) {
+        log.info("[FacilityService] 시설 수정 시작. id={}, title={}", 
+                id, request.getTitle());
 
         return facilityRepository.findById(id)
                 .map(facility -> {
                     try {
                         // 시설 정보 업데이트
-                        facilityMapper.updateEntity(facility, request, updatedBy);
+                        facilityMapper.updateEntity(facility, request);
                         Facility savedFacility = facilityRepository.save(facility);
                         
                         log.debug("[FacilityService] 시설 정보 업데이트 완료. id={}", id);
@@ -220,8 +220,8 @@ public class FacilityServiceImpl implements FacilityService {
      */
     @Override
     @Transactional
-    public Response toggleFacilityPublished(Long id, Long updatedBy) {
-        log.info("[FacilityService] 시설 공개 상태 전환 시작. id={}, updatedBy={}", id, updatedBy);
+    public Response toggleFacilityPublished(Long id) {
+        log.info("[FacilityService] 시설 공개 상태 전환 시작. id={}", id);
 
         return facilityRepository.findById(id)
                 .map(facility -> {

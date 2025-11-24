@@ -77,12 +77,10 @@ public class AcademyAboutAdminController {
             @Parameter(description = "학원 소개 정보 수정 요청") 
             @RequestBody @Valid RequestAcademyAboutUpdate request) {
         
-        Long updatedBy = 1L; // TODO: 실제 로그인 사용자 ID로 변경
+        log.info("학원 소개 정보 수정 요청. mainTitle={}", 
+                request.getMainTitle());
         
-        log.info("학원 소개 정보 수정 요청. mainTitle={}, updatedBy={}", 
-                request.getMainTitle(), updatedBy);
-        
-        return academyAboutService.updateAcademyAbout(request, updatedBy);
+        return academyAboutService.updateAcademyAbout(request);
     }
 
     // ==================== AcademyAboutDetails 관련 API ====================
@@ -134,12 +132,10 @@ public class AcademyAboutAdminController {
             @Parameter(description = "상세 정보 생성 요청") 
             @RequestBody @Valid RequestAcademyAboutDetailsCreate request) {
         
-        Long createdBy = 1L; // TODO: 실제 로그인 사용자 ID로 변경
+        log.info("학원 소개 상세 정보 생성 요청. detailTitle={}", 
+                request.getDetailTitle());
         
-        log.info("학원 소개 상세 정보 생성 요청. detailTitle={}, createdBy={}", 
-                request.getDetailTitle(), createdBy);
-        
-        return academyAboutService.createDetails(request, createdBy);
+        return academyAboutService.createDetails(request);
     }
 
     @PutMapping("/details/{id}")
@@ -167,12 +163,10 @@ public class AcademyAboutAdminController {
             @Parameter(description = "상세 정보 수정 요청") 
             @RequestBody @Valid RequestAcademyAboutDetailsUpdate request) {
         
-        Long updatedBy = 1L; // TODO: 실제 로그인 사용자 ID로 변경
+        log.info("학원 소개 상세 정보 수정 요청. id={}, detailTitle={}", 
+                id, request.getDetailTitle());
         
-        log.info("학원 소개 상세 정보 수정 요청. id={}, detailTitle={}, updatedBy={}", 
-                id, request.getDetailTitle(), updatedBy);
-        
-        return academyAboutService.updateDetails(id, request, updatedBy);
+        return academyAboutService.updateDetails(id, request);
     }
 
     @DeleteMapping("/details/{id}")
@@ -220,11 +214,9 @@ public class AcademyAboutAdminController {
             @Parameter(description = "순서 변경 요청") 
             @RequestBody @Valid RequestDetailsOrderUpdate request) {
         
-        Long updatedBy = 1L; // TODO: 실제 로그인 사용자 ID로 변경
+        log.info("학원 소개 상세 정보 순서 변경 요청. 변경 항목 수={}", 
+                request.getItems().size());
         
-        log.info("학원 소개 상세 정보 순서 변경 요청. 변경 항목 수={}, updatedBy={}", 
-                request.getItems().size(), updatedBy);
-        
-        return academyAboutService.updateDetailsOrder(request, updatedBy);
+        return academyAboutService.updateDetailsOrder(request);
     }
 }

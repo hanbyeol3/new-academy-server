@@ -72,14 +72,13 @@ public class AcademyInfoServiceImpl implements AcademyInfoService {
      * 학원 정보 수정.
      * 
      * @param request 수정 요청 데이터
-     * @param updatedBy 수정자 ID
      * @return 수정 결과
      */
     @Override
     @Transactional
-    public Response updateAcademyInfo(RequestAcademyInfoUpdate request, Long updatedBy) {
-        log.info("[AcademyInfoService] 학원 정보 수정 시작. academyName={}, updatedBy={}", 
-                request.getAcademyName(), updatedBy);
+    public Response updateAcademyInfo(RequestAcademyInfoUpdate request) {
+        log.info("[AcademyInfoService] 학원 정보 수정 시작. academyName={}", 
+                request.getAcademyName());
 
         try {
             // 기존 학원 정보 조회 (없으면 기본값 생성)
@@ -90,7 +89,7 @@ public class AcademyInfoServiceImpl implements AcademyInfoService {
                     });
 
             // 엔티티 업데이트
-            academyInfoMapper.updateEntity(academyInfo, request, updatedBy);
+            academyInfoMapper.updateEntity(academyInfo, request);
 
             // 저장
             AcademyInfo savedAcademyInfo = academyInfoRepository.save(academyInfo);
@@ -114,7 +113,7 @@ public class AcademyInfoServiceImpl implements AcademyInfoService {
     private AcademyInfo createDefaultAcademyInfo() {
         log.info("[AcademyInfoService] 기본 학원 정보 생성 및 저장");
 
-        AcademyInfo defaultInfo = academyInfoMapper.createDefaultAcademyInfo(1L); // 시스템 생성자 ID: 1
+        AcademyInfo defaultInfo = academyInfoMapper.createDefaultAcademyInfo();
         AcademyInfo savedInfo = academyInfoRepository.save(defaultInfo);
 
         log.debug("[AcademyInfoService] 기본 학원 정보 생성 완료. id={}", savedInfo.getId());

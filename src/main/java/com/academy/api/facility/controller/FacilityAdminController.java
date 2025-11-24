@@ -123,12 +123,10 @@ public class FacilityAdminController {
             @Parameter(description = "시설 등록 요청") 
             @RequestBody @Valid RequestFacilityCreate request) {
         
-        Long createdBy = 1L; // TODO: 실제 로그인 사용자 ID로 변경
+        log.info("시설 등록 요청. title={}, coverImageFileId={}", 
+                request.getTitle(), request.getCoverImageFileId());
         
-        log.info("시설 등록 요청. title={}, coverImageFileId={}, createdBy={}", 
-                request.getTitle(), request.getCoverImageFileId(), createdBy);
-        
-        return facilityService.createFacility(request, createdBy);
+        return facilityService.createFacility(request);
     }
 
     @PutMapping("/{id}")
@@ -157,12 +155,10 @@ public class FacilityAdminController {
             @Parameter(description = "시설 수정 요청") 
             @RequestBody @Valid RequestFacilityUpdate request) {
         
-        Long updatedBy = 1L; // TODO: 실제 로그인 사용자 ID로 변경
+        log.info("시설 수정 요청. id={}, title={}", 
+                id, request.getTitle());
         
-        log.info("시설 수정 요청. id={}, title={}, updatedBy={}", 
-                id, request.getTitle(), updatedBy);
-        
-        return facilityService.updateFacility(id, request, updatedBy);
+        return facilityService.updateFacility(id, request);
     }
 
     @PatchMapping("/{id}/toggle-published")
@@ -187,11 +183,9 @@ public class FacilityAdminController {
             @Parameter(description = "시설 ID", example = "1") 
             @PathVariable Long id) {
         
-        Long updatedBy = 1L; // TODO: 실제 로그인 사용자 ID로 변경
+        log.info("시설 공개 상태 전환 요청. id={}", id);
         
-        log.info("시설 공개 상태 전환 요청. id={}, updatedBy={}", id, updatedBy);
-        
-        return facilityService.toggleFacilityPublished(id, updatedBy);
+        return facilityService.toggleFacilityPublished(id);
     }
 
     @DeleteMapping("/{id}")

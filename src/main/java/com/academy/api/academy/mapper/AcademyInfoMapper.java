@@ -3,6 +3,7 @@ package com.academy.api.academy.mapper;
 import com.academy.api.academy.domain.AcademyInfo;
 import com.academy.api.academy.dto.RequestAcademyInfoUpdate;
 import com.academy.api.academy.dto.ResponseAcademyInfo;
+import com.academy.api.common.util.SecurityUtils;
 import org.springframework.stereotype.Component;
 
 /**
@@ -62,10 +63,9 @@ public class AcademyInfoMapper {
      * Request DTO → Entity 변환 (생성용).
      * 
      * @param request 수정 요청 DTO
-     * @param createdBy 등록자 ID
      * @return 학원 정보 엔티티
      */
-    public AcademyInfo toEntity(RequestAcademyInfoUpdate request, Long createdBy) {
+    public AcademyInfo toEntity(RequestAcademyInfoUpdate request) {
         if (request == null) {
             return null;
         }
@@ -96,7 +96,7 @@ public class AcademyInfoMapper {
                 .youtubeUrl(request.getYoutubeUrl())
                 .blogUrl(request.getBlogUrl())
                 .instagramUrl(request.getInstagramUrl())
-                .createdBy(createdBy)
+                .createdBy(SecurityUtils.getCurrentUserId())
                 .build();
     }
 
@@ -105,12 +105,13 @@ public class AcademyInfoMapper {
      * 
      * @param entity 기존 엔티티
      * @param request 수정 요청 DTO
-     * @param updatedBy 수정자 ID
      */
-    public void updateEntity(AcademyInfo entity, RequestAcademyInfoUpdate request, Long updatedBy) {
+    public void updateEntity(AcademyInfo entity, RequestAcademyInfoUpdate request) {
         if (entity == null || request == null) {
             return;
         }
+
+        Long currentUserId = SecurityUtils.getCurrentUserId();
 
         // 기본 정보 업데이트
         entity.updateBasicInfo(
@@ -122,7 +123,7 @@ public class AcademyInfoMapper {
                 request.getPostalCode(),
                 request.getAddress(),
                 request.getAddressDetail(),
-                updatedBy
+                currentUserId
         );
 
         // 사업자 정보 업데이트
@@ -130,14 +131,14 @@ public class AcademyInfoMapper {
                 request.getBusinessNo(),
                 request.getCeoName(),
                 request.getOwnerName(),
-                updatedBy
+                currentUserId
         );
 
         // 운영시간 정보 업데이트
         entity.updateOperatingHours(
                 request.getWeekdayHours(),
                 request.getWeekendHours(),
-                updatedBy
+                currentUserId
         );
 
         // 위치 정보 업데이트
@@ -147,7 +148,7 @@ public class AcademyInfoMapper {
                 request.getAddressDetail(),
                 request.getLatitude(),
                 request.getLongitude(),
-                updatedBy
+                currentUserId
         );
 
         // 사이트 메타 정보 업데이트
@@ -156,7 +157,7 @@ public class AcademyInfoMapper {
                 request.getSiteDesc(),
                 request.getSiteKeywords(),
                 request.getOgImagePath(),
-                updatedBy
+                currentUserId
         );
 
         // SNS 링크 정보 업데이트
@@ -165,23 +166,22 @@ public class AcademyInfoMapper {
                 request.getYoutubeUrl(),
                 request.getBlogUrl(),
                 request.getInstagramUrl(),
-                updatedBy
+                currentUserId
         );
 
         // 도메인 URL 업데이트
         entity.updateDomainUrl(
                 request.getDomainUrl(),
-                updatedBy
+                currentUserId
         );
     }
 
     /**
      * 기본 학원 정보 생성.
      * 
-     * @param createdBy 등록자 ID
      * @return 기본값으로 설정된 학원 정보 엔티티
      */
-    public AcademyInfo createDefaultAcademyInfo(Long createdBy) {
+    public AcademyInfo createDefaultAcademyInfo() {
         return AcademyInfo.builder()
                 .academyName("학원명을 입력하세요")
                 .campusName("본점")
@@ -208,7 +208,7 @@ public class AcademyInfoMapper {
                 .youtubeUrl("")
                 .blogUrl("")
                 .instagramUrl("")
-                .createdBy(createdBy)
+                .createdBy(SecurityUtils.getCurrentUserId())
                 .build();
     }
 }
