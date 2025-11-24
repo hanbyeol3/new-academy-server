@@ -5,6 +5,7 @@ import com.academy.api.category.domain.CategoryGroup;
 import com.academy.api.category.dto.RequestCategoryCreate;
 import com.academy.api.category.dto.RequestCategoryUpdate;
 import com.academy.api.category.dto.ResponseCategory;
+import com.academy.api.common.util.SecurityUtils;
 import com.academy.api.data.responses.common.ResponseList;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
@@ -31,7 +32,7 @@ public class CategoryMapper {
                 .slug(request.getSlug())
                 .description(request.getDescription())
                 .sortOrder(request.getSortOrder())
-                .createdBy(request.getCreatedBy())
+                .createdBy(SecurityUtils.getCurrentUserId())
                 .build();
     }
 
@@ -73,9 +74,11 @@ public class CategoryMapper {
      * @param newCategoryGroup 변경할 카테고리 그룹 (nullable)
      */
     public void updateEntity(Category category, RequestCategoryUpdate request, CategoryGroup newCategoryGroup) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        
         // 카테고리 그룹 변경이 요청된 경우
         if (request.getCategoryGroupId() != null && newCategoryGroup != null) {
-            category.updateCategoryGroup(newCategoryGroup, request.getUpdatedBy());
+            category.updateCategoryGroup(newCategoryGroup, currentUserId);
         }
 
         // 기본 정보 업데이트
@@ -84,7 +87,7 @@ public class CategoryMapper {
                 request.getSlug() != null ? request.getSlug() : category.getSlug(),
                 request.getDescription() != null ? request.getDescription() : category.getDescription(),
                 request.getSortOrder() != null ? request.getSortOrder() : category.getSortOrder(),
-                request.getUpdatedBy()
+                currentUserId
         );
     }
 }

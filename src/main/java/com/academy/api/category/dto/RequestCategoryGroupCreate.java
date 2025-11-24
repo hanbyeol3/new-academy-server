@@ -29,7 +29,4 @@ public class RequestCategoryGroupCreate {
     @Size(max = 255, message = "설명은 255자 이하여야 합니다")
     @Schema(description = "그룹 설명", example = "교육과정과 관련된 카테고리들을 관리하는 그룹입니다")
     private String description;
-
-    @Schema(description = "등록자 관리자 ID", example = "1")
-    private Long createdBy;
 }

@@ -4,6 +4,7 @@ import com.academy.api.category.domain.CategoryGroup;
 import com.academy.api.category.dto.RequestCategoryGroupCreate;
 import com.academy.api.category.dto.RequestCategoryGroupUpdate;
 import com.academy.api.category.dto.ResponseCategoryGroup;
+import com.academy.api.common.util.SecurityUtils;
 import com.academy.api.data.responses.common.ResponseList;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
@@ -27,7 +28,7 @@ public class CategoryGroupMapper {
                 .slug(request.getSlug())
                 .name(request.getName())
                 .description(request.getDescription())
-                .createdBy(request.getCreatedBy())
+                .createdBy(SecurityUtils.getCurrentUserId())
                 .build();
     }
 
@@ -71,7 +72,7 @@ public class CategoryGroupMapper {
         categoryGroup.update(
                 request.getName() != null ? request.getName() : categoryGroup.getName(),
                 request.getDescription() != null ? request.getDescription() : categoryGroup.getDescription(),
-                request.getUpdatedBy()
+                SecurityUtils.getCurrentUserId()
         );
     }
 }

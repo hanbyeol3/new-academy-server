@@ -39,7 +39,4 @@ public class RequestCategoryCreate {
     @Min(value = 0, message = "정렬 순서는 0 이상이어야 합니다")
     @Schema(description = "정렬 순서", example = "1")
     private Integer sortOrder = 0;
-
-    @Schema(description = "등록자 관리자 ID", example = "1")
-    private Long createdBy;
 }

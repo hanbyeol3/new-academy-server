@@ -22,7 +22,4 @@ public class RequestCategoryGroupUpdate {
     @Size(max = 255, message = "설명은 255자 이하여야 합니다")
     @Schema(description = "그룹 설명", example = "수정된 교육과정 관련 카테고리 그룹입니다")
     private String description;
-
-    @Schema(description = "수정자 관리자 ID", example = "1")
-    private Long updatedBy;
 }

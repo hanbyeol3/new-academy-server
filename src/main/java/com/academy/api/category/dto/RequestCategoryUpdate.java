@@ -34,7 +34,4 @@ public class RequestCategoryUpdate {
     @Min(value = 0, message = "정렬 순서는 0 이상이어야 합니다")
     @Schema(description = "정렬 순서", example = "2")
     private Integer sortOrder;
-
-    @Schema(description = "수정자 관리자 ID", example = "1")
-    private Long updatedBy;
 }
