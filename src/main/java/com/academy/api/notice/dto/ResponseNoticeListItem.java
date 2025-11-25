@@ -1,5 +1,6 @@
 package com.academy.api.notice.dto;
 
+import com.academy.api.notice.domain.ExposureType;
 import com.academy.api.notice.domain.Notice;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -34,18 +35,35 @@ public class ResponseNoticeListItem {
     @Schema(description = "조회수", example = "150")
     private Long viewCount;
 
-    @Schema(description = "첨부파일 개수", example = "2")
-    private Long attachmentCount;
+    @Schema(description = "노출 기간 유형", example = "ALWAYS")
+    private ExposureType exposureType;
 
-    @Schema(description = "본문 이미지 개수", example = "1")
-    private Long inlineImageCount;
+    @Schema(description = "게시 시작일시", example = "2024-01-01T09:00:00")
+    private LocalDateTime exposureStartAt;
+
+    @Schema(description = "게시 종료일시", example = "2024-12-31T18:00:00")
+    private LocalDateTime exposureEndAt;
+
+    @Schema(description = "등록자 사용자 ID", example = "1")
+    private Long createdBy;
+
+    @Schema(description = "등록자 이름", example = "관리자")
+    private String createdByName;
 
     @Schema(description = "생성 시각", example = "2024-01-01T10:00:00")
     private LocalDateTime createdAt;
 
+    @Schema(description = "수정자 사용자 ID", example = "1")
+    private Long updatedBy;
+
+    @Schema(description = "수정자 이름", example = "관리자")
+    private String updatedByName;
+
+    @Schema(description = "수정 시각", example = "2024-01-01T10:00:00")
+    private LocalDateTime updatedAt;
+
     /**
-     * Entity에서 기본 DTO로 변환.
-     * 파일 개수는 서비스에서 별도 설정.
+     * Entity에서 DTO로 변환.
      */
     public static ResponseNoticeListItem from(Notice notice) {
         return ResponseNoticeListItem.builder()
@@ -55,9 +73,38 @@ public class ResponseNoticeListItem {
                 .isImportant(notice.getIsImportant())
                 .categoryName(notice.getCategory() != null ? notice.getCategory().getName() : null)
                 .viewCount(notice.getViewCount())
-                .attachmentCount(0L) // 서비스에서 설정
-                .inlineImageCount(0L) // 서비스에서 설정
+                .exposureType(notice.getExposureType())
+                .exposureStartAt(notice.getExposureStartAt())
+                .exposureEndAt(notice.getExposureEndAt())
+                .createdBy(notice.getCreatedBy())
+                .createdByName(null) // 서비스에서 별도 설정
                 .createdAt(notice.getCreatedAt())
+                .updatedBy(notice.getUpdatedBy())
+                .updatedByName(null) // 서비스에서 별도 설정
+                .updatedAt(notice.getUpdatedAt())
+                .build();
+    }
+
+    /**
+     * Entity에서 DTO로 변환 (회원 이름 포함).
+     */
+    public static ResponseNoticeListItem fromWithNames(Notice notice, String createdByName, String updatedByName) {
+        return ResponseNoticeListItem.builder()
+                .id(notice.getId())
+                .title(notice.getTitle())
+                .isPublished(notice.getIsPublished())
+                .isImportant(notice.getIsImportant())
+                .categoryName(notice.getCategory() != null ? notice.getCategory().getName() : null)
+                .viewCount(notice.getViewCount())
+                .exposureType(notice.getExposureType())
+                .exposureStartAt(notice.getExposureStartAt())
+                .exposureEndAt(notice.getExposureEndAt())
+                .createdBy(notice.getCreatedBy())
+                .createdByName(createdByName)
+                .createdAt(notice.getCreatedAt())
+                .updatedBy(notice.getUpdatedBy())
+                .updatedByName(updatedByName)
+                .updatedAt(notice.getUpdatedAt())
                 .build();
     }
 
@@ -70,20 +117,4 @@ public class ResponseNoticeListItem {
                 .toList();
     }
 
-    /**
-     * 파일 개수 설정 (빌더 패턴 보완).
-     */
-    public ResponseNoticeListItem withFileCounts(Long attachmentCount, Long inlineImageCount) {
-        return ResponseNoticeListItem.builder()
-                .id(this.id)
-                .title(this.title)
-                .isPublished(this.isPublished)
-                .isImportant(this.isImportant)
-                .categoryName(this.categoryName)
-                .viewCount(this.viewCount)
-                .attachmentCount(attachmentCount != null ? attachmentCount : 0L)
-                .inlineImageCount(inlineImageCount != null ? inlineImageCount : 0L)
-                .createdAt(this.createdAt)
-                .build();
-    }
 }

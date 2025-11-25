@@ -32,6 +32,7 @@ public class NoticeMapper {
                 .exposureStartAt(request.getExposureStartAt())
                 .exposureEndAt(request.getExposureEndAt())
                 .category(category)
+                .viewCount(request.getViewCount())
                 .createdBy(SecurityUtils.getCurrentUserId()) // 실제 로그인 사용자 ID
                 .build();
     }
@@ -95,6 +96,7 @@ public class NoticeMapper {
                 request.getExposureStartAt() != null ? request.getExposureStartAt() : notice.getExposureStartAt(),
                 request.getExposureEndAt() != null ? request.getExposureEndAt() : notice.getExposureEndAt(),
                 category != null ? category : notice.getCategory(),
+                request.getViewCount() != null ? request.getViewCount() : notice.getViewCount(),
                 SecurityUtils.getCurrentUserId() // 실제 로그인 사용자 ID (수정자)
         );
     }

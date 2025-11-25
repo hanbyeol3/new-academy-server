@@ -2,6 +2,8 @@ package com.academy.api.notice.service;
 
 import com.academy.api.category.domain.Category;
 import com.academy.api.category.repository.CategoryRepository;
+import com.academy.api.member.domain.Member;
+import com.academy.api.member.repository.MemberRepository;
 import com.academy.api.common.exception.BusinessException;
 import com.academy.api.common.exception.ErrorCode;
 import com.academy.api.common.util.SecurityUtils;
@@ -57,6 +59,7 @@ public class NoticeServiceImpl implements NoticeService {
 
     private final NoticeRepository noticeRepository;
     private final CategoryRepository categoryRepository;
+    private final MemberRepository memberRepository;
     private final NoticeMapper noticeMapper;
     private final UploadFileLinkRepository uploadFileLinkRepository;
     private final FileService fileService;
@@ -110,17 +113,8 @@ public class NoticeServiceImpl implements NoticeService {
         log.debug("[NoticeService] 공지사항 검색 결과. 전체={}건, 현재페이지={}, 실제반환={}건, 파일연결조회={}건", 
                 noticePage.getTotalElements(), noticePage.getNumber(), notices.size(), fileCounts.size());
         
-        // 5. DTO 변환 (파일 개수 포함)
-        List<ResponseNoticeListItem> items = notices.stream()
-                .map(notice -> {
-                    Map<FileRole, Long> counts = fileCountMap.getOrDefault(notice.getId(), Map.of());
-                    Long attachmentCount = counts.getOrDefault(FileRole.ATTACHMENT, 0L);
-                    Long inlineImageCount = counts.getOrDefault(FileRole.INLINE, 0L);
-                    
-                    return ResponseNoticeListItem.from(notice)
-                            .withFileCounts(attachmentCount, inlineImageCount);
-                })
-                .toList();
+        // 5. DTO 변환 (파일 개수 제외)
+        List<ResponseNoticeListItem> items = ResponseNoticeListItem.fromList(notices);
         
         return ResponseList.ok(
                 items,
@@ -143,15 +137,30 @@ public class NoticeServiceImpl implements NoticeService {
     }
 
     @Override
-    public ResponseList<ResponseNoticeSimple> getNoticeListForAdmin(RequestNoticeSearch searchCondition, Pageable pageable) {
+    public ResponseList<ResponseNoticeListItem> getNoticeListForAdmin(RequestNoticeSearch searchCondition, Pageable pageable) {
         log.info("[NoticeService] 관리자용 공지사항 목록 조회 시작. 검색조건={}, 페이지={}", searchCondition, pageable);
         
         Page<Notice> noticePage = noticeRepository.searchNoticesForAdmin(searchCondition, pageable);
+        List<Notice> notices = noticePage.getContent();
         
         log.debug("[NoticeService] 관리자 공지사항 검색 결과. 전체={}건, 현재페이지={}, 실제반환={}건", 
-                noticePage.getTotalElements(), noticePage.getNumber(), noticePage.getContent().size());
+                noticePage.getTotalElements(), noticePage.getNumber(), notices.size());
         
-        return noticeMapper.toSimpleResponseList(noticePage);
+        // 회원 이름 포함하여 DTO 변환
+        List<ResponseNoticeListItem> items = notices.stream()
+                .map(notice -> {
+                    String createdByName = getMemberName(notice.getCreatedBy());
+                    String updatedByName = getMemberName(notice.getUpdatedBy());
+                    return ResponseNoticeListItem.fromWithNames(notice, createdByName, updatedByName);
+                })
+                .toList();
+        
+        return ResponseList.ok(
+                items,
+                noticePage.getTotalElements(),
+                noticePage.getNumber(),
+                noticePage.getSize()
+        );
     }
 
     @Override
@@ -211,26 +220,35 @@ public class NoticeServiceImpl implements NoticeService {
         log.info("[NoticeService] 공지사항 조회 완료. ID={}, 제목={}, 조회수={}, 첨부파일={}개, 본문이미지={}개", 
                 id, notice.getTitle(), notice.getViewCount(), attachments.size(), inlineImages.size());
         
-        // ResponseNotice 생성 (파일 목록 포함)
-        ResponseNotice response = ResponseNotice.builder()
-                .id(notice.getId())
-                .title(notice.getTitle())
-                .content(notice.getContent())
-                .isImportant(notice.getIsImportant())
-                .isPublished(notice.getIsPublished())
-                .exposureType(notice.getExposureType())
-                .exposureStartAt(notice.getExposureStartAt())
-                .exposureEndAt(notice.getExposureEndAt())
-                .categoryId(notice.getCategory() != null ? notice.getCategory().getId() : null)
-                .categoryName(notice.getCategory() != null ? notice.getCategory().getName() : null)
-                .viewCount(notice.getViewCount())
+        // 회원 이름 조회
+        String createdByName = getMemberName(notice.getCreatedBy());
+        String updatedByName = getMemberName(notice.getUpdatedBy());
+        
+        // ResponseNotice 생성 (파일 목록 및 회원 이름 포함)
+        ResponseNotice response = ResponseNotice.fromWithNames(notice, createdByName, updatedByName);
+        
+        // 파일 정보 설정
+        response = ResponseNotice.builder()
+                .id(response.getId())
+                .title(response.getTitle())
+                .content(response.getContent())
+                .isImportant(response.getIsImportant())
+                .isPublished(response.getIsPublished())
+                .exposureType(response.getExposureType())
+                .exposureStartAt(response.getExposureStartAt())
+                .exposureEndAt(response.getExposureEndAt())
+                .categoryId(response.getCategoryId())
+                .categoryName(response.getCategoryName())
+                .viewCount(response.getViewCount())
                 .attachments(attachments)
                 .inlineImages(inlineImages)
-                .exposable(notice.isExposable())
-                .createdBy(notice.getCreatedBy())
-                .createdAt(notice.getCreatedAt())
-                .updatedBy(notice.getUpdatedBy())
-                .updatedAt(notice.getUpdatedAt())
+                .exposable(response.getExposable())
+                .createdBy(response.getCreatedBy())
+                .createdByName(response.getCreatedByName())
+                .createdAt(response.getCreatedAt())
+                .updatedBy(response.getUpdatedBy())
+                .updatedByName(response.getUpdatedByName())
+                .updatedAt(response.getUpdatedAt())
                 .build();
         
         return ResponseData.ok(response);
@@ -474,6 +492,18 @@ public class NoticeServiceImpl implements NoticeService {
                     log.warn("[NoticeService] 카테고리를 찾을 수 없음. ID={}", categoryId);
                     return new BusinessException(ErrorCode.CATEGORY_NOT_FOUND);
                 });
+    }
+
+    /**
+     * 회원 이름 조회 도우미 메서드.
+     */
+    private String getMemberName(Long memberId) {
+        if (memberId == null) {
+            return "Unknown";
+        }
+        return memberRepository.findById(memberId)
+                .map(Member::getMemberName)
+                .orElse("Unknown");
     }
 
     /**

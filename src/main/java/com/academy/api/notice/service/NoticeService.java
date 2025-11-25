@@ -7,6 +7,7 @@ import com.academy.api.notice.dto.RequestNoticeCreate;
 import com.academy.api.notice.dto.RequestNoticeSearch;
 import com.academy.api.notice.dto.RequestNoticeUpdate;
 import com.academy.api.notice.dto.ResponseNotice;
+import com.academy.api.notice.dto.ResponseNoticeListItem;
 import com.academy.api.notice.dto.ResponseNoticeSimple;
 import org.springframework.data.domain.Pageable;
 
@@ -40,7 +41,7 @@ public interface NoticeService {
      * @param pageable 페이징 정보
      * @return 검색 결과
      */
-    ResponseList<ResponseNoticeSimple> getNoticeListForAdmin(RequestNoticeSearch searchCondition, Pageable pageable);
+    ResponseList<ResponseNoticeListItem> getNoticeListForAdmin(RequestNoticeSearch searchCondition, Pageable pageable);
 
     /**
      * 공개용 공지사항 목록 조회 (노출 가능한 것만).

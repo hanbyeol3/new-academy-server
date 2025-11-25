@@ -7,7 +7,7 @@ import com.academy.api.notice.dto.RequestNoticeCreate;
 import com.academy.api.notice.dto.RequestNoticeSearch;
 import com.academy.api.notice.dto.RequestNoticeUpdate;
 import com.academy.api.notice.dto.ResponseNotice;
-import com.academy.api.notice.dto.ResponseNoticeSimple;
+import com.academy.api.notice.dto.ResponseNoticeListItem;
 import com.academy.api.notice.service.NoticeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -73,7 +73,7 @@ public class NoticeAdminController {
                 """
     )
     @GetMapping
-    public ResponseList<ResponseNoticeSimple> getNoticeList(
+    public ResponseList<ResponseNoticeListItem> getNoticeList(
             @Parameter(description = "검색 조건") RequestNoticeSearch searchCondition,
             @Parameter(description = "페이징 정보", 
                       example = "{\"page\":0,\"size\":15,\"sort\":[\"createdAt\"]}")

@@ -10,6 +10,7 @@ import com.academy.api.category.repository.CategoryGroupRepository;
 import com.academy.api.category.repository.CategoryRepository;
 import com.academy.api.common.exception.BusinessException;
 import com.academy.api.common.exception.ErrorCode;
+import com.academy.api.common.util.SecurityUtils;
 import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
 import lombok.RequiredArgsConstructor;
@@ -119,7 +120,7 @@ public class CategoryServiceImpl implements CategoryService {
         
         Category category = categoryMapper.toEntity(request, categoryGroup);
         if (sortOrder != null) {
-            category.updateSortOrder(sortOrder, request.getCreatedBy());
+            category.updateSortOrder(sortOrder, SecurityUtils.getCurrentUserId());
         }
         
         Category savedCategory = categoryRepository.save(category);

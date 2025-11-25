@@ -176,8 +176,20 @@ public class ResponseDomain {
     
     // 도메인별 비즈니스 필드들...
     
+    @Schema(description = "등록자 사용자 ID", example = "1")
+    private Long createdBy;
+    
+    @Schema(description = "등록자 이름", example = "관리자")
+    private String createdByName;
+    
     @Schema(description = "생성 시각", example = "2024-01-01T10:00:00")
     private LocalDateTime createdAt;
+    
+    @Schema(description = "수정자 사용자 ID", example = "1")
+    private Long updatedBy;
+    
+    @Schema(description = "수정자 이름", example = "관리자")
+    private String updatedByName;
     
     @Schema(description = "수정 시각", example = "2024-01-01T10:00:00")
     private LocalDateTime updatedAt;
@@ -189,7 +201,27 @@ public class ResponseDomain {
         return ResponseDomain.builder()
                 .id(entity.getId())
                 // 필드 매핑...
+                .createdBy(entity.getCreatedBy())
+                .createdByName(null) // 서비스에서 별도 설정
                 .createdAt(entity.getCreatedAt())
+                .updatedBy(entity.getUpdatedBy())
+                .updatedByName(null) // 서비스에서 별도 설정
+                .updatedAt(entity.getUpdatedAt())
+                .build();
+    }
+    
+    /**
+     * 엔티티에서 DTO로 변환 (회원 이름 포함).
+     */
+    public static ResponseDomain fromWithNames(Domain entity, String createdByName, String updatedByName) {
+        return ResponseDomain.builder()
+                .id(entity.getId())
+                // 필드 매핑...
+                .createdBy(entity.getCreatedBy())
+                .createdByName(createdByName)
+                .createdAt(entity.getCreatedAt())
+                .updatedBy(entity.getUpdatedBy())
+                .updatedByName(updatedByName)
                 .updatedAt(entity.getUpdatedAt())
                 .build();
     }
@@ -290,7 +322,8 @@ public class ResponseDomainSummary { ... }
 - [ ] **기본 어노테이션**: `@Getter`, `@Builder`, `@Schema` ✓
 - [ ] **필드 문서화**: 모든 필드에 `@Schema` + description + example ✓
 - [ ] **표준 필드**: id, createdAt, updatedAt 포함 ✓
-- [ ] **정적 팩토리**: `from()`, `fromList()` 메서드 제공 ✓
+- [ ] **사용자 추적 필드**: `createdBy`, `createdByName`, `updatedBy`, `updatedByName` 포함 ✓
+- [ ] **정적 팩토리**: `from()`, `fromWithNames()`, `fromList()` 메서드 제공 ✓
 - [ ] **단순성**: 불필요한 중첩 클래스 지양 ✓
 - [ ] **일관성**: 동일한 도메인 내 다른 DTO와 일관된 구조 ✓
 
@@ -944,7 +977,48 @@ public class {Domain}ServiceImpl implements {Domain}Service {
 }
 ```
 
-#### B. 복합 기능 Service
+#### B. 복합 기능 Service (회원 이름 포함)
+```java
+@Slf4j
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class {Domain}ServiceImpl implements {Domain}Service {
+    
+    private final {Domain}Repository repository;
+    private final MemberRepository memberRepository;  // 회원 이름 조회용
+    private final {Domain}Mapper mapper;
+    
+    /**
+     * 회원 이름 조회 도우미 메서드.
+     */
+    private String getMemberName(Long memberId) {
+        if (memberId == null) {
+            return "Unknown";
+        }
+        return memberRepository.findById(memberId)
+                .map(Member::getMemberName)
+                .orElse("Unknown");
+    }
+    
+    // Response DTO 변환 시 회원 이름 포함
+    public ResponseList<ResponseDomainListItem> getDomainList(...) {
+        List<Domain> entities = repository.findAll();
+        
+        List<ResponseDomainListItem> items = entities.stream()
+                .map(entity -> {
+                    String createdByName = getMemberName(entity.getCreatedBy());
+                    String updatedByName = getMemberName(entity.getUpdatedBy());
+                    return ResponseDomainListItem.fromWithNames(entity, createdByName, updatedByName);
+                })
+                .toList();
+                
+        // ...
+    }
+}
+```
+
+#### C. 외부 연동 Service
 ```java
 @Slf4j
 @Service
@@ -1043,6 +1117,7 @@ if (entity.isNotEditable()) {
 2. **Repository 직접 노출** - 항상 서비스 경유
 3. **Magic String 사용** - 상수나 enum 활용
 4. **Response 타입 혼재** - 도메인별 일관성 유지
+5. **회원 이름 누락** - `createdBy`, `updatedBy` 있으면 `createdByName`, `updatedByName` 필수 제공
 
 ### 🧪 테스트 요구사항
 

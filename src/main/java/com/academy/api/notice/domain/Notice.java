@@ -107,7 +107,7 @@ public class Notice {
     @Builder
     private Notice(String title, String content, Boolean isImportant, Boolean isPublished,
                    ExposureType exposureType, LocalDateTime exposureStartAt, LocalDateTime exposureEndAt,
-                   Category category, Long createdBy) {
+                   Category category, Long viewCount, Long createdBy) {
         this.title = title;
         this.content = content;
         this.isImportant = isImportant != null ? isImportant : false;
@@ -116,6 +116,7 @@ public class Notice {
         this.exposureStartAt = exposureStartAt;
         this.exposureEndAt = exposureEndAt;
         this.category = category;
+        this.viewCount = viewCount != null ? viewCount : 0L;
         this.createdBy = createdBy;
     }
 
@@ -124,7 +125,7 @@ public class Notice {
      */
     public void update(String title, String content, Boolean isImportant, Boolean isPublished,
                       ExposureType exposureType, LocalDateTime exposureStartAt, LocalDateTime exposureEndAt,
-                      Category category, Long updatedBy) {
+                      Category category, Long viewCount, Long updatedBy) {
         this.title = title;
         this.content = content;
         this.isImportant = isImportant != null ? isImportant : false;
@@ -133,6 +134,7 @@ public class Notice {
         this.exposureStartAt = exposureStartAt;
         this.exposureEndAt = exposureEndAt;
         this.category = category;
+        this.viewCount = viewCount != null ? viewCount : 0L;
         this.updatedBy = updatedBy;
     }
 

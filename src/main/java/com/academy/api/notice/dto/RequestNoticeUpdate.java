@@ -44,6 +44,9 @@ public class RequestNoticeUpdate {
     @Schema(description = "카테고리 ID", example = "2")
     private Long categoryId;
 
+    @Schema(description = "조회수", example = "150")
+    private Long viewCount;
+
     @Schema(description = "첨부파일 ID 목록 (치환방식)", example = "[\"uuid-a\"]")
     private List<String> attachments;
 

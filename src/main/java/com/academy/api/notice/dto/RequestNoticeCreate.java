@@ -47,6 +47,9 @@ public class RequestNoticeCreate {
     @Schema(description = "카테고리 ID", example = "1")
     private Long categoryId;
 
+    @Schema(description = "조회수", example = "0")
+    private Long viewCount = 0L;
+
     @Schema(description = "첨부파일 ID 목록", example = "[\"uuid-a\", \"uuid-b\"]")
     private List<String> attachments;
 

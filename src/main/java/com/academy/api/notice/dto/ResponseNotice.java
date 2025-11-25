@@ -63,11 +63,17 @@ public class ResponseNotice {
     @Schema(description = "등록자 사용자 ID", example = "1")
     private Long createdBy;
 
+    @Schema(description = "등록자 이름", example = "관리자")
+    private String createdByName;
+
     @Schema(description = "생성 시각", example = "2024-01-01T10:00:00")
     private LocalDateTime createdAt;
 
     @Schema(description = "수정자 사용자 ID", example = "1")
     private Long updatedBy;
+
+    @Schema(description = "수정자 이름", example = "관리자")
+    private String updatedByName;
 
     @Schema(description = "수정 시각", example = "2024-01-01T10:00:00")
     private LocalDateTime updatedAt;
@@ -92,8 +98,38 @@ public class ResponseNotice {
                 .inlineImages(null) // 서비스에서 별도 설정
                 .exposable(notice.isExposable())
                 .createdBy(notice.getCreatedBy())
+                .createdByName(null) // 서비스에서 별도 설정
                 .createdAt(notice.getCreatedAt())
                 .updatedBy(notice.getUpdatedBy())
+                .updatedByName(null) // 서비스에서 별도 설정
+                .updatedAt(notice.getUpdatedAt())
+                .build();
+    }
+
+    /**
+     * Entity에서 DTO로 변환 (회원 이름 포함).
+     */
+    public static ResponseNotice fromWithNames(Notice notice, String createdByName, String updatedByName) {
+        return ResponseNotice.builder()
+                .id(notice.getId())
+                .title(notice.getTitle())
+                .content(notice.getContent())
+                .isImportant(notice.getIsImportant())
+                .isPublished(notice.getIsPublished())
+                .exposureType(notice.getExposureType())
+                .exposureStartAt(notice.getExposureStartAt())
+                .exposureEndAt(notice.getExposureEndAt())
+                .categoryId(notice.getCategory() != null ? notice.getCategory().getId() : null)
+                .categoryName(notice.getCategory() != null ? notice.getCategory().getName() : null)
+                .viewCount(notice.getViewCount())
+                .attachments(null) // 서비스에서 별도 설정
+                .inlineImages(null) // 서비스에서 별도 설정
+                .exposable(notice.isExposable())
+                .createdBy(notice.getCreatedBy())
+                .createdByName(createdByName)
+                .createdAt(notice.getCreatedAt())
+                .updatedBy(notice.getUpdatedBy())
+                .updatedByName(updatedByName)
                 .updatedAt(notice.getUpdatedAt())
                 .build();
     }
