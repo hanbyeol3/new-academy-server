@@ -2,6 +2,7 @@ package com.academy.api.notice.service;
 
 import com.academy.api.category.domain.Category;
 import com.academy.api.category.repository.CategoryRepository;
+import com.academy.api.category.service.CategoryUsageChecker;
 import com.academy.api.member.domain.Member;
 import com.academy.api.member.repository.MemberRepository;
 import com.academy.api.common.exception.BusinessException;
@@ -57,7 +58,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class NoticeServiceImpl implements NoticeService {
+public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
 
     private final NoticeRepository noticeRepository;
     private final CategoryRepository categoryRepository;
@@ -697,5 +698,22 @@ public class NoticeServiceImpl implements NoticeService {
 
         // 2. 새로운 연결 생성 (INSERT)
         createFileLinks(noticeId, fileIds, role);
+    }
+    
+    // ================== CategoryUsageChecker 구현 ==================
+    
+    @Override
+    public boolean hasDataUsingCategory(Long categoryId) {
+        long noticeCount = noticeRepository.countByCategoryId(categoryId);
+        
+        log.debug("[NoticeService] 카테고리 사용 확인. categoryId={}, 공지사항수={}", 
+                categoryId, noticeCount);
+        
+        return noticeCount > 0;
+    }
+    
+    @Override
+    public String getDomainName() {
+        return "공지사항";
     }
 }

@@ -51,6 +51,7 @@ public enum ErrorCode {
     CATEGORY_GROUP_HAS_CATEGORIES(HttpStatus.BAD_REQUEST, "CATEGORY_GROUP_HAS_CATEGORIES", "하위 카테고리가 존재하여 삭제할 수 없습니다."),
     CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "CATEGORY_NOT_FOUND", "카테고리를 찾을 수 없습니다."),
     CATEGORY_SLUG_ALREADY_EXISTS(HttpStatus.CONFLICT, "CATEGORY_SLUG_ALREADY_EXISTS", "같은 그룹 내에서 이미 사용 중인 슬러그입니다."),
+    CATEGORY_HAS_RELATED_DATA(HttpStatus.BAD_REQUEST, "CATEGORY_HAS_RELATED_DATA", "카테고리에 연결된 데이터가 있어 삭제할 수 없습니다."),
     INVALID_SLUG_FORMAT(HttpStatus.BAD_REQUEST, "INVALID_SLUG_FORMAT", "슬러그는 영문, 숫자, 하이픈만 사용 가능합니다."),
 
     // 공지사항 관련 에러

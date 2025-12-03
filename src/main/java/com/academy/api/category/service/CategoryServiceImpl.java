@@ -44,6 +44,7 @@ public class CategoryServiceImpl implements CategoryService {
     private final CategoryRepository categoryRepository;
     private final CategoryGroupRepository categoryGroupRepository;
     private final CategoryMapper categoryMapper;
+    private final List<CategoryUsageChecker> categoryUsageCheckers;
 
     @Override
     public ResponseData<List<ResponseCategory>> getCategoryList() {
@@ -178,6 +179,17 @@ public class CategoryServiceImpl implements CategoryService {
         if (!categoryRepository.existsById(id)) {
             throw new BusinessException(ErrorCode.CATEGORY_NOT_FOUND);
         }
+        
+        // 관련 데이터 존재 여부 확인 (모든 도메인)
+        for (CategoryUsageChecker checker : categoryUsageCheckers) {
+            if (checker.hasDataUsingCategory(id)) {
+                log.warn("[CategoryService] {}에서 카테고리 사용 중으로 삭제 불가. ID={}, 도메인={}", 
+                        checker.getDomainName(), id, checker.getDomainName());
+                throw new BusinessException(ErrorCode.CATEGORY_HAS_RELATED_DATA);
+            }
+        }
+        
+        log.debug("[CategoryService] 관련 데이터 확인 완료. ID={}, 확인된 도메인수={}", id, categoryUsageCheckers.size());
         
         categoryRepository.deleteById(id);
         

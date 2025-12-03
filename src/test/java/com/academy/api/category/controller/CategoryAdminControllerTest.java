@@ -3,6 +3,8 @@ package com.academy.api.category.controller;
 import com.academy.api.category.dto.*;
 import com.academy.api.category.service.CategoryGroupService;
 import com.academy.api.category.service.CategoryService;
+import com.academy.api.common.exception.BusinessException;
+import com.academy.api.common.exception.ErrorCode;
 import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,6 +23,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -247,6 +250,58 @@ class CategoryAdminControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andDo(print())
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("카테고리 삭제 - 성공")
+    void deleteCategory_Success() throws Exception {
+        // given
+        Long categoryId = 1L;
+        Response response = Response.ok("0000", "카테고리가 삭제되었습니다.");
+
+        given(categoryService.deleteCategory(categoryId)).willReturn(response);
+
+        // when & then
+        mockMvc.perform(delete("/api/admin/categories/{categoryId}", categoryId)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("0000"))
+                .andExpect(jsonPath("$.message").value("카테고리가 삭제되었습니다."));
+    }
+
+    @Test
+    @DisplayName("카테고리 삭제 - 관련 데이터 존재로 삭제 실패")
+    void deleteCategory_HasRelatedData() throws Exception {
+        // given
+        Long categoryId = 1L;
+        willThrow(new BusinessException(ErrorCode.CATEGORY_HAS_RELATED_DATA))
+                .given(categoryService).deleteCategory(categoryId);
+
+        // when & then
+        mockMvc.perform(delete("/api/admin/categories/{categoryId}", categoryId)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andDo(print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("CATEGORY_HAS_RELATED_DATA"))
+                .andExpect(jsonPath("$.message").value("카테고리에 연결된 데이터가 있어 삭제할 수 없습니다."));
+    }
+
+    @Test
+    @DisplayName("카테고리 삭제 - 존재하지 않는 카테고리")
+    void deleteCategory_NotFound() throws Exception {
+        // given
+        Long categoryId = 999L;
+        willThrow(new BusinessException(ErrorCode.CATEGORY_NOT_FOUND))
+                .given(categoryService).deleteCategory(categoryId);
+
+        // when & then
+        mockMvc.perform(delete("/api/admin/categories/{categoryId}", categoryId)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andDo(print())
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("CATEGORY_NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("카테고리를 찾을 수 없습니다."));
     }
 
 }

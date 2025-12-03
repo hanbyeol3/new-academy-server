@@ -69,4 +69,10 @@ public interface NoticeRepository extends JpaRepository<Notice, Long>, NoticeRep
     @Modifying
     @Query("UPDATE Notice n SET n.isPublished = :isPublished, n.updatedBy = :updatedBy, n.updatedAt = CURRENT_TIMESTAMP WHERE n.id = :id")
     int updatePublishedStatus(@Param("id") Long id, @Param("isPublished") Boolean isPublished, @Param("updatedBy") Long updatedBy);
+    
+    /**
+     * 특정 카테고리를 사용하는 공지사항 개수 조회.
+     */
+    @Query("SELECT COUNT(n) FROM Notice n WHERE n.category.id = :categoryId")
+    long countByCategoryId(@Param("categoryId") Long categoryId);
 }

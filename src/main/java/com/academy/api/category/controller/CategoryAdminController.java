@@ -219,10 +219,15 @@ public class CategoryAdminController {
         description = """
                 카테고리를 삭제합니다.
                 
+                삭제 제약조건:
+                - 해당 카테고리에 연결된 공지사항이 있는 경우 삭제 불가
+                - 추후 FAQ 등 다른 도메인에서 카테고리 사용 시에도 삭제 제약 적용
+                
                 주의사항:
                 - 삭제된 카테고리는 복구할 수 없습니다
-                - 해당 카테고리를 참조하는 다른 데이터가 있는지 확인 필요
+                - 관련 데이터가 존재하는 경우 CATEGORY_HAS_RELATED_DATA 에러 반환
                 - 실제 운영에서는 soft delete 고려 권장
+                - 관련 공지사항을 먼저 다른 카테고리로 이동하거나 삭제 후 카테고리 삭제 가능
                 """
     )
     @DeleteMapping("/{categoryId}")
