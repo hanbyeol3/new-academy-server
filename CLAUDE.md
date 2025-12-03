@@ -237,6 +237,48 @@ public class ResponseDomain {
 }
 ```
 
+## 📅 JSON 날짜 형식 표준
+
+### 🎯 LocalDateTime 필드 표준화
+
+모든 DTO에서 `LocalDateTime` 필드는 반드시 `@JsonFormat` 어노테이션을 사용하여 일관된 날짜 형식을 적용해야 합니다.
+
+#### ✅ 표준 패턴
+```java
+import com.fasterxml.jackson.annotation.JsonFormat;
+
+@JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+@Schema(description = "생성 시각", example = "2024-01-01 10:00:00")
+private LocalDateTime createdAt;
+
+@JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+@Schema(description = "게시 시작일시", example = "2024-01-01 09:00:00")
+private LocalDateTime exposureStartAt;
+```
+
+#### 📋 적용 대상
+- **Request DTO**: 모든 `LocalDateTime` 필드
+- **Response DTO**: 모든 `LocalDateTime` 필드
+- **검색 DTO**: 날짜 범위 필드
+
+#### 🔍 표준 형식
+- **패턴**: `yyyy-MM-dd HH:mm:ss`
+- **예시**: `2024-01-01 10:00:00`
+- **금지**: ISO 8601 형식 (`2024-01-01T10:00:00`)
+
+#### ⚠️ 주의사항
+- API 문서의 `example`도 동일한 형식으로 통일
+- 기존 ISO 형식을 사용하는 곳은 점진적으로 수정
+- 프론트엔드와 날짜 형식 협의 필수
+
+### 📝 체크리스트
+
+새로운 DTO 작성 시:
+- [ ] `import com.fasterxml.jackson.annotation.JsonFormat;` 추가
+- [ ] 모든 `LocalDateTime` 필드에 `@JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")` 적용
+- [ ] `@Schema` 예시도 동일한 형식으로 작성
+- [ ] 기존 ISO 형식 예시는 새 형식으로 변경
+
 ## 🗄️ Spring Data JPA 개발 주의사항
 
 ### ❌ 잘못된 메서드명 예시

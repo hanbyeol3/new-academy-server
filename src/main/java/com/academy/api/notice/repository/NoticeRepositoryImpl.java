@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.support.PageableExecutionUtils;
+import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -19,6 +20,7 @@ import java.util.List;
 /**
  * 공지사항 커스텀 Repository 구현.
  */
+@Repository
 @RequiredArgsConstructor
 public class NoticeRepositoryImpl implements NoticeRepositoryCustom {
 
@@ -172,5 +174,63 @@ public class NoticeRepositoryImpl implements NoticeRepositoryCustom {
             case "VIEW_COUNT_DESC" -> new OrderSpecifier[]{notice.viewCount.desc(), notice.createdAt.desc()};
             default -> new OrderSpecifier[]{notice.createdAt.desc()};
         };
+    }
+
+    /**
+     * 이전 공지사항 조회 (목록에서 위에 있는 글).
+     * createdAt > current.createdAt OR (createdAt = current.createdAt AND id > current.id)
+     */
+    @Override
+    public Notice findPreviousNotice(Long currentId) {
+        // 현재 공지사항 조회
+        Notice current = queryFactory
+                .selectFrom(notice)
+                .where(notice.id.eq(currentId))
+                .fetchOne();
+                
+        if (current == null) {
+            return null;
+        }
+        
+        return queryFactory
+                .selectFrom(notice)
+                .where(
+                    notice.createdAt.gt(current.getCreatedAt())
+                    .or(
+                        notice.createdAt.eq(current.getCreatedAt())
+                        .and(notice.id.gt(currentId))
+                    )
+                )
+                .orderBy(notice.createdAt.asc(), notice.id.asc())
+                .fetchFirst();
+    }
+
+    /**
+     * 다음 공지사항 조회 (목록에서 아래에 있는 글).
+     * createdAt < current.createdAt OR (createdAt = current.createdAt AND id < current.id)
+     */
+    @Override
+    public Notice findNextNotice(Long currentId) {
+        // 현재 공지사항 조회
+        Notice current = queryFactory
+                .selectFrom(notice)
+                .where(notice.id.eq(currentId))
+                .fetchOne();
+                
+        if (current == null) {
+            return null;
+        }
+        
+        return queryFactory
+                .selectFrom(notice)
+                .where(
+                    notice.createdAt.lt(current.getCreatedAt())
+                    .or(
+                        notice.createdAt.eq(current.getCreatedAt())
+                        .and(notice.id.lt(currentId))
+                    )
+                )
+                .orderBy(notice.createdAt.desc(), notice.id.desc())
+                .fetchFirst();
     }
 }

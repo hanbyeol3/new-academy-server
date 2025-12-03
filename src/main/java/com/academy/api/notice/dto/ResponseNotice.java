@@ -3,6 +3,7 @@ package com.academy.api.notice.dto;
 import com.academy.api.file.dto.ResponseFileInfo;
 import com.academy.api.notice.domain.ExposureType;
 import com.academy.api.notice.domain.Notice;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -36,10 +37,12 @@ public class ResponseNotice {
     @Schema(description = "노출 기간 유형", example = "ALWAYS")
     private ExposureType exposureType;
 
-    @Schema(description = "게시 시작일시", example = "2024-01-01T09:00:00")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @Schema(description = "게시 시작일시", example = "2024-01-01 09:00:00")
     private LocalDateTime exposureStartAt;
 
-    @Schema(description = "게시 종료일시", example = "2024-12-31T18:00:00")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @Schema(description = "게시 종료일시", example = "2024-12-31 18:00:00")
     private LocalDateTime exposureEndAt;
 
     @Schema(description = "카테고리 ID", example = "1")
@@ -60,13 +63,17 @@ public class ResponseNotice {
     @Schema(description = "현재 시점 노출 가능 여부", example = "true")
     private Boolean exposable;
 
+    @Schema(description = "이전글/다음글 네비게이션 정보")
+    private ResponseNoticeNavigation navigation;
+
     @Schema(description = "등록자 사용자 ID", example = "1")
     private Long createdBy;
 
     @Schema(description = "등록자 이름", example = "관리자")
     private String createdByName;
 
-    @Schema(description = "생성 시각", example = "2024-01-01T10:00:00")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @Schema(description = "생성 시각", example = "2024-01-01 10:00:00")
     private LocalDateTime createdAt;
 
     @Schema(description = "수정자 사용자 ID", example = "1")
@@ -75,7 +82,8 @@ public class ResponseNotice {
     @Schema(description = "수정자 이름", example = "관리자")
     private String updatedByName;
 
-    @Schema(description = "수정 시각", example = "2024-01-01T10:00:00")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @Schema(description = "수정 시각", example = "2024-01-01 10:00:00")
     private LocalDateTime updatedAt;
 
     /**
@@ -97,6 +105,7 @@ public class ResponseNotice {
                 .attachments(null) // 서비스에서 별도 설정
                 .inlineImages(null) // 서비스에서 별도 설정
                 .exposable(notice.isExposable())
+                .navigation(null) // 서비스에서 별도 설정
                 .createdBy(notice.getCreatedBy())
                 .createdByName(null) // 서비스에서 별도 설정
                 .createdAt(notice.getCreatedAt())
@@ -125,6 +134,7 @@ public class ResponseNotice {
                 .attachments(null) // 서비스에서 별도 설정
                 .inlineImages(null) // 서비스에서 별도 설정
                 .exposable(notice.isExposable())
+                .navigation(null) // 서비스에서 별도 설정
                 .createdBy(notice.getCreatedBy())
                 .createdByName(createdByName)
                 .createdAt(notice.getCreatedAt())

@@ -2,6 +2,7 @@ package com.academy.api.notice.dto;
 
 import com.academy.api.notice.domain.ExposureType;
 import com.academy.api.notice.domain.Notice;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -47,10 +48,12 @@ public class ResponseNoticeSimple {
     @Schema(description = "현재 시점 노출 가능 여부", example = "true")
     private Boolean exposable;
 
-    @Schema(description = "생성 시각", example = "2024-01-01T10:00:00")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @Schema(description = "생성 시각", example = "2024-01-01 10:00:00")
     private LocalDateTime createdAt;
 
-    @Schema(description = "수정 시각", example = "2024-01-01T10:00:00")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @Schema(description = "수정 시각", example = "2024-01-01 10:00:00")
     private LocalDateTime updatedAt;
 
     /**

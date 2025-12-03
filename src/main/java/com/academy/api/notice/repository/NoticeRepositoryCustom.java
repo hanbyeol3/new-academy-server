@@ -53,4 +53,20 @@ public interface NoticeRepositoryCustom {
      * @return 최근 공지사항 목록
      */
     List<Notice> findRecentNotices(int limit);
+
+    /**
+     * 이전 공지사항 조회.
+     * 
+     * @param currentId 현재 공지사항 ID
+     * @return 이전 공지사항 (없으면 null)
+     */
+    Notice findPreviousNotice(Long currentId);
+
+    /**
+     * 다음 공지사항 조회.
+     * 
+     * @param currentId 현재 공지사항 ID
+     * @return 다음 공지사항 (없으면 null)
+     */
+    Notice findNextNotice(Long currentId);
 }

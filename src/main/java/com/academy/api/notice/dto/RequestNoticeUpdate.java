@@ -1,6 +1,7 @@
 package com.academy.api.notice.dto;
 
 import com.academy.api.notice.domain.ExposureType;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -35,10 +36,12 @@ public class RequestNoticeUpdate {
     @Schema(description = "노출 기간 유형", example = "PERIOD", allowableValues = {"ALWAYS", "PERIOD"})
     private ExposureType exposureType;
 
-    @Schema(description = "게시 시작일시 (PERIOD 타입인 경우)", example = "2024-01-15T09:00:00")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @Schema(description = "게시 시작일시 (PERIOD 타입인 경우)", example = "2024-01-15 09:00:00")
     private LocalDateTime exposureStartAt;
 
-    @Schema(description = "게시 종료일시 (PERIOD 타입인 경우)", example = "2024-02-15T18:00:00")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @Schema(description = "게시 종료일시 (PERIOD 타입인 경우)", example = "2024-02-15 18:00:00")
     private LocalDateTime exposureEndAt;
 
     @Schema(description = "카테고리 ID", example = "2")

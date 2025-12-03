@@ -4,6 +4,7 @@ import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
 import com.academy.api.notice.dto.RequestNoticeCreate;
+import com.academy.api.notice.dto.RequestNoticePublishedUpdate;
 import com.academy.api.notice.dto.RequestNoticeSearch;
 import com.academy.api.notice.dto.RequestNoticeUpdate;
 import com.academy.api.notice.dto.ResponseNotice;
@@ -272,7 +273,7 @@ public class NoticeAdminController {
 	 * 공개/비공개 상태 변경.
 	 *
 	 * @param id 공지사항 ID
-	 * @param isPublished 공개 여부
+	 * @param request 공개 상태 변경 요청 데이터
 	 * @return 변경 결과
 	 */
     @Operation(
@@ -280,22 +281,31 @@ public class NoticeAdminController {
         description = """
                 공지사항의 공개 상태를 변경합니다.
                 
+                필수 입력 사항:
+                - isPublished: 공개 여부 (true/false)
+                
+                선택 입력 사항:
+                - makePermanent: 상시 게시 설정 여부 (기본값: false)
+                
                 특별 처리:
-                - 비공개 → 공개 변경 시 기간이 만료된 경우 자동으로 상시 노출로 변경
+                - 비공개 → 공개 변경 시 makePermanent=true인 경우 상시 노출로 변경
+                - 기간이 만료된 공지사항을 공개로 변경할 때 유용
                 - 공개 → 비공개 변경 시 즉시 목록에서 숨겨짐
                 
-                사용법:
-                - true: 공개 (일반 사용자에게 노출)
-                - false: 비공개 (관리자만 확인 가능)
+                응답 메시지:
+                - 일반 공개: "공지사항이 공개로 변경되었습니다."
+                - 영구 공개: "공지사항이 공개되었고 게시기간이 상시로 설정되었습니다."
                 """
     )
     @PatchMapping("/{id}/published")
-    public Response togglePublished(
+    public Response updateNoticePublished(
             @Parameter(description = "공지사항 ID", example = "1") @PathVariable Long id,
-            @Parameter(description = "공개 여부", example = "true") @RequestParam Boolean isPublished) {
+            @Parameter(description = "공개 상태 변경 요청")
+            @RequestBody @Valid RequestNoticePublishedUpdate request) {
         
-        log.info("[NoticeAdminController] 공개 상태 변경 요청. ID={}, 공개여부={}", id, isPublished);
-        return noticeService.togglePublished(id, isPublished);
+        log.info("[NoticeAdminController] 공개 상태 변경 요청. ID={}, 공개여부={}, 상시게시={}", 
+                id, request.getIsPublished(), request.getMakePermanent());
+        return noticeService.updateNoticePublished(id, request);
     }
 
 	/**

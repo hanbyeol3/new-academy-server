@@ -12,10 +12,12 @@ import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
 import com.academy.api.notice.domain.Notice;
 import com.academy.api.notice.dto.RequestNoticeCreate;
+import com.academy.api.notice.dto.RequestNoticePublishedUpdate;
 import com.academy.api.notice.dto.RequestNoticeSearch;
 import com.academy.api.notice.dto.RequestNoticeUpdate;
 import com.academy.api.notice.dto.ResponseNotice;
 import com.academy.api.notice.dto.ResponseNoticeListItem;
+import com.academy.api.notice.dto.ResponseNoticeNavigation;
 import com.academy.api.notice.dto.ResponseNoticeSimple;
 import com.academy.api.notice.mapper.NoticeMapper;
 import com.academy.api.notice.repository.NoticeRepository;
@@ -224,10 +226,13 @@ public class NoticeServiceImpl implements NoticeService {
         String createdByName = getMemberName(notice.getCreatedBy());
         String updatedByName = getMemberName(notice.getUpdatedBy());
         
+        // 이전글/다음글 조회
+        ResponseNoticeNavigation navigation = getNoticeNavigation(id);
+        
         // ResponseNotice 생성 (파일 목록 및 회원 이름 포함)
         ResponseNotice response = ResponseNotice.fromWithNames(notice, createdByName, updatedByName);
         
-        // 파일 정보 설정
+        // 파일 정보 및 네비게이션 정보 설정
         response = ResponseNotice.builder()
                 .id(response.getId())
                 .title(response.getTitle())
@@ -243,6 +248,7 @@ public class NoticeServiceImpl implements NoticeService {
                 .attachments(attachments)
                 .inlineImages(inlineImages)
                 .exposable(response.getExposable())
+                .navigation(navigation)
                 .createdBy(response.getCreatedBy())
                 .createdByName(response.getCreatedByName())
                 .createdAt(response.getCreatedAt())
@@ -450,6 +456,51 @@ public class NoticeServiceImpl implements NoticeService {
     }
 
     @Override
+    @Transactional
+    public Response updateNoticePublished(Long id, RequestNoticePublishedUpdate request) {
+        log.info("[NoticeService] 공개 상태 변경 (영구 게시 옵션 포함) 시작. ID={}, 공개여부={}, 상시게시={}", 
+                id, request.getIsPublished(), request.getMakePermanent());
+        
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        Notice notice = findNoticeById(id);
+        
+        if (request.getIsPublished()) {
+            // 공개로 변경
+            notice.setPublished(true);
+            
+            // makePermanent가 true인 경우 상시 게시로 설정
+            if (Boolean.TRUE.equals(request.getMakePermanent())) {
+                notice.setExposureTypeToAlways();
+                log.debug("[NoticeService] 상시 게시로 설정. ID={}, exposureType=ALWAYS", id);
+            }
+            
+            // Repository를 통해 updatedBy 필드 업데이트
+            noticeRepository.updatePublishedStatus(id, true, currentUserId);
+            
+            log.info("[NoticeService] 공개 상태 변경 완료. ID={}, 공개여부={}, 노출타입={}, 상시게시요청={}", 
+                    id, true, notice.getExposureType(), request.getMakePermanent());
+            
+            // 응답 메시지 분기
+            String message = Boolean.TRUE.equals(request.getMakePermanent()) ? 
+                "공지사항이 공개되었고 게시기간이 상시로 설정되었습니다." : 
+                "공지사항이 공개로 변경되었습니다.";
+                
+            return Response.ok("0000", message);
+        } else {
+            // 비공개로 변경 (makePermanent는 무시)
+            int updatedCount = noticeRepository.updatePublishedStatus(id, false, currentUserId);
+            if (updatedCount == 0) {
+                log.warn("[NoticeService] 공개 상태 변경 실패 - 공지사항을 찾을 수 없음. ID={}", id);
+                throw new BusinessException(ErrorCode.NOTICE_NOT_FOUND);
+            }
+            
+            log.info("[NoticeService] 공개 상태 변경 완료. ID={}, 공개여부={}", id, false);
+            
+            return Response.ok("0000", "공지사항이 비공개로 변경되었습니다.");
+        }
+    }
+
+    @Override
     public ResponseData<List<ResponseNoticeSimple>> getRecentNotices(int limit) {
         log.info("[NoticeService] 최근 공지사항 조회 시작. 개수={}", limit);
         
@@ -504,6 +555,45 @@ public class NoticeServiceImpl implements NoticeService {
         return memberRepository.findById(memberId)
                 .map(Member::getMemberName)
                 .orElse("Unknown");
+    }
+
+    /**
+     * 이전글/다음글 네비게이션 정보 조회 도우미 메서드.
+     */
+    private ResponseNoticeNavigation getNoticeNavigation(Long currentId) {
+        log.debug("[NoticeService] 네비게이션 정보 조회 시작. currentId={}", currentId);
+        
+        // 이전글 조회
+        Notice previousNotice = noticeRepository.findPreviousNotice(currentId);
+        ResponseNoticeNavigation.NavigationItem previous = null;
+        if (previousNotice != null) {
+            previous = ResponseNoticeNavigation.NavigationItem.builder()
+                    .id(previousNotice.getId())
+                    .title(previousNotice.getTitle())
+                    .createdAt(previousNotice.getCreatedAt())
+                    .build();
+            log.debug("[NoticeService] 이전글 조회 완료. previousId={}, title={}", 
+                    previousNotice.getId(), previousNotice.getTitle());
+        }
+        
+        // 다음글 조회
+        Notice nextNotice = noticeRepository.findNextNotice(currentId);
+        ResponseNoticeNavigation.NavigationItem next = null;
+        if (nextNotice != null) {
+            next = ResponseNoticeNavigation.NavigationItem.builder()
+                    .id(nextNotice.getId())
+                    .title(nextNotice.getTitle())
+                    .createdAt(nextNotice.getCreatedAt())
+                    .build();
+            log.debug("[NoticeService] 다음글 조회 완료. nextId={}, title={}", 
+                    nextNotice.getId(), nextNotice.getTitle());
+        }
+        
+        ResponseNoticeNavigation navigation = ResponseNoticeNavigation.of(previous, next);
+        log.debug("[NoticeService] 네비게이션 정보 조회 완료. hasPrevious={}, hasNext={}", 
+                previous != null, next != null);
+        
+        return navigation;
     }
 
     /**

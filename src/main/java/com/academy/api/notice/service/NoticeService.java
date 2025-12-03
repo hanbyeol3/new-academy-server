@@ -4,6 +4,7 @@ import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
 import com.academy.api.notice.dto.RequestNoticeCreate;
+import com.academy.api.notice.dto.RequestNoticePublishedUpdate;
 import com.academy.api.notice.dto.RequestNoticeSearch;
 import com.academy.api.notice.dto.RequestNoticeUpdate;
 import com.academy.api.notice.dto.ResponseNotice;
@@ -118,6 +119,15 @@ public interface NoticeService {
      * @return 변경 결과
      */
     Response togglePublished(Long id, Boolean isPublished);
+
+    /**
+     * 공개/비공개 상태 변경 (영구 게시 옵션 포함).
+     * 
+     * @param id 공지사항 ID
+     * @param request 공개 상태 변경 요청 데이터
+     * @return 변경 결과
+     */
+    Response updateNoticePublished(Long id, RequestNoticePublishedUpdate request);
 
     /**
      * 최근 공지사항 조회.

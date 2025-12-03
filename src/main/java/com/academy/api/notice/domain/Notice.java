@@ -204,4 +204,20 @@ public class Notice {
     public void changeCategory(Category category) {
         this.category = category;
     }
+
+    /**
+     * 공개 상태 설정.
+     */
+    public void setPublished(Boolean published) {
+        this.isPublished = published != null ? published : false;
+    }
+
+    /**
+     * 노출 기간을 상시로 설정.
+     */
+    public void setExposureTypeToAlways() {
+        this.exposureType = ExposureType.ALWAYS;
+        this.exposureStartAt = null;
+        this.exposureEndAt = null;
+    }
 }
