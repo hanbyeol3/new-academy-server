@@ -124,12 +124,9 @@ public class NoticeRepositoryImpl implements NoticeRepositoryCustom {
     }
 
     private BooleanExpression keywordCondition(String keyword) {
-        if (keyword == null || keyword.trim().isEmpty()) {
-            return null;
-        }
-        String lowerKeyword = keyword.toLowerCase();
-        return notice.title.lower().contains(lowerKeyword)
-                .or(notice.content.lower().contains(lowerKeyword));
+        // 키워드가 있으면 null을 반환하여 @Query 메서드 사용을 유도
+        // 실제 키워드 검색은 NoticeRepository.findByKeyword() 사용
+        return null;
     }
 
     private BooleanExpression categoryCondition(Long categoryId) {

@@ -5,6 +5,7 @@ import com.academy.api.file.domain.FileContext;
 import com.academy.api.file.domain.UploadFile;
 import com.academy.api.file.dto.Base64FileUploadRequest;
 import com.academy.api.file.dto.FileUploadResponse;
+import com.academy.api.file.dto.UploadTempFileResponse;
 import com.academy.api.file.repository.UploadFileRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +29,9 @@ import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.Optional;
 import java.util.UUID;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.FileInputStream;
+import java.io.OutputStream;
 
 /**
  * 파일 관리 서비스 구현체.
@@ -365,6 +369,121 @@ public class FileServiceImpl implements FileService {
         Path tempPath = findTempFileByFileId(fileId);
         log.debug("[FileService] 임시 파일 검색 결과. fileId={}, 경로={}", fileId, tempPath);
         return tempPath;
+    }
+
+    @Override
+    public ResponseData<UploadTempFileResponse> uploadTempFile(MultipartFile file) {
+        log.info("[FileService] 임시파일 업로드 시작. 파일명={}, 크기={}", 
+                file.getOriginalFilename(), file.getSize());
+        
+        try {
+            validateFile(file);
+            
+            String tempFileId = UUID.randomUUID().toString();
+            String originalFileName = file.getOriginalFilename();
+            String extension = getFileExtension(originalFileName);
+            String serverFileName = tempFileId + "." + extension;
+            
+            // 임시 파일 저장 경로 (년/월 기준)
+            LocalDateTime now = LocalDateTime.now();
+            String year = String.valueOf(now.getYear());
+            String month = String.format("%02d", now.getMonthValue());
+            
+            Path uploadPath = Paths.get(uploadDir, "temp", year, month);
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+                log.debug("[FileService] 임시 폴더 생성: {}", uploadPath);
+            }
+            
+            Path filePath = uploadPath.resolve(serverFileName);
+            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+            
+            String mimeType = file.getContentType();
+            if (mimeType == null) {
+                try {
+                    mimeType = Files.probeContentType(filePath);
+                } catch (IOException e) {
+                    mimeType = "application/octet-stream";
+                }
+            }
+            
+            UploadTempFileResponse response = UploadTempFileResponse.of(
+                    tempFileId,
+                    originalFileName,
+                    file.getSize(),
+                    mimeType,
+                    extension
+            );
+            
+            log.info("[FileService] 임시파일 업로드 완료. tempFileId={}, 파일명={}, 경로={}", 
+                    tempFileId, originalFileName, filePath.toString());
+            
+            return ResponseData.ok("0000", "임시파일 업로드 완료", response);
+            
+        } catch (IllegalArgumentException e) {
+            log.warn("[FileService] 임시파일 업로드 검증 실패: {}", e.getMessage());
+            return ResponseData.error("FILE_VALIDATION_ERROR", e.getMessage());
+        } catch (IOException e) {
+            log.error("[FileService] 임시파일 업로드 실패: {}", e.getMessage());
+            return ResponseData.error("FILE_UPLOAD_ERROR", "임시파일 업로드에 실패했습니다");
+        }
+    }
+
+    @Override
+    public void downloadTempFile(String tempFileId, HttpServletResponse response) {
+        log.info("[FileService] 임시파일 다운로드 시작. tempFileId={}", tempFileId);
+        
+        try {
+            // 1. 임시 파일 찾기
+            Path tempFilePath = findTempFileByFileId(tempFileId);
+            if (tempFilePath == null || !Files.exists(tempFilePath)) {
+                log.warn("[FileService] 임시파일을 찾을 수 없음. tempFileId={}", tempFileId);
+                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                return;
+            }
+            
+            // 2. MIME 타입 확인
+            String mimeType = Files.probeContentType(tempFilePath);
+            if (mimeType == null) {
+                mimeType = "application/octet-stream";
+            }
+            
+            // 3. HTTP 응답 헤더 설정 (inline으로 브라우저에서 바로 표시)
+            response.setContentType(mimeType);
+            response.setContentLengthLong(Files.size(tempFilePath));
+            response.setHeader("Content-Disposition", "inline; filename=\"" + tempFilePath.getFileName().toString() + "\"");
+            response.setHeader("Cache-Control", "max-age=3600"); // 1시간 캐시
+            
+            log.debug("[FileService] 임시파일 응답 헤더 설정 완료. mimeType={}, size={}", 
+                     mimeType, Files.size(tempFilePath));
+            
+            // 4. 파일 스트리밍
+            try (FileInputStream fis = new FileInputStream(tempFilePath.toFile());
+                 OutputStream os = response.getOutputStream()) {
+                
+                byte[] buffer = new byte[8192];
+                int bytesRead;
+                while ((bytesRead = fis.read(buffer)) != -1) {
+                    os.write(buffer, 0, bytesRead);
+                }
+                
+                os.flush();
+                
+                log.info("[FileService] 임시파일 다운로드 완료. tempFileId={}, 경로={}", 
+                        tempFileId, tempFilePath);
+                
+            }
+            
+        } catch (IOException e) {
+            log.error("[FileService] 임시파일 다운로드 실패. tempFileId={}, error={}", 
+                     tempFileId, e.getMessage());
+            try {
+                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            } catch (IllegalStateException ex) {
+                // Response already committed, ignore
+                log.debug("[FileService] Response already committed");
+            }
+        }
     }
 
     @Override

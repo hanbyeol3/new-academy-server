@@ -125,7 +125,7 @@ class CategoryAdminControllerTest {
         // when & then
         mockMvc.perform(post("/api/admin/categories/groups")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+				        .content(objectMapper.writeValueAsString(request)))
                 .andDo(print())
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.code").value("0000"))

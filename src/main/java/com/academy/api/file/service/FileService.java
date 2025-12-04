@@ -3,9 +3,11 @@ package com.academy.api.file.service;
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.file.dto.Base64FileUploadRequest;
 import com.academy.api.file.dto.FileUploadResponse;
+import com.academy.api.file.dto.UploadTempFileResponse;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * 파일 관리 서비스 인터페이스.
@@ -77,4 +79,20 @@ public interface FileService {
      * @return 정식 파일 ID (Long), 실패시 null
      */
     Long promoteToFormalFile(String tempFileId, String originalFileName);
+
+    /**
+     * 임시파일 업로드 (에디터 전용).
+     * 
+     * @param file 업로드할 파일
+     * @return 임시파일 정보 (previewUrl 포함)
+     */
+    ResponseData<UploadTempFileResponse> uploadTempFile(MultipartFile file);
+
+    /**
+     * 임시파일 다운로드/미리보기.
+     * 
+     * @param tempFileId 임시파일 ID (UUID)
+     * @param response HTTP 응답 객체
+     */
+    void downloadTempFile(String tempFileId, HttpServletResponse response);
 }

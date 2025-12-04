@@ -30,6 +30,7 @@ import com.academy.api.file.service.FileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -143,8 +144,26 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
     public ResponseList<ResponseNoticeListItem> getNoticeListForAdmin(RequestNoticeSearch searchCondition, Pageable pageable) {
         log.info("[NoticeService] 관리자용 공지사항 목록 조회 시작. 검색조건={}, 페이지={}", searchCondition, pageable);
         
-        Page<Notice> noticePage = noticeRepository.searchNoticesForAdmin(searchCondition, pageable);
-        List<Notice> notices = noticePage.getContent();
+        Page<Notice> noticePage;
+        List<Notice> notices;
+        
+        // 키워드 검색이 있는 경우 @Query 메서드 사용 (임시 해결책)
+        if (searchCondition.getKeyword() != null && !searchCondition.getKeyword().trim().isEmpty()) {
+            log.debug("[NoticeService] 키워드 검색 모드 - @Query 메서드 사용. keyword={}", searchCondition.getKeyword());
+            List<Notice> allNotices = noticeRepository.findByKeyword(searchCondition.getKeyword());
+            
+            // 페이징 처리 (임시)
+            int start = (int) pageable.getOffset();
+            int end = Math.min(start + pageable.getPageSize(), allNotices.size());
+            notices = allNotices.subList(start, end);
+            
+            // Page 객체 생성
+            noticePage = new PageImpl<>(notices, pageable, allNotices.size());
+        } else {
+            // 일반 검색은 기존 QueryDSL 사용
+            noticePage = noticeRepository.searchNoticesForAdmin(searchCondition, pageable);
+            notices = noticePage.getContent();
+        }
         
         log.debug("[NoticeService] 관리자 공지사항 검색 결과. 전체={}건, 현재페이지={}, 실제반환={}건", 
                 noticePage.getTotalElements(), noticePage.getNumber(), notices.size());

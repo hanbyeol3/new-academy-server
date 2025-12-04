@@ -3,6 +3,7 @@ package com.academy.api.file.controller;
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.file.dto.Base64FileUploadRequest;
 import com.academy.api.file.dto.FileUploadResponse;
+import com.academy.api.file.dto.UploadTempFileResponse;
 import com.academy.api.file.service.FileService;
 // import com.academy.api.file.service.FileUploadService; // 임시 비활성화
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,6 +20,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * 파일 관리 API 컨트롤러
@@ -27,9 +29,11 @@ import org.springframework.web.multipart.MultipartFile;
  * 모든 사용자가 접근 가능한 공개 API입니다.
  * 
  * API 엔드포인트:
- *  - POST /api/public/files/upload: Multipart 파일 업로드
+ *  - POST /api/public/files/upload: Multipart 파일 업로드 (정식파일)
+ *  - POST /api/public/files/upload/temp: 임시파일 업로드 (에디터용)
  *  - POST /api/public/files/upload/base64: Base64 파일 업로드  
- *  - GET /api/public/files/download/{fileId}: 파일 다운로드
+ *  - GET /api/public/files/download/{fileId}: 정식파일 다운로드
+ *  - GET /api/public/files/temp/{tempFileId}: 임시파일 미리보기
  *  - GET /api/public/files/{fileId}: 파일 정보 조회
  *  - DELETE /api/public/files/{fileId}: 파일 삭제
  */
@@ -44,10 +48,10 @@ public class FileController {
     // private final FileUploadService fileUploadService; // 임시 비활성화
 
     /**
-     * Multipart 파일 업로드.
+     * Multipart 파일 업로드 (정식파일).
      */
     @Operation(
-        summary = "Multipart 파일 업로드", 
+        summary = "Multipart 파일 업로드 (정식파일)", 
         description = "Multipart 형식으로 파일을 업로드합니다. 업로드된 파일은 서버에 저장되고 고유 ID가 반환됩니다."
     )
     @ApiResponses({ 
@@ -62,9 +66,41 @@ public class FileController {
                                         schema = @Schema(type = "string", format = "binary")))
             @RequestParam("file") MultipartFile file) {
         
-        log.info("Multipart 파일 업로드 요청. 파일명={}, 크기={}", file.getOriginalFilename(), file.getSize());
+        log.info("정식파일 업로드 요청. 파일명={}, 크기={}", file.getOriginalFilename(), file.getSize());
         
         return fileService.uploadMultipartFile(file);
+    }
+
+    /**
+     * 임시파일 업로드 (에디터용).
+     */
+    @Operation(
+        summary = "임시파일 업로드 (에디터용)", 
+        description = """
+                에디터에서 이미지 첨부 시 사용하는 임시파일 업로드 API입니다.
+                
+                특징:
+                - 임시파일로 저장 (1시간 TTL)
+                - previewUrl 제공으로 바로 미리보기 가능
+                - 에디터에서 data-temp-id로 관리
+                - 최종 저장 시 정식파일로 변환
+                """
+    )
+    @ApiResponses({ 
+        @ApiResponse(responseCode = "200", description = "임시파일 업로드 성공"),
+        @ApiResponse(responseCode = "400", description = "잘못된 파일 또는 요청"),
+        @ApiResponse(responseCode = "413", description = "파일 크기 초과")
+    })
+    @PostMapping(value = "/upload/temp", consumes = "multipart/form-data")
+    public ResponseData<UploadTempFileResponse> uploadTempFile(
+            @Parameter(description = "업로드할 파일 (이미지 권장)",
+                      content = @Content(mediaType = "multipart/form-data",
+                                        schema = @Schema(type = "string", format = "binary")))
+            @RequestParam("file") MultipartFile file) {
+        
+        log.info("임시파일 업로드 요청. 파일명={}, 크기={}", file.getOriginalFilename(), file.getSize());
+        
+        return fileService.uploadTempFile(file);
     }
 
     /**
@@ -89,11 +125,11 @@ public class FileController {
     }
 
     /**
-     * 파일 다운로드.
+     * 정식파일 다운로드.
      */
     @Operation(
-        summary = "파일 다운로드", 
-        description = "파일 ID로 특정 파일을 다운로드합니다. 파일이 존재하지 않으면 404 오류를 반환합니다."
+        summary = "정식파일 다운로드", 
+        description = "파일 ID로 특정 정식파일을 다운로드합니다. 파일이 존재하지 않으면 404 오류를 반환합니다."
     )
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "다운로드 성공"),
@@ -104,9 +140,43 @@ public class FileController {
     public ResponseEntity<Resource> downloadFile(
             @Parameter(description = "다운로드할 파일 ID") @PathVariable String fileId) {
         
-        log.info("파일 다운로드 요청. 파일ID={}", fileId);
+        log.info("정식파일 다운로드 요청. 파일ID={}", fileId);
         
         return fileService.downloadFile(fileId);
+    }
+
+    /**
+     * 임시파일 미리보기.
+     */
+    @Operation(
+        summary = "임시파일 미리보기", 
+        description = """
+                임시파일 ID(UUID)로 임시파일을 다운로드/미리보기합니다.
+                
+                사용 용도:
+                - 에디터에서 이미지 미리보기 (img.src)
+                - 임시파일 즉시 확인
+                
+                특징:
+                - Content-Disposition: inline (브라우저에서 바로 표시)
+                - 1시간 TTL 적용
+                - UUID 기반 접근
+                """
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "미리보기 성공"),
+        @ApiResponse(responseCode = "404", description = "해당 임시파일을 찾을 수 없음"),
+        @ApiResponse(responseCode = "500", description = "파일 처리 중 오류 발생")
+    })
+    @GetMapping("/temp/{tempFileId}")
+    public void downloadTempFile(
+            @Parameter(description = "임시파일 ID (UUID)", example = "550e8400-e29b-41d4-a716-446655440000") 
+            @PathVariable String tempFileId,
+            HttpServletResponse response) {
+        
+        log.info("임시파일 미리보기 요청. tempFileId={}", tempFileId);
+        
+        fileService.downloadTempFile(tempFileId, response);
     }
 
     /**
