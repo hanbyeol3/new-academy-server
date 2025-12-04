@@ -15,8 +15,11 @@ public class ResponseFileInfo {
     @Schema(description = "파일 ID", example = "uuid-a1b2c3d4")
     private String fileId;
     
-    @Schema(description = "파일명", example = "document.pdf") 
+    @Schema(description = "서버 파일명", example = "uuid-a1b2c3d4.pdf") 
     private String fileName;
+    
+    @Schema(description = "원본 파일명 (사용자가 업로드한 실제 파일명)", example = "사용자가_업로드한_문서.pdf")
+    private String originalName;
     
     @Schema(description = "파일 확장자", example = "pdf")
     private String ext;

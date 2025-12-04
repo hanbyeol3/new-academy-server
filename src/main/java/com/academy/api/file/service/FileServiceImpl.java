@@ -224,8 +224,9 @@ public class FileServiceImpl implements FileService {
                 long fileSize = Files.size(tempFilePath);
                 String mimeType = Files.probeContentType(tempFilePath);
                 
-                // 원본 파일명은 서버 파일명과 동일 (임시파일이므로)
-                String originalFileName = fileName.substring(0, fileName.lastIndexOf('.') + 1) + extension;
+                // 임시파일의 경우 원본 파일명을 추출할 수 없음 (UUID 기반이므로)
+                // 실제로는 프론트엔드에서 FileReference로 원본명을 전달해야 함
+                String originalFileName = "temporary_file." + extension;
                 
                 FileUploadResponse response = FileUploadResponse.of(
                     fileId,

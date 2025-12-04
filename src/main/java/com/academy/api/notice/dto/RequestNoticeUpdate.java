@@ -50,9 +50,9 @@ public class RequestNoticeUpdate {
     @Schema(description = "조회수", example = "150")
     private Long viewCount;
 
-    @Schema(description = "첨부파일 ID 목록 (치환방식)", example = "[\"uuid-a\"]")
-    private List<String> attachments;
+    @Schema(description = "첨부파일 목록 (치환방식, 파일ID + 원본명)")
+    private List<FileReference> attachments;
 
-    @Schema(description = "본문 이미지 ID 목록 (치환방식)", example = "[]")
-    private List<String> inlineImages;
+    @Schema(description = "본문 이미지 목록 (치환방식, 파일ID + 원본명)")
+    private List<FileReference> inlineImages;
 }

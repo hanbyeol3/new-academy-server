@@ -84,11 +84,12 @@ public interface UploadFileLinkRepository extends JpaRepository<UploadFileLink, 
      * @param ownerTable 소유 테이블명 
      * @param ownerId 소유 엔티티 ID
      * @param role 파일 역할
-     * @return 파일 정보 목록 (fileId, fileName, ext, size, url)
+     * @return 파일 정보 목록 (fileId, fileName, originalName, ext, size, url)
      */
     @Query("""
         SELECT l.fileId as fileId,
                f.fileName as fileName, 
+               f.originalName as originalName,
                f.ext as ext, 
                f.size as size, 
                f.serverPath as url

@@ -1381,3 +1381,545 @@ WHERE f.id IS NULL;
 - `UploadFileLinkRepository.java`: 최적화된 쿼리 메서드 예시
 
 **🔥 핵심 원칙: 임시파일 변환 → 파일 연결 생성 → JOIN을 활용한 효율적 조회**
+
+---
+
+## 📸 **임시파일 시스템 및 에디터 이미지 업로드**
+
+### 🎯 **임시파일 시스템 개요**
+
+Academy API Server는 **임시파일 → 정식파일** 2단계 업로드 시스템을 사용합니다.
+에디터에서 이미지를 바로 미리보기할 수 있도록 **임시파일 미리보기 URL**을 제공하며, 
+공지사항 저장 시 임시파일을 정식파일로 변환하여 영구 저장합니다.
+
+```
+📱 에디터 업로드    🔄 임시파일 저장    📝 공지사항 저장    💾 정식파일 변환
+┌─────────────┐   ┌─────────────┐   ┌─────────────┐   ┌─────────────┐
+│ 사용자가     │──▶│ /temp/      │──▶│ Notice      │──▶│ /files/     │
+│ 이미지 첨부  │   │ UUID 기반    │   │ 생성/수정    │   │ Long ID     │
+│             │   │ 1시간 TTL   │   │             │   │ 영구 보관    │
+└─────────────┘   └─────────────┘   └─────────────┘   └─────────────┘
+```
+
+---
+
+### 🔧 **임시파일 API 구현**
+
+#### 1. **UploadTempFileResponse DTO**
+
+에디터에서 바로 사용할 수 있는 미리보기 URL을 제공합니다.
+
+```java
+@Getter
+@Builder
+@Schema(description = "임시파일 업로드 응답")
+public class UploadTempFileResponse {
+
+    @Schema(description = "임시파일 ID (UUID)", example = "550e8400-e29b-41d4-a716-446655440000")
+    private String tempFileId;
+
+    @Schema(description = "원본 파일명", example = "image.png")
+    private String fileName;
+
+    @Schema(description = "파일 크기 (bytes)", example = "1024000")
+    private Long size;
+
+    @Schema(description = "MIME 타입", example = "image/png")
+    private String mimeType;
+
+    @Schema(description = "파일 확장자", example = "png")
+    private String extension;
+
+    @Schema(description = "미리보기 URL (에디터에서 바로 사용 가능)", 
+            example = "/api/public/files/temp/550e8400-e29b-41d4-a716-446655440000")
+    private String previewUrl;
+
+    /**
+     * 임시파일 업로드 응답 생성.
+     */
+    public static UploadTempFileResponse of(String tempFileId, String fileName, Long size, 
+                                           String mimeType, String extension) {
+        return UploadTempFileResponse.builder()
+                .tempFileId(tempFileId)
+                .fileName(fileName)
+                .size(size)
+                .mimeType(mimeType)
+                .extension(extension)
+                .previewUrl("/api/public/files/temp/" + tempFileId)  // 🔥 핵심: 미리보기 URL
+                .build();
+    }
+}
+```
+
+#### 2. **임시파일 업로드 API**
+
+```java
+/**
+ * 임시파일 업로드 (에디터용).
+ */
+@Operation(
+    summary = "임시파일 업로드 (에디터용)", 
+    description = """
+            에디터에서 이미지 첨부 시 사용하는 임시파일 업로드 API입니다.
+            
+            특징:
+            - 임시파일로 저장 (1시간 TTL)
+            - previewUrl 제공으로 바로 미리보기 가능
+            - 에디터에서 data-temp-id로 관리
+            - 최종 저장 시 정식파일로 변환
+            """
+)
+@PostMapping(value = "/upload/temp", consumes = "multipart/form-data")
+public ResponseData<UploadTempFileResponse> uploadTempFile(
+        @Parameter(description = "업로드할 파일 (이미지 권장)")
+        @RequestParam("file") MultipartFile file) {
+    
+    log.info("임시파일 업로드 요청. 파일명={}, 크기={}", file.getOriginalFilename(), file.getSize());
+    
+    return fileService.uploadTempFile(file);
+}
+```
+
+#### 3. **임시파일 미리보기 API**
+
+```java
+/**
+ * 임시파일 미리보기.
+ */
+@Operation(
+    summary = "임시파일 미리보기", 
+    description = """
+            임시파일 ID(UUID)로 임시파일을 다운로드/미리보기합니다.
+            
+            사용 용도:
+            - 에디터에서 이미지 미리보기 (img.src)
+            - 임시파일 즉시 확인
+            
+            특징:
+            - Content-Disposition: inline (브라우저에서 바로 표시)
+            - 1시간 TTL 적용
+            - UUID 기반 접근
+            """
+)
+@GetMapping("/temp/{tempFileId}")
+public void downloadTempFile(
+        @Parameter(description = "임시파일 ID (UUID)", example = "550e8400-e29b-41d4-a716-446655440000") 
+        @PathVariable String tempFileId,
+        HttpServletResponse response) {
+    
+    log.info("임시파일 미리보기 요청. tempFileId={}", tempFileId);
+    
+    fileService.downloadTempFile(tempFileId, response);
+}
+```
+
+#### 4. **FileService 임시파일 구현**
+
+```java
+/**
+ * 임시파일 업로드 구현.
+ */
+@Override
+public ResponseData<UploadTempFileResponse> uploadTempFile(MultipartFile file) {
+    log.info("[FileService] 임시파일 업로드 시작. 파일명={}, 크기={}", 
+            file.getOriginalFilename(), file.getSize());
+    
+    try {
+        validateFile(file);
+        
+        String tempFileId = UUID.randomUUID().toString();
+        String originalFileName = file.getOriginalFilename();
+        String extension = getFileExtension(originalFileName);
+        String serverFileName = tempFileId + "." + extension;
+        
+        // 임시 파일 저장 경로 (년/월 기준)
+        LocalDateTime now = LocalDateTime.now();
+        String year = String.valueOf(now.getYear());
+        String month = String.format("%02d", now.getMonthValue());
+        
+        Path uploadPath = Paths.get(uploadDir, "temp", year, month);
+        if (!Files.exists(uploadPath)) {
+            Files.createDirectories(uploadPath);
+            log.debug("[FileService] 임시 폴더 생성: {}", uploadPath);
+        }
+        
+        // 파일 저장
+        Path filePath = uploadPath.resolve(serverFileName);
+        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+        
+        // 응답 생성 (previewUrl 포함)
+        UploadTempFileResponse response = UploadTempFileResponse.of(
+                tempFileId, originalFileName, file.getSize(), 
+                file.getContentType(), extension);
+        
+        log.info("[FileService] 임시파일 업로드 완료. tempFileId={}, 경로={}", 
+                tempFileId, filePath.toString());
+        
+        return ResponseData.ok("0000", "임시파일 업로드 완료", response);
+        
+    } catch (IOException e) {
+        log.error("[FileService] 임시파일 업로드 실패: {}", e.getMessage(), e);
+        return ResponseData.error("FILE_ERROR", "임시파일 업로드에 실패했습니다");
+    }
+}
+
+/**
+ * 임시파일 다운로드 구현.
+ */
+@Override
+public void downloadTempFile(String tempFileId, HttpServletResponse response) {
+    log.info("[FileService] 임시파일 다운로드 시작. tempFileId={}", tempFileId);
+    
+    try {
+        // 1. 임시 파일 찾기
+        Path tempFilePath = findTempFileByFileId(tempFileId);
+        if (tempFilePath == null || !Files.exists(tempFilePath)) {
+            log.warn("[FileService] 임시파일을 찾을 수 없음. tempFileId={}", tempFileId);
+            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            return;
+        }
+        
+        // 2. MIME 타입 확인
+        String mimeType = Files.probeContentType(tempFilePath);
+        if (mimeType == null) {
+            mimeType = "application/octet-stream";
+        }
+        
+        // 3. HTTP 응답 헤더 설정 (inline으로 브라우저에서 바로 표시)
+        response.setContentType(mimeType);
+        response.setContentLengthLong(Files.size(tempFilePath));
+        response.setHeader("Content-Disposition", "inline; filename=\"" + tempFilePath.getFileName().toString() + "\"");
+        response.setHeader("Cache-Control", "max-age=3600"); // 1시간 캐시
+        
+        // 4. 파일 스트리밍
+        try (FileInputStream fis = new FileInputStream(tempFilePath.toFile());
+             OutputStream os = response.getOutputStream()) {
+            
+            byte[] buffer = new byte[8192];
+            int bytesRead;
+            while ((bytesRead = fis.read(buffer)) != -1) {
+                os.write(buffer, 0, bytesRead);
+            }
+            
+            os.flush();
+            log.info("[FileService] 임시파일 다운로드 완료. tempFileId={}, 경로={}", 
+                    tempFileId, tempFilePath);
+        }
+        
+    } catch (IOException e) {
+        log.error("[FileService] 임시파일 다운로드 실패. tempFileId={}, error={}", 
+                 tempFileId, e.getMessage());
+        try {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        } catch (IllegalStateException ex) {
+            // Response already committed, ignore
+        }
+    }
+}
+```
+
+---
+
+### 🎨 **에디터 이미지 업로드 워크플로우**
+
+#### 📋 **전체 플로우 개요**
+
+```mermaid
+sequenceDiagram
+    participant User as 👤 사용자
+    participant Editor as 🖋️ 에디터
+    participant Frontend as 💻 프론트엔드  
+    participant Backend as 🚀 백엔드
+    participant FileSystem as 📁 파일시스템
+
+    User->>Editor: 이미지 첨부
+    Editor->>Frontend: 파일 선택 이벤트
+    Frontend->>Backend: POST /api/public/files/upload/temp
+    Backend->>FileSystem: 임시파일 저장 (/temp/{uuid})
+    Backend-->>Frontend: {tempFileId, previewUrl}
+    Frontend->>Editor: <img src="previewUrl" data-temp-id="tempFileId">
+    Editor-->>User: 이미지 즉시 표시
+
+    Note over User,FileSystem: === 공지사항 저장 시 ===
+
+    User->>Editor: 공지사항 저장
+    Editor->>Frontend: HTML + 임시파일 ID 목록
+    Frontend->>Backend: POST /api/admin/notices {inlineImages: [tempFileId]}
+    Backend->>Backend: 임시파일 → 정식파일 변환
+    Backend->>FileSystem: 정식파일 저장 (/files/{id})
+    Backend-->>Frontend: 공지사항 생성 완료
+```
+
+#### 🔥 **핵심 구현 포인트**
+
+##### 1. **프론트엔드: 에디터 업로드 핸들러**
+
+```javascript
+async function handleImageUpload(file) {
+    try {
+        // 1. 임시파일 업로드
+        const formData = new FormData();
+        formData.append("file", file);
+        
+        const response = await api.post("/api/public/files/upload/temp", formData);
+        const { tempFileId, previewUrl } = response.data.data;
+        
+        // 2. 에디터에 이미지 삽입 (즉시 미리보기)
+        editor.insertImage({
+            src: previewUrl,                  // 🔥 임시 미리보기 URL
+            "data-temp-id": tempFileId       // 🔥 나중에 서버로 보내기 위한 ID
+        });
+        
+    } catch (error) {
+        console.error("이미지 업로드 실패:", error);
+        alert("이미지 업로드에 실패했습니다.");
+    }
+}
+```
+
+##### 2. **프론트엔드: 공지사항 저장 시 임시 ID 수집**
+
+```javascript
+function buildNoticeSavePayload() {
+    const contentHtml = editor.getHtml(); // 에디터에서 HTML 추출
+    
+    // HTML에서 임시 이미지 ID 추출
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(contentHtml, "text/html");
+    
+    const inlineImages = [];
+    doc.querySelectorAll("img[data-temp-id]").forEach((img) => {
+        const tempId = img.getAttribute("data-temp-id");
+        if (tempId) {
+            inlineImages.push(tempId);
+        }
+    });
+    
+    return {
+        title: form.title,
+        content: contentHtml,
+        inlineImages,  // 🔥 RequestNoticeCreate.inlineImages 로 매핑
+        attachments: form.attachments || []
+    };
+}
+
+async function saveNotice() {
+    const payload = buildNoticeSavePayload();
+    
+    await api.post("/api/admin/notices", payload);
+    // 백엔드: createNotice() → createFileLinks(..., inlineImages, FileRole.INLINE)
+}
+```
+
+##### 3. **백엔드: Notice 생성 시 임시파일 처리**
+
+```java
+@Override
+@Transactional
+public ResponseData<Long> createNotice(RequestNoticeCreate request) {
+    log.info("[NoticeService] 공지사항 생성 시작. title={}, attachments={}개, inlineImages={}개", 
+            request.getTitle(),
+            request.getAttachments() != null ? request.getAttachments().size() : 0,
+            request.getInlineImages() != null ? request.getInlineImages().size() : 0);
+    
+    // 1. Notice 엔티티 생성 및 저장
+    Notice notice = noticeMapper.toEntity(request);
+    Notice savedNotice = noticeRepository.save(notice);
+    Long noticeId = savedNotice.getId();
+    
+    // 2. 첨부파일 연결 (정식파일로 변환 후 링크 생성)
+    createFileLinks(noticeId, request.getAttachments(), FileRole.ATTACHMENT);
+    
+    // 3. 본문 이미지 연결 (정식파일로 변환 후 링크 생성) 🔥
+    createFileLinks(noticeId, request.getInlineImages(), FileRole.INLINE);
+    
+    log.info("[NoticeService] 공지사항 생성 완료. ID={}, 제목={}", savedNotice.getId(), savedNotice.getTitle());
+    
+    return ResponseData.ok("0000", "공지사항이 생성되었습니다.", savedNotice.getId());
+}
+```
+
+---
+
+### ⚠️ **프론트엔드 URL 문제 및 해결방안**
+
+#### 🚨 **자주 발생하는 URL 문제**
+
+##### 문제 1: 포트 번호 오류
+```javascript
+// ❌ 잘못된 예 - 프론트엔드 포트로 요청
+<img src="http://localhost:3001/api/public/files/temp/uuid">
+
+// ✅ 올바른 예 - 백엔드 포트로 요청  
+<img src="http://localhost:8080/api/public/files/temp/uuid">
+```
+
+##### 문제 2: API 경로 중복
+```javascript
+// ❌ 잘못된 예 - api가 중복됨
+<img src="/api/public/api/files/temp/uuid">
+
+// ✅ 올바른 예 - 올바른 경로
+<img src="/api/public/files/temp/uuid">
+```
+
+##### 문제 3: public 경로 누락
+```javascript
+// ❌ 잘못된 예 - 인증이 필요한 경로
+<img src="/api/files/download/uuid">
+
+// ✅ 올바른 예 - 공개 경로  
+<img src="/api/public/files/temp/uuid">
+```
+
+#### 🔧 **해결방안 가이드**
+
+##### 방법 1: Axios 기본 URL 확인
+```javascript
+// 현재 설정 확인
+console.log("API Base URL:", axios.defaults.baseURL);
+
+// 올바른 설정
+axios.defaults.baseURL = 'http://localhost:8080';
+
+// 이미지 요청 시
+<img src="/api/public/files/temp/{tempFileId}">
+```
+
+##### 방법 2: 환경변수 활용
+```javascript
+// .env 파일
+REACT_APP_API_BASE_URL=http://localhost:8080
+
+// 이미지 URL 생성 시
+const imageUrl = `${process.env.REACT_APP_API_BASE_URL}/api/public/files/temp/${tempFileId}`;
+```
+
+##### 방법 3: 응답의 previewUrl 직접 사용
+```javascript
+// 백엔드 응답에서 previewUrl을 그대로 사용
+const { previewUrl } = uploadResponse.data.data;
+
+// previewUrl = "/api/public/files/temp/uuid" (상대경로)
+// axios.defaults.baseURL과 조합하여 올바른 절대경로 생성
+<img src={previewUrl}>
+```
+
+#### 🛡️ **보안 설정 확인**
+
+```java
+// SecurityConfiguration.java에서 공개 경로 확인
+.requestMatchers("/api/public/**").permitAll()  // ✅ 임시파일 공개 접근 허용
+```
+
+---
+
+### 📊 **임시파일 관리 모범 사례**
+
+#### 🗂️ **파일 저장 구조**
+```
+uploads/
+├── temp/                    # 임시파일 저장소 (1시간 TTL)
+│   ├── 2024/
+│   │   ├── 12/
+│   │   │   ├── uuid1.png
+│   │   │   └── uuid2.jpg
+│   │   └── 01/
+│   └── 2025/
+└── files/                   # 정식파일 저장소 (영구보관)
+    ├── 2024/
+    │   ├── 12/
+    │   │   ├── 1.png
+    │   │   └── 2.jpg
+    │   └── 01/
+    └── 2025/
+```
+
+#### ⏰ **임시파일 정리 작업**
+```java
+@Scheduled(fixedRate = 3600000) // 1시간마다 실행
+public void cleanupExpiredTempFiles() {
+    log.info("[FileService] 만료된 임시파일 정리 시작");
+    
+    LocalDateTime cutoffTime = LocalDateTime.now().minusHours(1);
+    
+    // temp 폴더에서 1시간 이상 된 파일들 삭제
+    // 구현 권장: FileUtils.cleanDirectory() 활용
+    
+    log.info("[FileService] 만료된 임시파일 정리 완료");
+}
+```
+
+#### 🔐 **보안 고려사항**
+
+1. **임시파일 접근 제한**
+   - UUID 기반 접근으로 추측 불가능한 URL
+   - 1시간 TTL로 오래된 파일 자동 삭제
+   - Content-Disposition: inline으로 다운로드 방지
+
+2. **파일 타입 검증**
+   ```java
+   private void validateImageFile(MultipartFile file) {
+       String contentType = file.getContentType();
+       if (!ALLOWED_IMAGE_TYPES.contains(contentType)) {
+           throw new BusinessException(ErrorCode.INVALID_IMAGE_TYPE);
+       }
+   }
+   ```
+
+3. **파일 크기 제한**
+   ```java
+   @Value("${file.temp.max-size:10485760}") // 10MB
+   private long tempFileMaxSize;
+   ```
+
+---
+
+### 🧪 **테스트 시나리오**
+
+#### API 테스트 예시
+```bash
+# 1. 임시파일 업로드
+curl -X POST "http://localhost:8080/api/public/files/upload/temp" \
+  -F "file=@test_image.png"
+# 응답: {"data": {"tempFileId": "uuid", "previewUrl": "/api/public/files/temp/uuid"}}
+
+# 2. 임시파일 미리보기
+curl -X GET "http://localhost:8080/api/public/files/temp/{uuid}" \
+  -H "Accept: image/*"
+# 응답: 이미지 바이너리 데이터 (Content-Type: image/png)
+
+# 3. 공지사항 생성 (임시파일 포함)
+curl -X POST "http://localhost:8080/api/admin/notices" \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{"title": "테스트", "content": "<img src=\"/api/public/files/temp/uuid\">", "inlineImages": ["uuid"]}'
+# 응답: 공지사항 ID, 임시파일이 정식파일로 변환됨
+```
+
+---
+
+### 💡 **개발 팁**
+
+#### 프론트엔드 디버깅
+```javascript
+// 네트워크 탭에서 확인할 요소들
+1. 업로드 요청: POST /api/public/files/upload/temp (200 OK)
+2. 미리보기 요청: GET /api/public/files/temp/{uuid} (200 OK, image/* Content-Type)
+3. 저장 요청: POST /api/admin/notices (inlineImages 필드 포함)
+
+// 에러 상황별 확인 방법
+- 401 Unauthorized: Security 설정에서 /api/public/** permitAll 확인
+- 404 Not Found: URL 경로 중복/오타 확인
+- CORS 에러: 포트 번호 불일치 확인
+```
+
+#### 백엔드 로깅
+```java
+// 중요한 로그 포인트
+log.info("[FileService] 임시파일 업로드 완료. tempFileId={}", tempFileId);
+log.info("[NoticeService] 임시파일 변환. tempId={} -> formalId={}", tempId, formalId);
+log.warn("[FileService] 임시파일 변환 실패. tempFileId={}", tempFileId);
+```
+
+**🎯 핵심: 임시파일은 에디터 미리보기용, 정식파일은 영구보관용으로 명확히 분리!**

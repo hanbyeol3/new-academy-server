@@ -12,6 +12,7 @@ import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
 import com.academy.api.notice.domain.Notice;
+import com.academy.api.notice.dto.FileReference;
 import com.academy.api.notice.dto.RequestNoticeCreate;
 import com.academy.api.notice.dto.RequestNoticePublishedUpdate;
 import com.academy.api.notice.dto.RequestNoticeSearch;
@@ -220,8 +221,8 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
         if (!attachmentData.isEmpty()) {
             for (int i = 0; i < attachmentData.size(); i++) {
                 Object[] row = attachmentData.get(i);
-                log.info("[NoticeService] 첨부파일[{}] 원본데이터: fileId={}, fileName={}, ext={}, size={}, url={}", 
-                        i, row[0], row[1], row[2], row[3], row[4]);
+                log.info("[NoticeService] 첨부파일[{}] 원본데이터: fileId={}, fileName={}, originalName={}, ext={}, size={}, url={}", 
+                        i, row[0], row[1], row[2], row[3], row[4], row[5]);
             }
         }
         
@@ -619,16 +620,17 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
     /**
      * Object[] 데이터를 ResponseFileInfo로 변환하는 도우미 메서드.
      * 
-     * @param row [fileId, fileName, ext, size, url] 배열
+     * @param row [fileId, fileName, originalName, ext, size, url] 배열
      * @return ResponseFileInfo 인스턴스
      */
     private ResponseFileInfo mapToResponseFileInfo(Object[] row) {
         return ResponseFileInfo.builder()
                 .fileId(String.valueOf(row[0]))  // Long을 String으로 변환
                 .fileName((String) row[1])
-                .ext((String) row[2])
-                .size((Long) row[3])
-                .url((String) row[4])
+                .originalName((String) row[2])   // 원본 파일명 추가
+                .ext((String) row[3])
+                .size((Long) row[4])
+                .url((String) row[5])
                 .build();
     }
 
@@ -637,28 +639,33 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
      * 
      *
      * @param noticeId 공지사항 ID
-     * @param fileIds 파일 ID 목록
+     * @param fileReferences 파일 참조 목록 (파일ID + 원본명)
      * @param role 파일 역할
      */
-    private void createFileLinks(Long noticeId, List<String> fileIds, FileRole role) {
-        if (fileIds == null || fileIds.isEmpty()) {
+    private void createFileLinks(Long noticeId, List<FileReference> fileReferences, FileRole role) {
+        if (fileReferences == null || fileReferences.isEmpty()) {
             log.debug("[NoticeService] 연결할 {}파일 없음. noticeId={}", role, noticeId);
             return;
         }
 
-        log.info("[NoticeService] {} 파일 연결 생성 시작. noticeId={}, 파일개수={}", role, noticeId, fileIds.size());
+        log.info("[NoticeService] {} 파일 연결 생성 시작. noticeId={}, 파일개수={}", role, noticeId, fileReferences.size());
 
         // 임시 파일 ID를 정식 파일 ID로 변환하는 Map
         Map<String, Long> tempToFormalIdMap = new HashMap<>();
         
-        // 1단계: 모든 임시 파일을 정식 파일로 변환
-        for (String tempFileId : fileIds) {
-            Long formalFileId = fileService.promoteToFormalFile(tempFileId, extractOriginalFileName(tempFileId));
+        // 1단계: 모든 임시 파일을 정식 파일로 변환 (원본명 포함)
+        for (FileReference fileRef : fileReferences) {
+            String tempFileId = fileRef.getFileId();
+            String originalFileName = fileRef.getFileName();
+            
+            Long formalFileId = fileService.promoteToFormalFile(tempFileId, originalFileName);
             if (formalFileId != null) {
                 tempToFormalIdMap.put(tempFileId, formalFileId);
-                log.debug("[NoticeService] 임시 파일 정식 변환 성공. tempId={} -> formalId={}", tempFileId, formalFileId);
+                log.debug("[NoticeService] 임시 파일 정식 변환 성공. tempId={} -> formalId={}, originalName={}", 
+                        tempFileId, formalFileId, originalFileName);
             } else {
-                log.warn("[NoticeService] 임시 파일 변환 실패로 연결 생략. tempFileId={}, role={}", tempFileId, role);
+                log.warn("[NoticeService] 임시 파일 변환 실패로 연결 생략. tempFileId={}, originalName={}, role={}", 
+                        tempFileId, originalFileName, role);
             }
         }
 
@@ -679,7 +686,7 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
         }
         
         log.info("[NoticeService] {} 파일 연결 생성 완료. noticeId={}, 요청={}개, 성공={}개", 
-                role, noticeId, fileIds.size(), successfulLinks.size());
+                role, noticeId, fileReferences.size(), successfulLinks.size());
     }
 
     /**
@@ -705,10 +712,10 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
      * 파일 연결 치환 도우미 메서드 (DELETE + INSERT).
      * 
      * @param noticeId 공지사항 ID
-     * @param fileIds 새로운 파일 ID 목록
+     * @param fileReferences 새로운 파일 참조 목록 (파일ID + 원본명)
      * @param role 파일 역할
      */
-    private void replaceFileLinks(Long noticeId, List<String> fileIds, FileRole role) {
+    private void replaceFileLinks(Long noticeId, List<FileReference> fileReferences, FileRole role) {
         // 1. 기존 연결 삭제 (DELETE)
         uploadFileLinkRepository.deleteByOwnerTableAndOwnerIdAndRole(
                 "notices", noticeId, role);
@@ -716,7 +723,7 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
         log.debug("[NoticeService] 기존 {} 파일 연결 삭제 완료. noticeId={}", role, noticeId);
 
         // 2. 새로운 연결 생성 (INSERT)
-        createFileLinks(noticeId, fileIds, role);
+        createFileLinks(noticeId, fileReferences, role);
     }
     
     // ================== CategoryUsageChecker 구현 ==================

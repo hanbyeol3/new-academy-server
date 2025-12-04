@@ -53,9 +53,9 @@ public class RequestNoticeCreate {
     @Schema(description = "조회수", example = "0")
     private Long viewCount = 0L;
 
-    @Schema(description = "첨부파일 ID 목록", example = "[\"uuid-a\", \"uuid-b\"]")
-    private List<String> attachments;
+    @Schema(description = "첨부파일 목록 (파일ID + 원본명)")
+    private List<FileReference> attachments;
 
-    @Schema(description = "본문 이미지 ID 목록", example = "[\"uuid-c\"]")
-    private List<String> inlineImages;
+    @Schema(description = "본문 이미지 목록 (파일ID + 원본명)")
+    private List<FileReference> inlineImages;
 }
