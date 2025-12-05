@@ -2,6 +2,7 @@ package com.academy.api.notice.repository;
 
 import com.academy.api.notice.domain.ExposureType;
 import com.academy.api.notice.domain.Notice;
+import com.academy.api.notice.domain.NoticeSearchType;
 import com.academy.api.notice.domain.QNotice;
 import com.academy.api.notice.dto.RequestNoticeSearch;
 import com.querydsl.core.types.OrderSpecifier;
@@ -43,7 +44,7 @@ public class NoticeRepositoryImpl implements NoticeRepositoryCustom {
                 .selectFrom(notice)
                 .leftJoin(notice.category).fetchJoin()
                 .where(
-                        keywordCondition(condition.getKeyword()),
+                        keywordCondition(condition.getKeyword(), condition.getEffectiveSearchType()),
                         categoryCondition(condition.getCategoryId()),
                         importantCondition(condition.getIsImportant()),
                         exposureTypeCondition(condition.getExposureType()),
@@ -58,7 +59,7 @@ public class NoticeRepositoryImpl implements NoticeRepositoryCustom {
                 .select(notice.count())
                 .from(notice)
                 .where(
-                        keywordCondition(condition.getKeyword()),
+                        keywordCondition(condition.getKeyword(), condition.getEffectiveSearchType()),
                         categoryCondition(condition.getCategoryId()),
                         importantCondition(condition.getIsImportant()),
                         exposureTypeCondition(condition.getExposureType()),
@@ -98,7 +99,7 @@ public class NoticeRepositoryImpl implements NoticeRepositoryCustom {
                 .selectFrom(notice)
                 .leftJoin(notice.category).fetchJoin()
                 .where(
-                        keywordCondition(condition.getKeyword()),
+                        keywordCondition(condition.getKeyword(), condition.getEffectiveSearchType()),
                         categoryCondition(condition.getCategoryId()),
                         importantCondition(condition.getIsImportant()),
                         publishedCondition(condition.getIsPublished(), isAdmin),
@@ -113,7 +114,7 @@ public class NoticeRepositoryImpl implements NoticeRepositoryCustom {
                 .select(notice.count())
                 .from(notice)
                 .where(
-                        keywordCondition(condition.getKeyword()),
+                        keywordCondition(condition.getKeyword(), condition.getEffectiveSearchType()),
                         categoryCondition(condition.getCategoryId()),
                         importantCondition(condition.getIsImportant()),
                         publishedCondition(condition.getIsPublished(), isAdmin),
@@ -123,10 +124,19 @@ public class NoticeRepositoryImpl implements NoticeRepositoryCustom {
         return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
     }
 
-    private BooleanExpression keywordCondition(String keyword) {
-        // 키워드가 있으면 null을 반환하여 @Query 메서드 사용을 유도
-        // 실제 키워드 검색은 NoticeRepository.findByKeyword() 사용
-        return null;
+    private BooleanExpression keywordCondition(String keyword, NoticeSearchType searchType) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return null;
+        }
+        
+        // searchType에 따른 동적 검색 조건 생성 (LIKE 쿼리 사용)
+        String likeKeyword = "%" + keyword + "%";
+        return switch (searchType) {
+            case TITLE -> notice.title.like(likeKeyword);
+            case CONTENT -> notice.content.like(likeKeyword);
+            case TITLE_CONTENT -> notice.title.like(likeKeyword)
+                                        .or(notice.content.like(likeKeyword));
+        };
     }
 
     private BooleanExpression categoryCondition(Long categoryId) {
