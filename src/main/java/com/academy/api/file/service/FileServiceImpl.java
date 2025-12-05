@@ -28,6 +28,8 @@ import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.Optional;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.FileInputStream;
@@ -150,10 +152,21 @@ public class FileServiceImpl implements FileService {
     public ResponseEntity<Resource> downloadFile(String fileId) {
         log.info("[FileService] downloadFile 시작. fileId={}", fileId);
         try {
-            Path filePath = findFileByFileId(fileId);
-            log.info("[FileService] 파일 경로 조회 결과. fileId={}, 경로={}", fileId, filePath);
-            if (filePath == null) {
+            // 1. 파일 정보를 DB에서 조회하여 원본 파일명 획득
+            Optional<UploadFile> uploadFileOpt = uploadFileRepository.findByIdAndDeletedFalse(fileId);
+            if (uploadFileOpt.isEmpty()) {
                 log.warn("[FileService] 파일을 찾을 수 없음. fileId={}", fileId);
+                return ResponseEntity.notFound().build();
+            }
+            
+            UploadFile uploadFile = uploadFileOpt.get();
+            Path filePath = Paths.get(uploadDir, uploadFile.getServerPath());
+            
+            log.info("[FileService] 파일 조회 완료. fileId={}, originalName={}, 경로={}", 
+                    fileId, uploadFile.getOriginalName(), filePath);
+            
+            if (!Files.exists(filePath)) {
+                log.warn("[FileService] 실제 파일이 존재하지 않음. fileId={}, 경로={}", fileId, filePath);
                 return ResponseEntity.notFound().build();
             }
             
@@ -165,10 +178,18 @@ public class FileServiceImpl implements FileService {
                     contentType = "application/octet-stream";
                 }
                 
+                // 원본 파일명으로 Content-Disposition 설정
+                String originalName = uploadFile.getOriginalName();
+                if (originalName == null || originalName.trim().isEmpty()) {
+                    originalName = uploadFile.getFileName(); // fallback to server name
+                }
+                
+                // RFC 6266 표준에 따른 UTF-8 인코딩된 파일명 설정
+                String encodedFilename = encodeFilenameForContentDisposition(originalName);
+                
                 return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType(contentType))
-                    .header(HttpHeaders.CONTENT_DISPOSITION, 
-                        "attachment; filename=\"" + filePath.getFileName().toString() + "\"")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, encodedFilename)
                     .body(resource);
             } else {
                 return ResponseEntity.notFound().build();
@@ -560,6 +581,33 @@ public class FileServiceImpl implements FileService {
         } catch (IOException e) {
             log.error("[FileService] 임시 파일 정식 변환 실패. tempFileId={}, error={}", tempFileId, e.getMessage());
             return null;
+        }
+    }
+
+    /**
+     * Content-Disposition 헤더용 파일명 인코딩.
+     * RFC 6266 표준에 따른 UTF-8 인코딩된 파일명을 생성합니다.
+     * 
+     * @param originalFilename 원본 파일명
+     * @return 인코딩된 Content-Disposition 헤더값
+     */
+    private String encodeFilenameForContentDisposition(String originalFilename) {
+        if (originalFilename == null || originalFilename.trim().isEmpty()) {
+            return "attachment";
+        }
+        
+        try {
+            // RFC 6266 표준: filename*=UTF-8''encoded_filename
+            String encodedFilename = URLEncoder.encode(originalFilename, StandardCharsets.UTF_8)
+                    .replace("+", "%20"); // 공백을 %20으로 변경 (URL 인코딩 표준)
+            
+            return String.format("attachment; filename*=UTF-8''%s", encodedFilename);
+            
+        } catch (Exception e) {
+            log.warn("[FileService] 파일명 인코딩 실패, ASCII 대체. 원본={}, 에러={}", originalFilename, e.getMessage());
+            // 인코딩 실패 시 ASCII 안전 문자로 대체
+            String safeFilename = originalFilename.replaceAll("[^a-zA-Z0-9._-]", "_");
+            return String.format("attachment; filename=\"%s\"", safeFilename);
         }
     }
 }
