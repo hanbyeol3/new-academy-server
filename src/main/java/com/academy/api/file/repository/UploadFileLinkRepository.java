@@ -116,4 +116,21 @@ public interface UploadFileLinkRepository extends JpaRepository<UploadFileLink, 
         WHERE f.id IS NULL
         """)
     List<UploadFileLink> findOrphanLinks();
+
+    /**
+     * 특정 파일 ID 목록의 연결 삭제 (선택적 파일 삭제용).
+     * 
+     * @param ownerTable 소유 테이블명
+     * @param ownerId 소유 엔티티 ID
+     * @param role 파일 역할
+     * @param fileIds 삭제할 파일 ID 목록
+     */
+    @Modifying
+    @Query("DELETE FROM UploadFileLink l WHERE l.ownerTable = :ownerTable AND l.ownerId = :ownerId AND l.role = :role AND l.fileId IN :fileIds")
+    void deleteByOwnerTableAndOwnerIdAndRoleAndFileIdIn(
+        @Param("ownerTable") String ownerTable,
+        @Param("ownerId") Long ownerId, 
+        @Param("role") FileRole role,
+        @Param("fileIds") List<Long> fileIds
+    );
 }

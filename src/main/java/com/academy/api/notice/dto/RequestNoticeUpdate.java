@@ -50,9 +50,27 @@ public class RequestNoticeUpdate {
     @Schema(description = "조회수", example = "150")
     private Long viewCount;
 
-    @Schema(description = "첨부파일 목록 (치환방식, 파일ID + 원본명)")
+    // 새로운 방식: 선택적 삭제 + 추가
+    @Schema(description = "새로 추가할 첨부파일 목록 (임시파일 → 정식파일 변환)")
+    private List<FileReference> newAttachments;
+    
+    @Schema(description = "새로 추가할 본문 이미지 목록 (임시파일 → 정식파일 변환)")
+    private List<FileReference> newInlineImages;
+    
+    @Schema(description = "삭제할 기존 첨부파일 ID 목록 (정식파일 Long ID)")
+    private List<Long> deleteAttachmentFileIds;
+    
+    @Schema(description = "삭제할 기존 본문이미지 파일 ID 목록 (정식파일 Long ID)")
+    private List<Long> deleteInlineImageFileIds;
+
+    // 하위 호환성을 위한 기존 필드 (Deprecated)
+    @Deprecated
+    @Schema(description = "첨부파일 목록 (구버전 호환용, newAttachments + deleteAttachmentFileIds 사용 권장)", 
+            deprecated = true)
     private List<FileReference> attachments;
 
-    @Schema(description = "본문 이미지 목록 (치환방식, 파일ID + 원본명)")
+    @Deprecated  
+    @Schema(description = "본문 이미지 목록 (구버전 호환용, newInlineImages + deleteInlineImageFileIds 사용 권장)",
+            deprecated = true)
     private List<FileReference> inlineImages;
 }
