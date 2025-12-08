@@ -175,7 +175,7 @@ public class NoticeAdminController {
                 """
     )
     @PutMapping("/{id}")
-    public Response updateNotice(
+    public ResponseData<ResponseNotice> updateNotice(
             @Parameter(description = "공지사항 ID", example = "1") @PathVariable Long id,
             @Parameter(description = "공지사항 수정 요청 데이터")
             @RequestBody @Valid RequestNoticeUpdate request) {

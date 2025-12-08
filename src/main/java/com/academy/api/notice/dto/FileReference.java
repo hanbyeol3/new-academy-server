@@ -1,5 +1,7 @@
 package com.academy.api.notice.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -17,6 +19,8 @@ import lombok.Setter;
 @Schema(description = "파일 참조 정보")
 public class FileReference {
 
+    @JsonProperty(value = "fileId", access = JsonProperty.Access.WRITE_ONLY)
+    @JsonAlias({"tempFileId"})
     @Schema(description = "파일 ID (임시파일 또는 정식파일 UUID)", example = "550e8400-e29b-41d4-a716-446655440000", requiredMode = Schema.RequiredMode.REQUIRED)
     private String fileId;
 

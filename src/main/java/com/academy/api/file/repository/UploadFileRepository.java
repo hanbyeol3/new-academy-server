@@ -29,4 +29,12 @@ public interface UploadFileRepository extends JpaRepository<UploadFile, Long> {
             return Optional.empty();
         }
     }
+
+    /**
+     * 파일명으로 시작하는 파일 조회 (임시 파일 ID → 정식 파일 매핑용).
+     * 
+     * @param prefix 파일명 접두사 (예: tempFileId + ".")
+     * @return 파일 정보
+     */
+    Optional<UploadFile> findByFileNameStartingWith(String prefix);
 }

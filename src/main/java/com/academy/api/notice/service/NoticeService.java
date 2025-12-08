@@ -82,9 +82,9 @@ public interface NoticeService {
      * 
      * @param id 공지사항 ID
      * @param request 수정 요청 데이터
-     * @return 수정 결과
+     * @return 수정 결과 (완전한 공지사항 정보 포함)
      */
-    Response updateNotice(Long id, RequestNoticeUpdate request);
+    ResponseData<ResponseNotice> updateNotice(Long id, RequestNoticeUpdate request);
 
     /**
      * 공지사항 삭제.

@@ -361,7 +361,7 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
      */
     @Override
     @Transactional
-    public Response updateNotice(Long id, RequestNoticeUpdate request) {
+    public ResponseData<ResponseNotice> updateNotice(Long id, RequestNoticeUpdate request) {
         log.info("🔄 [NoticeService] 공지사항 수정 시작!!! ID={}, " +
                 "신규첨부파일={}개, 신규본문이미지={}개, 삭제첨부파일={}개, 삭제본문이미지={}개, " + 
                 "구버전첨부파일={}개, 구버전본문이미지={}개", 
@@ -400,7 +400,7 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
         deleteSelectedFileLinks(id, request.getDeleteInlineImageFileIds(), FileRole.INLINE);
         
         // 2. 새 파일 추가
-        addFileLinks(id, request.getNewAttachments(), FileRole.ATTACHMENT);
+        Map<String, Long> newAttachmentTempMap = addFileLinks(id, request.getNewAttachments(), FileRole.ATTACHMENT);
         Map<String, Long> newInlineTempMap = addFileLinks(id, request.getNewInlineImages(), FileRole.INLINE);
         
         // 3. 하위 호환성: 기존 방식도 지원 (Deprecated)
@@ -413,24 +413,42 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
             replaceFileLinks(id, request.getInlineImages(), FileRole.INLINE);
         }
         
-        // 4. newInlineImages로 추가된 파일이 있는 경우 content URL 변환
-        if (!newInlineTempMap.isEmpty()) {
-            String updatedContent = fileService.convertTempUrlsInContent(notice.getContent(), newInlineTempMap);
-            if (!updatedContent.equals(notice.getContent())) {
-                // 엔티티 다시 조회하여 최신 상태 확보
-                Notice currentNotice = noticeRepository.findById(id)
-                        .orElseThrow(() -> new BusinessException(ErrorCode.NOTICE_NOT_FOUND));
-                
-                // 도메인 메서드를 사용해서 content 업데이트
-                currentNotice.updateContent(updatedContent);
-                noticeRepository.save(currentNotice);
-                log.info("[NoticeService] newInlineImages content 내 임시 URL 변환 완료. ID={}", id);
-            }
+        // 4. 파일 처리 결과 로깅
+        log.info("[NoticeService] 파일 처리 결과. ID={}, 새첨부파일={}개, 새이미지={}개", 
+                id, newAttachmentTempMap.size(), newInlineTempMap.size());
+        
+        // 5. Content URL 완전 처리
+        String finalContent = notice.getContent();
+        
+        // 5-1. 삭제된 이미지 URL 제거
+        if (request.getDeleteInlineImageFileIds() != null && !request.getDeleteInlineImageFileIds().isEmpty()) {
+            finalContent = fileService.removeDeletedImageUrlsFromContent(finalContent, request.getDeleteInlineImageFileIds());
+            log.info("[NoticeService] 삭제된 이미지 URL 제거 완료. ID={}, 삭제된이미지={}개", 
+                    id, request.getDeleteInlineImageFileIds().size());
+        }
+        
+        // 5-2. 모든 temp URL을 정식 URL로 변환 (기존 + 신규 포함)
+        String convertedContent = fileService.convertAllTempUrlsInContent(finalContent);
+        
+        // 5-3. Content가 변경된 경우 업데이트
+        if (!convertedContent.equals(notice.getContent())) {
+            // 엔티티 다시 조회하여 최신 상태 확보
+            Notice currentNotice = noticeRepository.findById(id)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.NOTICE_NOT_FOUND));
+            
+            // 도메인 메서드를 사용해서 content 업데이트
+            currentNotice.updateContent(convertedContent);
+            noticeRepository.save(currentNotice);
+            log.info("[NoticeService] Content URL 완전 변환 완료. ID={}, 최종content길이={}", 
+                    id, convertedContent.length());
         }
         
         log.info("[NoticeService] 공지사항 수정 완료. ID={}, 제목={}", id, notice.getTitle());
         
-        return Response.ok("0000", "공지사항이 수정되었습니다.");
+        // 6. 완전한 공지사항 정보 반환 (파일 정보 포함)
+        ResponseNotice updatedNotice = getNoticeWithFiles(id).getData();
+        
+        return ResponseData.ok("0000", "공지사항이 수정되었습니다.", updatedNotice);
     }
 
     /**

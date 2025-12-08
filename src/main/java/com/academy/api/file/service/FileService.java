@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Map;
+import java.util.List;
 
 /**
  * 파일 관리 서비스 인터페이스.
@@ -105,4 +106,22 @@ public interface FileService {
      * @return 변환된 content
      */
     String convertTempUrlsInContent(String content, Map<String, Long> tempToFormalMap);
+
+    /**
+     * content에서 삭제된 이미지 URL을 제거.
+     * 
+     * @param content HTML/텍스트 내용
+     * @param deletedFileIds 삭제된 정식 파일 ID 목록
+     * @return 삭제된 이미지 URL이 제거된 content
+     */
+    String removeDeletedImageUrlsFromContent(String content, List<Long> deletedFileIds);
+
+    /**
+     * content에서 모든 temp URL을 정식 URL로 변환.
+     * 기존에 DB에 저장된 temp → formal 매핑을 조회하여 변환 수행.
+     * 
+     * @param content HTML/텍스트 내용
+     * @return 모든 temp URL이 변환된 content
+     */
+    String convertAllTempUrlsInContent(String content);
 }

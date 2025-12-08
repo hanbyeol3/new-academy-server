@@ -35,6 +35,12 @@ import java.util.UUID;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.FileInputStream;
 import java.io.OutputStream;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.HashMap;
+import java.util.List;
 
 /**
  * 파일 관리 서비스 구현체.
@@ -624,6 +630,95 @@ public class FileServiceImpl implements FileService {
         }
         
         log.info("[FileService] content 내 임시 URL 변환 완료. 전체 치환횟수={}", totalReplacements);
+        
+        return result;
+    }
+
+    @Override
+    public String removeDeletedImageUrlsFromContent(String content, List<Long> deletedFileIds) {
+        if (content == null || content.trim().isEmpty()) {
+            return content;
+        }
+        
+        if (deletedFileIds == null || deletedFileIds.isEmpty()) {
+            log.debug("[FileService] 삭제할 파일 ID 목록이 없음");
+            return content;
+        }
+        
+        log.info("[FileService] content에서 삭제된 이미지 URL 제거 시작. 삭제대상={}개", deletedFileIds.size());
+        
+        String result = content;
+        int totalRemovals = 0;
+        
+        for (Long deletedFileId : deletedFileIds) {
+            // 정식 URL 패턴: /api/public/files/download/fileId
+            String deletedUrl = "/api/public/files/download/" + deletedFileId;
+            
+            // img 태그 전체 제거 (src에 해당 URL이 있는 경우)
+            String imgTagPattern = "<img[^>]*src=[\"'][^\"']*" + deletedUrl + "[^\"']*[\"'][^>]*>";
+            String previousResult = result;
+            result = result.replaceAll(imgTagPattern, "");
+            
+            // 단순 URL만 있는 경우도 제거
+            result = result.replace(deletedUrl, "");
+            
+            if (!previousResult.equals(result)) {
+                totalRemovals++;
+                log.debug("[FileService] 삭제된 이미지 URL 제거 완료. fileId={}, URL={}", 
+                         deletedFileId, deletedUrl);
+            }
+        }
+        
+        log.info("[FileService] 삭제된 이미지 URL 제거 완료. 제거횟수={}", totalRemovals);
+        
+        return result;
+    }
+
+    @Override
+    public String convertAllTempUrlsInContent(String content) {
+        if (content == null || content.trim().isEmpty()) {
+            return content;
+        }
+        
+        log.info("[FileService] content에서 모든 temp URL 변환 시작");
+        
+        // 정규식으로 모든 temp URL 패턴 추출: /api/public/files/temp/{tempFileId}
+        Pattern tempUrlPattern = Pattern.compile("/api/public/files/temp/([a-zA-Z0-9-]+)");
+        Matcher matcher = tempUrlPattern.matcher(content);
+        
+        Set<String> foundTempFileIds = new HashSet<>();
+        while (matcher.find()) {
+            String tempFileId = matcher.group(1);
+            foundTempFileIds.add(tempFileId);
+        }
+        
+        if (foundTempFileIds.isEmpty()) {
+            log.debug("[FileService] content에서 temp URL을 찾을 수 없음");
+            return content;
+        }
+        
+        log.info("[FileService] content에서 발견된 temp URL 개수: {}", foundTempFileIds.size());
+        
+        // DB에서 temp → formal 매핑 조회
+        Map<String, Long> tempToFormalMap = new HashMap<>();
+        
+        for (String tempFileId : foundTempFileIds) {
+            // 임시 파일이 정식 파일로 변환되었는지 확인
+            // 정식 파일의 서버 파일명은 tempFileId + extension 형태임
+            Optional<UploadFile> formalFile = uploadFileRepository.findByFileNameStartingWith(tempFileId + ".");
+            if (formalFile.isPresent()) {
+                tempToFormalMap.put(tempFileId, formalFile.get().getId());
+                log.debug("[FileService] temp → formal 매핑 발견. tempId={} → formalId={}", 
+                         tempFileId, formalFile.get().getId());
+            } else {
+                log.warn("[FileService] temp 파일에 대응하는 정식 파일을 찾을 수 없음. tempId={}", tempFileId);
+            }
+        }
+        
+        // 기존 메서드를 사용하여 URL 변환
+        String result = convertTempUrlsInContent(content, tempToFormalMap);
+        
+        log.info("[FileService] 모든 temp URL 변환 완료. 변환된 매핑={}개", tempToFormalMap.size());
         
         return result;
     }
