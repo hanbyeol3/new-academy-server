@@ -21,7 +21,7 @@ public class NoticeSearchTypeConverter implements Converter<String, NoticeSearch
             return NoticeSearchType.valueOf(source.toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Invalid NoticeSearchType: " + source + 
-                ". Valid values are: TITLE, CONTENT, TITLE_CONTENT (case insensitive)");
+                ". Valid values are: TITLE, CONTENT, AUTHOR, ALL (case insensitive)");
         }
     }
 }

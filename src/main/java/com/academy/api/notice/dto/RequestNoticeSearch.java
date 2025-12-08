@@ -21,12 +21,9 @@ public class RequestNoticeSearch {
     @Schema(description = "검색 키워드", example = "학사일정")
     private String keyword;
 
-    @Schema(description = "검색 타입 (제목, 내용, 제목+내용)", example = "TITLE", 
-            allowableValues = {"TITLE", "CONTENT", "TITLE_CONTENT"})
+    @Schema(description = "검색 타입 (제목, 내용, 작성자, 전체)", example = "ALL", 
+            allowableValues = {"TITLE", "CONTENT", "AUTHOR", "ALL"})
     private NoticeSearchType searchType;
-
-    @Schema(description = "작성자로 검색", example = "관리자")
-    private String author;
 
     @Schema(description = "카테고리 ID", example = "1")
     private Long categoryId;
@@ -45,9 +42,9 @@ public class RequestNoticeSearch {
 
     /**
      * 유효한 검색 타입 반환.
-     * searchType이 null인 경우 기본값(TITLE_CONTENT) 반환.
+     * searchType이 null인 경우 기본값(ALL) 반환.
      */
     public NoticeSearchType getEffectiveSearchType() {
-        return searchType != null ? searchType : NoticeSearchType.TITLE_CONTENT;
+        return searchType != null ? searchType : NoticeSearchType.ALL;
     }
 }

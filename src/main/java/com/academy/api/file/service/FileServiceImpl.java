@@ -30,6 +30,7 @@ import java.util.Base64;
 import java.util.Optional;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.UUID;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.FileInputStream;
@@ -582,6 +583,49 @@ public class FileServiceImpl implements FileService {
             log.error("[FileService] 임시 파일 정식 변환 실패. tempFileId={}, error={}", tempFileId, e.getMessage());
             return null;
         }
+    }
+
+    @Override
+    public String convertTempUrlsInContent(String content, Map<String, Long> tempToFormalMap) {
+        if (content == null || content.trim().isEmpty()) {
+            return content;
+        }
+        
+        if (tempToFormalMap == null || tempToFormalMap.isEmpty()) {
+            log.debug("[FileService] 변환할 임시 파일 ID 매핑이 없음");
+            return content;
+        }
+        
+        log.info("[FileService] content 내 임시 URL 변환 시작. 변환대상={}개", tempToFormalMap.size());
+        
+        String result = content;
+        int totalReplacements = 0;
+        
+        for (Map.Entry<String, Long> entry : tempToFormalMap.entrySet()) {
+            String tempFileId = entry.getKey();
+            Long formalFileId = entry.getValue();
+            
+            // 임시 URL 패턴: /api/public/files/temp/tempFileId
+            String tempUrl = "/api/public/files/temp/" + tempFileId;
+            // 정식 URL 패턴: /api/public/files/download/formalFileId  
+            String formalUrl = "/api/public/files/download/" + formalFileId;
+            
+            // content에서 임시 URL을 정식 URL로 치환
+            String previousResult = result;
+            result = result.replace(tempUrl, formalUrl);
+            
+            // 치환이 발생했는지 확인
+            if (!previousResult.equals(result)) {
+                int count = (previousResult.length() - result.length()) / (tempUrl.length() - formalUrl.length());
+                totalReplacements += count;
+                log.debug("[FileService] URL 변환 완료. {} → {}, 치환횟수={}", 
+                         tempUrl, formalUrl, count);
+            }
+        }
+        
+        log.info("[FileService] content 내 임시 URL 변환 완료. 전체 치환횟수={}", totalReplacements);
+        
+        return result;
     }
 
     /**

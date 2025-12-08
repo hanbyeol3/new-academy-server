@@ -43,12 +43,20 @@ import java.util.stream.Collectors;
 
 /**
  * 공지사항 서비스 구현체.
+ * 
  * 주요 특징:
  * - 트랜잭션 경계 관리 (@Transactional)
  * - 체계적인 로깅 (info: 주요 비즈니스, debug: 상세 정보)
  * - 카테고리 연계 처리
- * - 파일 서비스 연동 (추후 구현)
+ * - 파일 서비스 연동 및 content URL 자동 변환
+ * - 임시 파일을 정식 파일로 승격 처리
+ * - 검색 기능 (제목/내용/작성자/전체)
  * - 예외 상황 처리
+ * 
+ * Content URL 변환 기능:
+ * - 공지사항 생성/수정 시 본문 이미지의 임시 URL을 정식 URL로 자동 변환
+ * - 임시 URL: /api/public/files/temp/{tempId} → 정식 URL: /api/public/files/download/{formalId}
+ * - 도메인 메서드를 통한 안전한 엔티티 상태 변경
  * 
  * 로깅 레벨 원칙:
  * - info: 주요 비즈니스 로직 시작점과 완료
@@ -278,7 +286,8 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
         Long beforeViewCount = notice.getViewCount();
         
         // 조회수 증가
-        notice.incrementViewCount();
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        notice.incrementViewCount(currentUserId);
         
         log.debug("[NoticeService] 조회수 증가 완료. ID={}, 이전조회수={}, 현재조회수={}", 
                 id, beforeViewCount, notice.getViewCount());
@@ -299,7 +308,7 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
     public ResponseData<Long> createNotice(RequestNoticeCreate request) {
         log.info("[NoticeService] 공지사항 생성 시작. 제목={}, 카테고리ID={}, 첨부파일={}개, 본문이미지={}개", 
                 request.getTitle(), request.getCategoryId(), 
-                request.getAttachments() != null ? request.getAttachments().size() : 0,
+                request.getAttachmentFiles() != null ? request.getAttachmentFiles().size() : 0,
                 request.getInlineImages() != null ? request.getInlineImages().size() : 0);
         
         // 카테고리 조회 (있는 경우만)
@@ -315,9 +324,24 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
         Notice savedNotice = noticeRepository.save(notice);
         Long noticeId = savedNotice.getId();
         
-        // 파일 연결 처리
-        createFileLinks(noticeId, request.getAttachments(), FileRole.ATTACHMENT);
-        createFileLinks(noticeId, request.getInlineImages(), FileRole.INLINE);
+        // 파일 연결 처리 및 content URL 변환
+        Map<String, Long> attachmentTempMap = createFileLinkFromTempFiles(noticeId, request.getAttachmentFiles(), FileRole.ATTACHMENT);
+        Map<String, Long> inlineTempMap = createFileLinkFromTempFiles(noticeId, request.getInlineImages(), FileRole.INLINE);
+        
+        // content에서 임시 URL을 정식 URL로 변환 (본문 이미지만 해당)
+        if (!inlineTempMap.isEmpty()) {
+            String updatedContent = fileService.convertTempUrlsInContent(savedNotice.getContent(), inlineTempMap);
+            if (!updatedContent.equals(savedNotice.getContent())) {
+                // content가 변경된 경우 DB 업데이트
+                savedNotice = noticeRepository.findById(noticeId)
+                        .orElseThrow(() -> new BusinessException(ErrorCode.NOTICE_NOT_FOUND));
+                
+                // 도메인 메서드를 사용해서 content 업데이트
+                savedNotice.updateContent(updatedContent);
+                noticeRepository.save(savedNotice);
+                log.info("[NoticeService] content 내 임시 URL 변환 완료. ID={}", noticeId);
+            }
+        }
         
         log.info("[NoticeService] 공지사항 생성 완료. ID={}, 제목={}", savedNotice.getId(), savedNotice.getTitle());
         
@@ -377,7 +401,7 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
         
         // 2. 새 파일 추가
         addFileLinks(id, request.getNewAttachments(), FileRole.ATTACHMENT);
-        addFileLinks(id, request.getNewInlineImages(), FileRole.INLINE);
+        Map<String, Long> newInlineTempMap = addFileLinks(id, request.getNewInlineImages(), FileRole.INLINE);
         
         // 3. 하위 호환성: 기존 방식도 지원 (Deprecated)
         if (request.getAttachments() != null) {
@@ -387,6 +411,21 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
         if (request.getInlineImages() != null) {
             log.warn("🔄 [NoticeService] 구버전 inlineImages 필드 사용됨. newInlineImages + deleteInlineImageFileIds 사용 권장");
             replaceFileLinks(id, request.getInlineImages(), FileRole.INLINE);
+        }
+        
+        // 4. newInlineImages로 추가된 파일이 있는 경우 content URL 변환
+        if (!newInlineTempMap.isEmpty()) {
+            String updatedContent = fileService.convertTempUrlsInContent(notice.getContent(), newInlineTempMap);
+            if (!updatedContent.equals(notice.getContent())) {
+                // 엔티티 다시 조회하여 최신 상태 확보
+                Notice currentNotice = noticeRepository.findById(id)
+                        .orElseThrow(() -> new BusinessException(ErrorCode.NOTICE_NOT_FOUND));
+                
+                // 도메인 메서드를 사용해서 content 업데이트
+                currentNotice.updateContent(updatedContent);
+                noticeRepository.save(currentNotice);
+                log.info("[NoticeService] newInlineImages content 내 임시 URL 변환 완료. ID={}", id);
+            }
         }
         
         log.info("[NoticeService] 공지사항 수정 완료. ID={}, 제목={}", id, notice.getTitle());
@@ -420,13 +459,14 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
     public Response incrementViewCount(Long id) {
         log.info("[NoticeService] 조회수 증가 시작. ID={}", id);
         
-        int updatedCount = noticeRepository.incrementViewCount(id);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        int updatedCount = noticeRepository.incrementViewCount(id, currentUserId);
         if (updatedCount == 0) {
             log.warn("[NoticeService] 조회수 증가 실패 - 공지사항을 찾을 수 없음. ID={}", id);
             throw new BusinessException(ErrorCode.NOTICE_NOT_FOUND);
         }
         
-        log.debug("[NoticeService] 조회수 증가 완료. ID={}", id);
+        log.debug("[NoticeService] 조회수 증가 완료. ID={}, updatedBy={}", id, currentUserId);
         
         return Response.ok("0000", "조회수가 증가되었습니다.");
     }
@@ -638,23 +678,27 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
     }
 
     /**
-     * 파일 연결 생성 도우미 메서드.
+     * 파일 연결 생성 및 임시 파일을 정식 파일로 승격.
      * 
-     *
+     * 임시 파일을 정식 파일로 변환하고 UploadFileLink를 생성하여 공지사항과 연결합니다.
+     * Content URL 변환을 위한 임시-정식 파일 ID 매핑을 반환합니다.
+     * 
      * @param noticeId 공지사항 ID
      * @param fileReferences 파일 참조 목록 (파일ID + 원본명)
-     * @param role 파일 역할
+     * @param role 파일 역할 (ATTACHMENT 또는 INLINE)
+     * @return 임시 파일 ID → 정식 파일 ID 매핑 (content URL 변환용)
      */
-    private void createFileLinks(Long noticeId, List<FileReference> fileReferences, FileRole role) {
+    private Map<String, Long> createFileLinks(Long noticeId, List<FileReference> fileReferences, FileRole role) {
+        Map<String, Long> tempToFormalMap = new HashMap<>();
+        
         if (fileReferences == null || fileReferences.isEmpty()) {
             log.debug("[NoticeService] 연결할 {}파일 없음. noticeId={}", role, noticeId);
-            return;
+            return tempToFormalMap;
         }
 
         log.info("[NoticeService] {} 파일 연결 생성 시작. noticeId={}, 파일개수={}", role, noticeId, fileReferences.size());
 
-        // 임시 파일 ID를 정식 파일 ID로 변환하는 Map
-        Map<String, Long> tempToFormalIdMap = new HashMap<>();
+        // 이미 선언된 tempToFormalMap 사용
         
         // 1단계: 모든 임시 파일을 정식 파일로 변환 (원본명 포함)
         for (FileReference fileRef : fileReferences) {
@@ -663,7 +707,7 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
             
             Long formalFileId = fileService.promoteToFormalFile(tempFileId, originalFileName);
             if (formalFileId != null) {
-                tempToFormalIdMap.put(tempFileId, formalFileId);
+                tempToFormalMap.put(tempFileId, formalFileId);
                 log.debug("[NoticeService] 임시 파일 정식 변환 성공. tempId={} -> formalId={}, originalName={}", 
                         tempFileId, formalFileId, originalFileName);
             } else {
@@ -673,7 +717,7 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
         }
 
         // 2단계: 성공한 변환들에 대해 파일 연결 객체 생성
-        List<UploadFileLink> successfulLinks = tempToFormalIdMap.values().stream()
+        List<UploadFileLink> successfulLinks = tempToFormalMap.values().stream()
                 .map(formalFileId -> {
                     if (role == FileRole.ATTACHMENT) {
                         return UploadFileLink.createNoticeAttachment(formalFileId, noticeId);
@@ -690,6 +734,80 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
         
         log.info("[NoticeService] {} 파일 연결 생성 완료. noticeId={}, 요청={}개, 성공={}개", 
                 role, noticeId, fileReferences.size(), successfulLinks.size());
+                
+        return tempToFormalMap;
+    }
+
+    /**
+     * 임시파일 정보를 기반으로 파일 연결 생성 (새로운 방식).
+     * 
+     * @param noticeId 공지사항 ID
+     * @param tempFileInfos 임시파일 정보 목록 (tempFileId + fileName)
+     * @param role 파일 역할 (ATTACHMENT 또는 INLINE)
+     * @return 임시 파일 ID → 정식 파일 ID 매핑 (content URL 변환용)
+     */
+    private Map<String, Long> createFileLinkFromTempFiles(Long noticeId, List<?> tempFileInfos, FileRole role) {
+        log.info("🔥 [NoticeService] createFileLinkFromTempFiles 호출됨!!! noticeId={}, role={}, tempFileInfos={}", 
+                noticeId, role, tempFileInfos);
+        
+        Map<String, Long> tempToFormalMap = new HashMap<>();
+        
+        if (tempFileInfos == null || tempFileInfos.isEmpty()) {
+            log.info("⚠️ [NoticeService] 연결할 {}파일 없음. noticeId={}", role, noticeId);
+            return tempToFormalMap;
+        }
+        
+        log.info("🚀 [NoticeService] {} 파일 연결 생성 시작. noticeId={}, 파일개수={}", role, noticeId, tempFileInfos.size());
+        
+        // 1단계: 모든 임시 파일을 정식 파일로 변환
+        for (Object tempFileInfo : tempFileInfos) {
+            String tempFileId = null;
+            String fileName = null;
+            
+            // 타입에 따라 처리
+            if (tempFileInfo instanceof RequestNoticeCreate.AttachmentFileInfo) {
+                RequestNoticeCreate.AttachmentFileInfo info = (RequestNoticeCreate.AttachmentFileInfo) tempFileInfo;
+                tempFileId = info.getTempFileId();
+                fileName = info.getFileName();
+            } else if (tempFileInfo instanceof RequestNoticeCreate.InlineImageInfo) {
+                RequestNoticeCreate.InlineImageInfo info = (RequestNoticeCreate.InlineImageInfo) tempFileInfo;
+                tempFileId = info.getTempFileId();
+                fileName = info.getFileName();
+            }
+            
+            if (tempFileId != null) {
+                Long formalFileId = fileService.promoteToFormalFile(tempFileId, fileName);
+                if (formalFileId != null) {
+                    tempToFormalMap.put(tempFileId, formalFileId);
+                    log.debug("[NoticeService] 임시 파일 정식 변환 성공. tempId={} -> formalId={}, fileName={}", 
+                            tempFileId, formalFileId, fileName);
+                } else {
+                    log.warn("[NoticeService] 임시 파일 변환 실패로 연결 생략. tempFileId={}, fileName={}, role={}", 
+                            tempFileId, fileName, role);
+                }
+            }
+        }
+        
+        // 2단계: 성공한 변환들에 대해 파일 연결 객체 생성
+        List<UploadFileLink> successfulLinks = tempToFormalMap.values().stream()
+                .map(formalFileId -> {
+                    if (role == FileRole.ATTACHMENT) {
+                        return UploadFileLink.createNoticeAttachment(formalFileId, noticeId);
+                    } else {
+                        return UploadFileLink.createNoticeInlineImage(formalFileId, noticeId);
+                    }
+                })
+                .toList();
+                
+        // 3단계: DB에 파일 연결 저장
+        if (!successfulLinks.isEmpty()) {
+            uploadFileLinkRepository.saveAll(successfulLinks);
+        }
+        
+        log.info("[NoticeService] {} 파일 연결 생성 완료. noticeId={}, 요청={}개, 성공={}개", 
+                role, noticeId, tempFileInfos.size(), successfulLinks.size());
+                
+        return tempToFormalMap;
     }
 
     /**
@@ -737,24 +855,30 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
     /**
      * 새 파일 추가 (기존 파일은 유지).
      * 
+     * 기존 파일들은 그대로 유지하고 새로운 파일만 추가합니다.
+     * 내부적으로 createFileLinks를 호출하여 임시-정식 파일 ID 매핑을 반환합니다.
+     * 
      * @param noticeId 공지사항 ID
      * @param fileReferences 새로 추가할 파일 참조 목록 (파일ID + 원본명)
-     * @param role 파일 역할
+     * @param role 파일 역할 (ATTACHMENT 또는 INLINE)
+     * @return 임시 파일 ID → 정식 파일 ID 매핑 (content URL 변환용)
      */
-    private void addFileLinks(Long noticeId, List<FileReference> fileReferences, FileRole role) {
+    private Map<String, Long> addFileLinks(Long noticeId, List<FileReference> fileReferences, FileRole role) {
         if (fileReferences == null || fileReferences.isEmpty()) {
             log.debug("[NoticeService] 추가할 {} 파일 없음. noticeId={}", role, noticeId);
-            return;
+            return new HashMap<>();
         }
         
         log.info("➕ [NoticeService] {} 파일 추가 실행. noticeId={}, 추가파일={}개", 
                 role, noticeId, fileReferences.size());
         
-        // 기존 createFileLinks 메서드 재사용
-        createFileLinks(noticeId, fileReferences, role);
+        // 기존 createFileLinks 메서드 재사용하여 임시-정식 ID 매핑 반환
+        Map<String, Long> tempToFormalMap = createFileLinks(noticeId, fileReferences, role);
         
         log.debug("[NoticeService] {} 파일 추가 완료. noticeId={}, 추가된파일={}개", 
                 role, noticeId, fileReferences.size());
+        
+        return tempToFormalMap;
     }
 
     /**

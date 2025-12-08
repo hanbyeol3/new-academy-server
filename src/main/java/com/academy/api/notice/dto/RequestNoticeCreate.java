@@ -11,6 +11,7 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.ArrayList;
 
 /**
  * 공지사항 생성 요청 DTO.
@@ -53,9 +54,31 @@ public class RequestNoticeCreate {
     @Schema(description = "조회수", example = "0")
     private Long viewCount = 0L;
 
-    @Schema(description = "첨부파일 목록 (파일ID + 원본명)")
-    private List<FileReference> attachments;
+    @Schema(description = "첨부파일 정보 목록 (임시파일 기반)")
+    private List<AttachmentFileInfo> attachmentFiles = new ArrayList<>();
 
-    @Schema(description = "본문 이미지 목록 (파일ID + 원본명)")
-    private List<FileReference> inlineImages;
+    @Schema(description = "본문 이미지 목록 (임시파일 기반)")
+    private List<InlineImageInfo> inlineImages = new ArrayList<>();
+
+    @Getter
+    @Setter
+    @Schema(description = "첨부파일 정보")
+    public static class AttachmentFileInfo {
+        @Schema(description = "임시파일 ID", example = "550e8400-e29b-41d4-a716-446655440000")
+        private String tempFileId;
+        
+        @Schema(description = "원본 파일명", example = "document.pdf")
+        private String fileName;
+    }
+
+    @Getter
+    @Setter
+    @Schema(description = "본문 이미지 정보")
+    public static class InlineImageInfo {
+        @Schema(description = "임시파일 ID", example = "550e8400-e29b-41d4-a716-446655440000")
+        private String tempFileId;
+        
+        @Schema(description = "원본 파일명", example = "image.png")
+        private String fileName;
+    }
 }

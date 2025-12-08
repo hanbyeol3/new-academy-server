@@ -29,8 +29,8 @@ import jakarta.servlet.http.HttpServletResponse;
  * 모든 사용자가 접근 가능한 공개 API입니다.
  * 
  * API 엔드포인트:
- *  - POST /api/public/files/upload: Multipart 파일 업로드 (정식파일)
- *  - POST /api/public/files/upload/temp: 임시파일 업로드 (에디터용)
+ *  - POST /api/public/files/upload: 첨부파일 임시 업로드 (공지사항용)
+ *  - POST /api/public/files/upload/temp: 에디터 이미지 임시 업로드 (에디터용)
  *  - POST /api/public/files/upload/base64: Base64 파일 업로드  
  *  - GET /api/public/files/download/{fileId}: 정식파일 다운로드
  *  - GET /api/public/files/temp/{tempFileId}: 임시파일 미리보기
@@ -48,11 +48,18 @@ public class FileController {
     // private final FileUploadService fileUploadService; // 임시 비활성화
 
     /**
-     * Multipart 파일 업로드 (정식파일).
+     * 첨부파일 임시 업로드 (공지사항용).
      */
     @Operation(
-        summary = "Multipart 파일 업로드 (정식파일)", 
-        description = "Multipart 형식으로 파일을 업로드합니다. 업로드된 파일은 서버에 저장되고 고유 ID가 반환됩니다."
+        summary = "첨부파일 임시 업로드 (공지사항용)", 
+        description = """
+                공지사항 첨부파일을 임시로 업로드합니다.
+                
+                특징:
+                - 임시파일로 저장 (공지사항 생성 시 정식화)
+                - 첨부파일 다운로드용
+                - 공지사항 저장 시 attachmentFiles 배열에 포함
+                """
     )
     @ApiResponses({ 
         @ApiResponse(responseCode = "200", description = "업로드 성공"),
@@ -66,7 +73,7 @@ public class FileController {
                                         schema = @Schema(type = "string", format = "binary")))
             @RequestParam("file") MultipartFile file) {
         
-        log.info("정식파일 업로드 요청. 파일명={}, 크기={}", file.getOriginalFilename(), file.getSize());
+        log.info("첨부파일 임시 업로드 요청. 파일명={}, 크기={}", file.getOriginalFilename(), file.getSize());
         
         return fileService.uploadMultipartFile(file);
     }

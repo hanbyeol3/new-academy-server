@@ -6,7 +6,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
 /**
  * 공지사항 검색 타입.
  * 
- * 공지사항 검색 시 제목, 내용, 또는 제목+내용 중 어느 범위에서 
+ * 공지사항 검색 시 제목, 내용, 작성자, 또는 모든 범위에서 
  * 키워드 검색을 수행할지 결정하는 열거형입니다.
  */
 public enum NoticeSearchType {
@@ -17,8 +17,11 @@ public enum NoticeSearchType {
     /** 내용에서만 검색 */
     CONTENT,
     
-    /** 제목 + 내용에서 검색 (기본값) */
-    TITLE_CONTENT;
+    /** 작성자 이름에서 검색 */
+    AUTHOR,
+    
+    /** 제목 + 내용 + 작성자 모든 범위에서 검색 (기본값) */
+    ALL;
     
     /**
      * 문자열로부터 enum 값을 생성합니다.
@@ -34,7 +37,7 @@ public enum NoticeSearchType {
             return NoticeSearchType.valueOf(value.toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Invalid NoticeSearchType: " + value + 
-                ". Valid values are: TITLE, CONTENT, TITLE_CONTENT");
+                ". Valid values are: TITLE, CONTENT, AUTHOR, ALL");
         }
     }
     

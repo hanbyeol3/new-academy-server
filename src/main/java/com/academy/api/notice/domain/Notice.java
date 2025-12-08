@@ -166,9 +166,12 @@ public class Notice {
 
     /**
      * 조회수 증가.
+     * 
+     * @param updatedBy 수정한 사용자 ID
      */
-    public void incrementViewCount() {
+    public void incrementViewCount(Long updatedBy) {
         this.viewCount++;
+        this.updatedBy = updatedBy;
     }
 
     /**
@@ -219,5 +222,14 @@ public class Notice {
         this.exposureType = ExposureType.ALWAYS;
         this.exposureStartAt = null;
         this.exposureEndAt = null;
+    }
+
+    /**
+     * 공지사항 내용 업데이트.
+     * 
+     * @param content 새로운 내용
+     */
+    public void updateContent(String content) {
+        this.content = content;
     }
 }

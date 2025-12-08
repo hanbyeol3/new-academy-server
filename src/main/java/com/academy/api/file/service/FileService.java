@@ -8,6 +8,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.Map;
 
 /**
  * 파일 관리 서비스 인터페이스.
@@ -95,4 +96,13 @@ public interface FileService {
      * @param response HTTP 응답 객체
      */
     void downloadTempFile(String tempFileId, HttpServletResponse response);
+
+    /**
+     * content에서 임시 URL을 정식 URL로 변환.
+     * 
+     * @param content HTML/텍스트 내용
+     * @param tempToFormalMap 임시 파일 ID → 정식 파일 ID 매핑
+     * @return 변환된 content
+     */
+    String convertTempUrlsInContent(String content, Map<String, Long> tempToFormalMap);
 }

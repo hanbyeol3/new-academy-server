@@ -5,6 +5,7 @@ import com.academy.api.notice.domain.Notice;
 import com.academy.api.notice.domain.NoticeSearchType;
 import com.academy.api.notice.domain.QNotice;
 import com.academy.api.notice.dto.RequestNoticeSearch;
+import com.academy.api.member.domain.QMember;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQuery;
@@ -27,6 +28,7 @@ public class NoticeRepositoryImpl implements NoticeRepositoryCustom {
 
     private final JPAQueryFactory queryFactory;
     private static final QNotice notice = QNotice.notice;
+    private static final QMember member = QMember.member;
 
     @Override
     public Page<Notice> searchNotices(RequestNoticeSearch condition, Pageable pageable) {
@@ -134,8 +136,20 @@ public class NoticeRepositoryImpl implements NoticeRepositoryCustom {
         return switch (searchType) {
             case TITLE -> notice.title.like(likeKeyword);
             case CONTENT -> notice.content.like(likeKeyword);
-            case TITLE_CONTENT -> notice.title.like(likeKeyword)
-                                        .or(notice.content.like(likeKeyword));
+            case AUTHOR -> notice.createdBy.in(
+                    queryFactory
+                            .select(member.id)
+                            .from(member)
+                            .where(member.memberName.like(likeKeyword))
+            );
+            case ALL -> notice.title.like(likeKeyword)
+                              .or(notice.content.like(likeKeyword))
+                              .or(notice.createdBy.in(
+                                      queryFactory
+                                              .select(member.id)
+                                              .from(member)
+                                              .where(member.memberName.like(likeKeyword))
+                              ));
         };
     }
 
@@ -160,6 +174,7 @@ public class NoticeRepositoryImpl implements NoticeRepositoryCustom {
     private BooleanExpression exposureTypeCondition(ExposureType exposureType) {
         return exposureType != null ? notice.exposureType.eq(exposureType) : null;
     }
+
 
     private BooleanExpression exposableCondition() {
         LocalDateTime now = LocalDateTime.now();
