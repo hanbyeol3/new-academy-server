@@ -518,40 +518,61 @@ public class FileServiceImpl implements FileService {
     @Override
     @Transactional
     public Long promoteToFormalFile(String tempFileId, String originalFileName) {
-        log.info("[FileService] 임시 파일을 정식 파일로 변환 시작. tempFileId={}, originalFileName={}", 
+        log.info("🔧 [DEBUG] promoteToFormalFile 시작. tempFileId={}, originalFileName={}", 
                 tempFileId, originalFileName);
         
         try {
             // 1. 임시 파일 찾기
+            log.debug("🔧 [DEBUG] 1단계: 임시 파일 검색 시작");
             Path tempFilePath = findTempFileByFileId(tempFileId);
-            if (tempFilePath == null || !Files.exists(tempFilePath)) {
-                log.warn("[FileService] 임시 파일을 찾을 수 없음. tempFileId={}", tempFileId);
+            log.debug("🔧 [DEBUG] 임시 파일 검색 결과. tempFilePath={}", tempFilePath);
+            
+            if (tempFilePath == null) {
+                log.warn("🔧 [DEBUG] 임시 파일 경로가 null. tempFileId={}", tempFileId);
                 return null;
             }
             
+            if (!Files.exists(tempFilePath)) {
+                log.warn("🔧 [DEBUG] 임시 파일이 물리적으로 존재하지 않음. tempFileId={}, 경로={}", tempFileId, tempFilePath);
+                return null;
+            }
+            
+            log.debug("🔧 [DEBUG] 임시 파일 확인 완료. 경로={}, 크기={}", tempFilePath, Files.size(tempFilePath));
+            
             // 2. 정식 파일 경로 생성 (GENERAL 컨텍스트)
+            log.debug("🔧 [DEBUG] 2단계: 정식 파일 경로 생성 시작");
             LocalDateTime now = LocalDateTime.now();
             String year = String.valueOf(now.getYear());
             String month = String.format("%02d", now.getMonthValue());
             
             String extension = getFileExtension(originalFileName);
             String serverFileName = tempFileId + "." + extension;
+            log.debug("🔧 [DEBUG] 서버 파일명 생성. serverFileName={}, extension={}", serverFileName, extension);
             
             Path formalPath = Paths.get(uploadDir, FileContext.GENERAL.getFolder(), year, month);
+            log.debug("🔧 [DEBUG] 정식 파일 폴더 경로. formalPath={}, 존재여부={}", formalPath, Files.exists(formalPath));
+            
             if (!Files.exists(formalPath)) {
                 Files.createDirectories(formalPath);
+                log.debug("🔧 [DEBUG] 정식 파일 폴더 생성 완료. formalPath={}", formalPath);
             }
             
             Path formalFilePath = formalPath.resolve(serverFileName);
+            log.debug("🔧 [DEBUG] 정식 파일 전체 경로. formalFilePath={}", formalFilePath);
             
             // 3. 파일 이동 (임시 → 정식)
+            log.debug("🔧 [DEBUG] 3단계: 파일 이동 시작. {} → {}", tempFilePath, formalFilePath);
             Files.move(tempFilePath, formalFilePath, StandardCopyOption.REPLACE_EXISTING);
+            log.debug("🔧 [DEBUG] 파일 이동 완료. 이동 후 파일 존재여부={}", Files.exists(formalFilePath));
             
             // 4. DB에 파일 메타데이터 저장
+            log.debug("🔧 [DEBUG] 4단계: DB 메타데이터 저장 시작");
             String relativePath = Paths.get(FileContext.GENERAL.getFolder(), year, month, serverFileName).toString();
+            log.debug("🔧 [DEBUG] DB 저장용 상대경로. relativePath={}", relativePath);
             
             try {
                 String mimeType = Files.probeContentType(formalFilePath);
+                log.debug("🔧 [DEBUG] MIME 타입 감지. mimeType={}", mimeType);
                 
                 UploadFile uploadFile = UploadFile.builder()
                         .serverPath(relativePath)
@@ -562,15 +583,17 @@ public class FileServiceImpl implements FileService {
                         .size(Files.size(formalFilePath))
                         .build();
                 
+                log.debug("🔧 [DEBUG] UploadFile 엔티티 생성 완료. 저장 시작");
                 UploadFile savedFile = uploadFileRepository.save(uploadFile);
+                log.debug("🔧 [DEBUG] DB 저장 완료. savedFileId={}", savedFile.getId());
                 
-                log.info("[FileService] 임시 파일 정식 변환 완료. tempFileId={}, newFileId={}, 경로: {} → {}", 
-                        tempFileId, savedFile.getId(), tempFilePath, formalFilePath);
+                log.info("🔧 [DEBUG] promoteToFormalFile 성공. tempFileId={} → formalFileId={}, 최종경로={}", 
+                        tempFileId, savedFile.getId(), formalFilePath);
                 
                 return savedFile.getId();
                 
             } catch (IOException e) {
-                log.error("[FileService] MIME 타입 확인 실패, 기본값 적용. tempFileId={}", tempFileId);
+                log.error("🔧 [DEBUG] MIME 타입 확인 실패, 기본값 적용. tempFileId={}, error={}", tempFileId, e.getMessage());
                 
                 UploadFile uploadFile = UploadFile.builder()
                         .serverPath(relativePath)
@@ -582,11 +605,16 @@ public class FileServiceImpl implements FileService {
                         .build();
                 
                 UploadFile savedFile = uploadFileRepository.save(uploadFile);
+                log.debug("🔧 [DEBUG] fallback DB 저장 완료. savedFileId={}", savedFile.getId());
+                
                 return savedFile.getId();
             }
             
         } catch (IOException e) {
-            log.error("[FileService] 임시 파일 정식 변환 실패. tempFileId={}, error={}", tempFileId, e.getMessage());
+            log.error("🔧 [DEBUG] promoteToFormalFile 실패. tempFileId={}, error={}", tempFileId, e.getMessage(), e);
+            return null;
+        } catch (Exception e) {
+            log.error("🔧 [DEBUG] promoteToFormalFile 예상치 못한 오류. tempFileId={}, error={}", tempFileId, e.getMessage(), e);
             return null;
         }
     }

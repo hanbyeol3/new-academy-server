@@ -67,3 +67,5 @@ logging:
   level:
     root: INFO
     com.academy.api: DEBUG
+    com.academy.api.academy.service: DEBUG
+    com.academy.api.file.service: DEBUG

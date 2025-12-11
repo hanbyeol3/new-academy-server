@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * 학원 소개 정보 통합 서비스 구현체.
@@ -98,13 +99,28 @@ public class AcademyAboutServiceImpl implements AcademyAboutService {
             academyAboutMapper.updateBasicInfo(academyAbout, request);
 
             // 이미지 파일 처리 및 경로 업데이트
+            log.info("🔍 [DEBUG] 이미지 처리 시작. currentImagePath={}, tempFileId={}, fileName={}, deleteFlag={}", 
+                    academyAbout.getMainImagePath(), 
+                    request.getMainImageTempFileId(), 
+                    request.getMainImageFileName(), 
+                    request.getDeleteMainImage());
+            
             String finalMainImagePath = processMainImageFile(request, academyAbout.getMainImagePath());
-            if (finalMainImagePath != academyAbout.getMainImagePath()) {
+            
+            log.info("🔍 [DEBUG] 이미지 처리 완료. finalImagePath={}, 기존경로와다름={}", 
+                    finalMainImagePath, 
+                    !Objects.equals(finalMainImagePath, academyAbout.getMainImagePath()));
+            
+            if (!Objects.equals(finalMainImagePath, academyAbout.getMainImagePath())) {
+                log.info("🔍 [DEBUG] 엔티티 이미지 경로 업데이트 실행. {} → {}", 
+                        academyAbout.getMainImagePath(), finalMainImagePath);
                 academyAbout.updateMainImage(finalMainImagePath, currentUserId);
             }
 
             // 저장
             AcademyAbout savedAcademyAbout = academyAboutRepository.save(academyAbout);
+            
+            log.info("🔍 [DEBUG] DB 저장 완료. 저장된 이미지 경로: {}", savedAcademyAbout.getMainImagePath());
 
             log.debug("[AcademyAboutService] 학원 소개 정보 수정 완료. id={}, mainTitle={}, imagePath={}", 
                     savedAcademyAbout.getId(), savedAcademyAbout.getMainTitle(), 
