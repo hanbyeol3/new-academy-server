@@ -9,6 +9,8 @@ import com.academy.api.academy.repository.AcademyAboutDetailsRepository;
 import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.file.service.FileService;
+import com.academy.api.common.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -40,6 +42,7 @@ public class AcademyAboutServiceImpl implements AcademyAboutService {
     private final AcademyAboutRepository academyAboutRepository;
     private final AcademyAboutDetailsRepository academyAboutDetailsRepository;
     private final AcademyAboutMapper academyAboutMapper;
+    private final FileService fileService;
 
     // ==================== AcademyAbout 관련 구현 ====================
 
@@ -81,6 +84,9 @@ public class AcademyAboutServiceImpl implements AcademyAboutService {
                 request.getMainTitle());
 
         try {
+            // 현재 사용자 ID 획득
+            Long currentUserId = SecurityUtils.getCurrentUserId();
+            
             // 기존 학원 소개 정보 조회 (없으면 기본값 생성)
             AcademyAbout academyAbout = academyAboutRepository.findFirstRow()
                     .orElseGet(() -> {
@@ -88,20 +94,93 @@ public class AcademyAboutServiceImpl implements AcademyAboutService {
                         return createDefaultAcademyAbout();
                     });
 
-            // 엔티티 업데이트
-            academyAboutMapper.updateEntity(academyAbout, request);
+            // 기본 정보 업데이트 (이미지 제외)
+            academyAboutMapper.updateBasicInfo(academyAbout, request);
+
+            // 이미지 파일 처리 및 경로 업데이트
+            String finalMainImagePath = processMainImageFile(request, academyAbout.getMainImagePath());
+            if (finalMainImagePath != academyAbout.getMainImagePath()) {
+                academyAbout.updateMainImage(finalMainImagePath, currentUserId);
+            }
 
             // 저장
             AcademyAbout savedAcademyAbout = academyAboutRepository.save(academyAbout);
 
-            log.debug("[AcademyAboutService] 학원 소개 정보 수정 완료. id={}, mainTitle={}", 
-                    savedAcademyAbout.getId(), savedAcademyAbout.getMainTitle());
+            log.debug("[AcademyAboutService] 학원 소개 정보 수정 완료. id={}, mainTitle={}, imagePath={}", 
+                    savedAcademyAbout.getId(), savedAcademyAbout.getMainTitle(), 
+                    savedAcademyAbout.getMainImagePath());
 
             return Response.ok("0000", "학원 소개 정보가 수정되었습니다");
 
         } catch (Exception e) {
             log.error("[AcademyAboutService] 학원 소개 정보 수정 중 예상치 못한 오류: {}", e.getMessage(), e);
             return Response.error("E500", "학원 소개 정보 수정 중 오류가 발생했습니다");
+        }
+    }
+
+    /**
+     * 메인 이미지 파일 처리.
+     * 
+     * @param request 수정 요청
+     * @param currentImagePath 현재 이미지 경로
+     * @return 최종 이미지 경로
+     */
+    private String processMainImageFile(RequestAcademyAboutUpdate request, String currentImagePath) {
+        try {
+            // 1. 이미지 삭제 요청인 경우
+            if (Boolean.TRUE.equals(request.getDeleteMainImage())) {
+                log.debug("[AcademyAboutService] 메인 이미지 삭제 요청");
+                // 기존 파일이 있으면 삭제
+                if (currentImagePath != null && !currentImagePath.trim().isEmpty()) {
+                    boolean deleted = fileService.deletePhysicalFileByPath(currentImagePath);
+                    if (deleted) {
+                        log.info("[AcademyAboutService] 기존 메인 이미지 파일 삭제 완료: {}", currentImagePath);
+                    } else {
+                        log.warn("[AcademyAboutService] 기존 메인 이미지 파일 삭제 실패: {}", currentImagePath);
+                    }
+                }
+                return null;
+            }
+
+            // 2. 새 이미지 업로드인 경우 (임시파일 → 정식파일 변환)
+            if (request.getMainImageTempFileId() != null && !request.getMainImageTempFileId().trim().isEmpty()) {
+                log.debug("[AcademyAboutService] 새 메인 이미지 업로드 처리. tempFileId={}", 
+                        request.getMainImageTempFileId());
+                
+                // 기존 파일이 있으면 삭제
+                if (currentImagePath != null && !currentImagePath.trim().isEmpty()) {
+                    boolean deleted = fileService.deletePhysicalFileByPath(currentImagePath);
+                    if (deleted) {
+                        log.info("[AcademyAboutService] 기존 메인 이미지 파일 삭제 완료: {}", currentImagePath);
+                    } else {
+                        log.warn("[AcademyAboutService] 기존 메인 이미지 파일 삭제 실패: {}", currentImagePath);
+                    }
+                }
+                
+                // 임시파일을 정식파일로 변환
+                Long formalFileId = fileService.promoteToFormalFile(
+                    request.getMainImageTempFileId(),
+                    request.getMainImageFileName() != null ? request.getMainImageFileName() : "academy-main-image"
+                );
+                
+                if (formalFileId != null) {
+                    String newImagePath = "/api/public/files/download/" + formalFileId;
+                    log.debug("[AcademyAboutService] 메인 이미지 정식파일 변환 완료: {} → {}", 
+                            request.getMainImageTempFileId(), newImagePath);
+                    return newImagePath;
+                } else {
+                    log.warn("[AcademyAboutService] 메인 이미지 정식파일 변환 실패: {}", 
+                            request.getMainImageTempFileId());
+                    return currentImagePath; // 실패시 기존 경로 유지
+                }
+            }
+
+            // 3. 변경 사항이 없으면 기존 경로 유지
+            return currentImagePath;
+
+        } catch (Exception e) {
+            log.error("[AcademyAboutService] 메인 이미지 파일 처리 중 오류: {}", e.getMessage(), e);
+            throw new RuntimeException("이미지 파일 처리 중 오류가 발생했습니다", e);
         }
     }
 

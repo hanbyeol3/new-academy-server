@@ -89,6 +89,12 @@ public class AcademyAbout {
 
     /**
      * 학원 소개 정보 업데이트.
+     * 
+     * @param mainTitle 메인 타이틀
+     * @param mainPointTitle 메인 포인트 타이틀
+     * @param mainDescription 메인 설명
+     * @param mainImagePath 메인 이미지 경로
+     * @param updatedBy 수정자 ID
      */
     public void update(String mainTitle, String mainPointTitle, String mainDescription,
                       String mainImagePath, Long updatedBy) {
@@ -96,6 +102,27 @@ public class AcademyAbout {
         this.mainPointTitle = mainPointTitle;
         this.mainDescription = mainDescription;
         this.mainImagePath = mainImagePath;
+        this.updatedBy = updatedBy;
+    }
+
+    /**
+     * 메인 이미지 경로 업데이트.
+     * 
+     * @param mainImagePath 새로운 메인 이미지 경로
+     * @param updatedBy 수정자 ID
+     */
+    public void updateMainImage(String mainImagePath, Long updatedBy) {
+        this.mainImagePath = mainImagePath;
+        this.updatedBy = updatedBy;
+    }
+
+    /**
+     * 메인 이미지 삭제.
+     * 
+     * @param updatedBy 수정자 ID
+     */
+    public void removeMainImage(Long updatedBy) {
+        this.mainImagePath = null;
         this.updatedBy = updatedBy;
     }
 

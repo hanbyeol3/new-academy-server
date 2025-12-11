@@ -32,7 +32,16 @@ public class RequestAcademyAboutUpdate {
             example = "ABC학원은 20년 전통의 교육 노하우로 학생 개개인의 특성을 파악하여...")
     private String mainDescription;
 
-    @Schema(description = "메인 이미지 경로", 
-            example = "/uploads/academy/main-image.jpg")
-    private String mainImagePath;
+    @Schema(description = "새로운 메인 이미지 임시 파일 ID (교체 시)", 
+            example = "temp-uuid-123")
+    private String mainImageTempFileId;
+
+    @Schema(description = "새로운 메인 이미지 파일명 (교체 시)", 
+            example = "academy-main.jpg")
+    private String mainImageFileName;
+
+    @Schema(description = "메인 이미지 삭제 여부", 
+            example = "false",
+            defaultValue = "false")
+    private Boolean deleteMainImage = false;
 }

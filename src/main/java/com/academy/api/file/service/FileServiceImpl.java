@@ -723,13 +723,40 @@ public class FileServiceImpl implements FileService {
         return result;
     }
 
-    /**
-     * Content-Disposition 헤더용 파일명 인코딩.
-     * RFC 6266 표준에 따른 UTF-8 인코딩된 파일명을 생성합니다.
-     * 
-     * @param originalFilename 원본 파일명
-     * @return 인코딩된 Content-Disposition 헤더값
-     */
+    @Override
+    public boolean deletePhysicalFileByPath(String filePath) {
+        if (filePath == null || filePath.trim().isEmpty()) {
+            log.warn("[FileService] 삭제할 파일 경로가 비어있음");
+            return false;
+        }
+        
+        try {
+            Path fullPath = Paths.get(uploadDir, filePath);
+            
+            log.info("[FileService] 물리적 파일 삭제 시작. 경로={}", fullPath);
+            
+            if (!Files.exists(fullPath)) {
+                log.warn("[FileService] 삭제할 파일이 존재하지 않음. 경로={}", fullPath);
+                return false;
+            }
+            
+            // 파일 삭제
+            boolean deleted = Files.deleteIfExists(fullPath);
+            
+            if (deleted) {
+                log.info("[FileService] 물리적 파일 삭제 성공. 경로={}", fullPath);
+            } else {
+                log.warn("[FileService] 물리적 파일 삭제 실패. 경로={}", fullPath);
+            }
+            
+            return deleted;
+            
+        } catch (IOException e) {
+            log.error("[FileService] 물리적 파일 삭제 중 오류 발생. filePath={}, error={}", filePath, e.getMessage());
+            return false;
+        }
+    }
+
     private String encodeFilenameForContentDisposition(String originalFilename) {
         if (originalFilename == null || originalFilename.trim().isEmpty()) {
             return "attachment";

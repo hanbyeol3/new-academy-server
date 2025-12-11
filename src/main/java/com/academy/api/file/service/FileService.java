@@ -124,4 +124,12 @@ public interface FileService {
      * @return 모든 temp URL이 변환된 content
      */
     String convertAllTempUrlsInContent(String content);
+
+    /**
+     * 파일 경로로 실제 파일 시스템에서 파일 삭제.
+     * 
+     * @param filePath 삭제할 파일의 상대 경로 (예: "general/2024/12/academy-main-image.jpg")
+     * @return 삭제 성공 여부
+     */
+    boolean deletePhysicalFileByPath(String filePath);
 }

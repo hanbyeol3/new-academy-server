@@ -60,27 +60,30 @@ public class AcademyAboutMapper {
                 .mainTitle(request.getMainTitle())
                 .mainPointTitle(request.getMainPointTitle())
                 .mainDescription(request.getMainDescription())
-                .mainImagePath(request.getMainImagePath())
+                .mainImagePath(null) // 이미지 경로는 Service에서 별도 처리
                 .createdBy(SecurityUtils.getCurrentUserId())
                 .build();
     }
 
     /**
-     * Request DTO로 AcademyAbout Entity 업데이트.
+     * Request DTO로 AcademyAbout Entity 기본 정보 업데이트 (이미지 제외).
+     * 
+     * 주의: 이미지 파일 처리는 Service에서 별도로 수행됩니다.
      * 
      * @param entity 기존 엔티티
      * @param request 수정 요청 DTO
      */
-    public void updateEntity(AcademyAbout entity, RequestAcademyAboutUpdate request) {
+    public void updateBasicInfo(AcademyAbout entity, RequestAcademyAboutUpdate request) {
         if (entity == null || request == null) {
             return;
         }
 
+        // 기본 정보만 업데이트 (이미지 경로는 Service에서 처리)
         entity.update(
                 request.getMainTitle(),
                 request.getMainPointTitle(), 
                 request.getMainDescription(),
-                request.getMainImagePath(),
+                entity.getMainImagePath(), // 기존 이미지 경로 유지
                 SecurityUtils.getCurrentUserId()
         );
     }
