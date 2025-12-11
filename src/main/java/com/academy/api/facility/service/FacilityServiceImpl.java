@@ -405,20 +405,4 @@ public class FacilityServiceImpl implements FacilityService {
         }
     }
 
-    /**
-     * 시설의 기존 커버 이미지를 새 파일로 교체.
-     * 
-     * @deprecated 새로운 임시파일 시스템으로 대체됨. deleteExistingCoverImage + linkSingleFile 사용 권장
-     * @param facilityId 시설 ID
-     * @param newFileId 새 파일 ID (null인 경우 기존 파일만 해제)
-     */
-    @Deprecated
-    private void replaceSingleFile(Long facilityId, String newFileId) {
-        // 기존 파일 연결 해제
-        uploadFileLinkRepository.deleteByOwnerTableAndOwnerIdAndRole("facility", facilityId, FileRole.COVER);
-        log.debug("[FacilityService] 기존 커버 이미지 연결 해제 완료. facilityId={}", facilityId);
-        
-        // 새 파일 연결
-        linkSingleFile(facilityId, newFileId);
-    }
 }

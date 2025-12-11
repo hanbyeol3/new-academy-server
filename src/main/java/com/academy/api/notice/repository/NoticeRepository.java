@@ -76,18 +76,4 @@ public interface NoticeRepository extends JpaRepository<Notice, Long>, NoticeRep
     @Query("SELECT COUNT(n) FROM Notice n WHERE n.category.id = :categoryId")
     long countByCategoryId(@Param("categoryId") Long categoryId);
     
-    /**
-     * 키워드 검색 (제목, 내용에서 LIKE 검색) - Native Query 사용.
-     * 
-     * @deprecated QueryDSL 기반 searchNoticesForAdmin에 통합됨.
-     *             searchType 파라미터를 통한 동적 검색 조건 지원을 위해
-     *             NoticeRepositoryImpl.keywordCondition() 메서드 사용 권장.
-     */
-    @Deprecated
-    @Query(value = """
-        SELECT n.* FROM notices n 
-        WHERE (n.title LIKE CONCAT('%', :keyword, '%') OR n.content LIKE CONCAT('%', :keyword, '%'))
-        ORDER BY n.created_at DESC
-        """, nativeQuery = true)
-    List<Notice> findByKeyword(@Param("keyword") String keyword);
 }

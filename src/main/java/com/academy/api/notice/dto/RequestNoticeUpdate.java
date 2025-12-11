@@ -63,14 +63,4 @@ public class RequestNoticeUpdate {
     @Schema(description = "삭제할 기존 본문이미지 파일 ID 목록 (정식파일 Long ID)")
     private List<Long> deleteInlineImageFileIds;
 
-    // 하위 호환성을 위한 기존 필드 (Deprecated)
-    @Deprecated
-    @Schema(description = "첨부파일 목록 (구버전 호환용, newAttachments + deleteAttachmentFileIds 사용 권장)", 
-            deprecated = true)
-    private List<FileReference> attachments;
-
-    @Deprecated  
-    @Schema(description = "본문 이미지 목록 (구버전 호환용, newInlineImages + deleteInlineImageFileIds 사용 권장)",
-            deprecated = true)
-    private List<FileReference> inlineImages;
 }

@@ -180,8 +180,10 @@ public class NoticeAdminController {
             @Parameter(description = "공지사항 수정 요청 데이터")
             @RequestBody @Valid RequestNoticeUpdate request) {
         
-        log.info("🔄🔄🔄 [NoticeAdminController] 공지사항 수정 요청!!! ID={}, 첨부파일={}", 
-                id, request.getAttachments());
+        log.info("🔄🔄🔄 [NoticeAdminController] 공지사항 수정 요청!!! ID={}, 새첨부파일={}, 삭제첨부파일={}", 
+                id, 
+                request.getNewAttachments() != null ? request.getNewAttachments().size() : 0,
+                request.getDeleteAttachmentFileIds() != null ? request.getDeleteAttachmentFileIds().size() : 0);
         return noticeService.updateNotice(id, request);
     }
 

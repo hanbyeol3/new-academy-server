@@ -363,15 +363,12 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
     @Transactional
     public ResponseData<ResponseNotice> updateNotice(Long id, RequestNoticeUpdate request) {
         log.info("🔄 [NoticeService] 공지사항 수정 시작!!! ID={}, " +
-                "신규첨부파일={}개, 신규본문이미지={}개, 삭제첨부파일={}개, 삭제본문이미지={}개, " + 
-                "구버전첨부파일={}개, 구버전본문이미지={}개", 
+                "신규첨부파일={}개, 신규본문이미지={}개, 삭제첨부파일={}개, 삭제본문이미지={}개", 
                 id,
                 request.getNewAttachments() != null ? request.getNewAttachments().size() : 0,
                 request.getNewInlineImages() != null ? request.getNewInlineImages().size() : 0,
                 request.getDeleteAttachmentFileIds() != null ? request.getDeleteAttachmentFileIds().size() : 0,
-                request.getDeleteInlineImageFileIds() != null ? request.getDeleteInlineImageFileIds().size() : 0,
-                request.getAttachments() != null ? request.getAttachments().size() : 0,
-                request.getInlineImages() != null ? request.getInlineImages().size() : 0);
+                request.getDeleteInlineImageFileIds() != null ? request.getDeleteInlineImageFileIds().size() : 0);
         
         Notice notice = findNoticeById(id);
         
@@ -403,15 +400,6 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
         Map<String, Long> newAttachmentTempMap = addFileLinks(id, request.getNewAttachments(), FileRole.ATTACHMENT);
         Map<String, Long> newInlineTempMap = addFileLinks(id, request.getNewInlineImages(), FileRole.INLINE);
         
-        // 3. 하위 호환성: 기존 방식도 지원 (Deprecated)
-        if (request.getAttachments() != null) {
-            log.warn("🔄 [NoticeService] 구버전 attachments 필드 사용됨. newAttachments + deleteAttachmentFileIds 사용 권장");
-            replaceFileLinks(id, request.getAttachments(), FileRole.ATTACHMENT);
-        }
-        if (request.getInlineImages() != null) {
-            log.warn("🔄 [NoticeService] 구버전 inlineImages 필드 사용됨. newInlineImages + deleteInlineImageFileIds 사용 권장");
-            replaceFileLinks(id, request.getInlineImages(), FileRole.INLINE);
-        }
         
         // 4. 파일 처리 결과 로깅
         log.info("[NoticeService] 파일 처리 결과. ID={}, 새첨부파일={}개, 새이미지={}개", 
@@ -899,25 +887,6 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
         return tempToFormalMap;
     }
 
-    /**
-     * 파일 연결 치환 도우미 메서드 (DELETE + INSERT) - Deprecated.
-     * 
-     * @deprecated 새로운 deleteSelectedFileLinks + addFileLinks 조합 사용 권장
-     * @param noticeId 공지사항 ID
-     * @param fileReferences 새로운 파일 참조 목록 (파일ID + 원본명)
-     * @param role 파일 역할
-     */
-    @Deprecated
-    private void replaceFileLinks(Long noticeId, List<FileReference> fileReferences, FileRole role) {
-        // 1. 기존 연결 삭제 (DELETE)
-        uploadFileLinkRepository.deleteByOwnerTableAndOwnerIdAndRole(
-                "notices", noticeId, role);
-        
-        log.debug("[NoticeService] 기존 {} 파일 연결 삭제 완료. noticeId={}", role, noticeId);
-
-        // 2. 새로운 연결 생성 (INSERT)
-        createFileLinks(noticeId, fileReferences, role);
-    }
     
     // ================== CategoryUsageChecker 구현 ==================
     
