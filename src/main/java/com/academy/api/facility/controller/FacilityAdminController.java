@@ -106,25 +106,27 @@ public class FacilityAdminController {
                 - 시설 제목 (150자 이하)
                 
                 선택 입력 사항:
-                - 커버 이미지 파일 ID (파일 업로드 후 받은 ID)
+                - 커버 이미지 임시파일 ID + 원본 파일명 (임시 업로드 후 받은 정보)
                 - 공개 여부 (기본값: true)
                 
-                파일 처리:
-                - 커버 이미지는 FileRole.COVER로 연결됩니다
-                - 시설당 하나의 커버 이미지만 지원
-                - 파일은 먼저 /api/public/files/upload로 업로드 필요
+                파일 처리 (공지사항과 동일한 패턴):
+                1. 임시 파일 업로드: /api/public/files/upload/temp
+                2. 시설 등록 시 임시파일 → 정식파일 자동 변환
+                3. 커버 이미지는 FileRole.COVER로 자동 연결
+                4. 시설당 하나의 커버 이미지만 지원
                 
                 주의사항:
                 - 등록자 정보가 자동으로 기록됩니다
                 - 등록 즉시 공개 상태로 설정됩니다 (isPublished=false로 변경 가능)
+                - 임시파일은 등록 완료 후 자동으로 정식파일로 변환됩니다
                 """
     )
     public ResponseData<Long> createFacility(
             @Parameter(description = "시설 등록 요청") 
             @RequestBody @Valid RequestFacilityCreate request) {
         
-        log.info("시설 등록 요청. title={}, coverImageFileId={}", 
-                request.getTitle(), request.getCoverImageFileId());
+        log.info("시설 등록 요청. title={}, coverImageTempFileId={}", 
+                request.getTitle(), request.getCoverImageTempFileId());
         
         return facilityService.createFacility(request);
     }
@@ -137,16 +139,21 @@ public class FacilityAdminController {
                 
                 수정 가능한 항목:
                 - 시설 제목 (150자 이하)
-                - 커버 이미지 (파일 ID로 변경)
+                - 커버 이미지 (임시파일 ID + 원본 파일명으로 변경)
+                - 커버 이미지 삭제 여부
                 - 공개 여부
                 
-                파일 처리:
-                - 새로운 커버 이미지 ID 제공시 기존 이미지 연결 해제 후 새 이미지 연결
-                - null 제공시 기존 커버 이미지 유지
+                파일 처리 (공지사항과 동일한 패턴):
+                1. 기존 이미지 삭제: deleteCoverImage=true 설정
+                2. 새 이미지 추가: coverImageTempFileId + coverImageFileName 제공
+                3. 기존 이미지 교체: 삭제 + 추가를 동시에 수행
+                4. 이미지 유지: 아무 파일 정보도 제공하지 않음
                 
                 주의사항:
                 - 수정자 정보와 수정 시각이 자동 업데이트됩니다
                 - 공개된 시설의 경우 즉시 변경 사항이 반영됩니다
+                - 기존 커버 이미지 삭제시 실제 파일도 물리적으로 삭제됩니다
+                - 임시파일은 수정 완료 후 자동으로 정식파일로 변환됩니다
                 """
     )
     public Response updateFacility(

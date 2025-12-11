@@ -30,23 +30,6 @@ public class FacilityMapper {
     private final UploadFileLinkRepository uploadFileLinkRepository;
     private final UploadFileRepository uploadFileRepository;
 
-    /**
-     * Request DTO → Entity 변환 (생성용).
-     * 
-     * @param request 시설 생성 요청 DTO
-     * @return 시설 엔티티
-     */
-    public Facility toEntity(RequestFacilityCreate request) {
-        if (request == null) {
-            return null;
-        }
-
-        return Facility.builder()
-                .title(request.getTitle())
-                .isPublished(request.getIsPublished())
-                .createdBy(SecurityUtils.getCurrentUserId())
-                .build();
-    }
 
     /**
      * Entity → 상세 Response DTO 변환.

@@ -11,14 +11,21 @@ import com.academy.api.facility.dto.ResponseFacilityListItem;
 import com.academy.api.facility.mapper.FacilityMapper;
 import com.academy.api.facility.repository.FacilityRepository;
 import com.academy.api.file.domain.FileRole;
+import com.academy.api.file.domain.UploadFile;
 import com.academy.api.file.domain.UploadFileLink;
+import com.academy.api.file.repository.UploadFileRepository;
 import com.academy.api.file.repository.UploadFileLinkRepository;
+import com.academy.api.file.service.FileService;
+import com.academy.api.common.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Optional;
 
 /**
  * 시설 서비스 구현체.
@@ -44,6 +51,8 @@ public class FacilityServiceImpl implements FacilityService {
     private final FacilityRepository facilityRepository;
     private final FacilityMapper facilityMapper;
     private final UploadFileLinkRepository uploadFileLinkRepository;
+    private final UploadFileRepository uploadFileRepository;
+    private final FileService fileService;
 
     /**
      * 시설 목록 조회 (관리자용).
@@ -155,20 +164,43 @@ public class FacilityServiceImpl implements FacilityService {
     @Override
     @Transactional
     public ResponseData<Long> createFacility(RequestFacilityCreate request) {
-        log.info("[FacilityService] 시설 등록 시작. title={}, coverImageFileId={}", 
-                request.getTitle(), request.getCoverImageFileId());
+        log.info("[FacilityService] 시설 등록 시작. title={}, coverImageTempFileId={}, coverImageFileName={}", 
+                request.getTitle(), request.getCoverImageTempFileId(), request.getCoverImageFileName());
 
         try {
-            // 시설 엔티티 생성 및 저장
-            Facility facility = facilityMapper.toEntity(request);
+            // 1. 시설 엔티티 생성 및 저장
+            Facility facility = Facility.builder()
+                    .title(request.getTitle())
+                    .isPublished(request.getIsPublished())
+                    .createdBy(SecurityUtils.getCurrentUserId())
+                    .build();
             Facility savedFacility = facilityRepository.save(facility);
+            Long facilityId = savedFacility.getId();
             
-            log.debug("[FacilityService] 시설 저장 완료. id={}", savedFacility.getId());
+            log.debug("[FacilityService] 시설 저장 완료. id={}", facilityId);
 
-            // 커버 이미지 파일 연결
-            linkSingleFile(savedFacility.getId(), request.getCoverImageFileId());
+            // 2. 임시 파일 → 정식 파일 변환 및 연결
+            if (request.getCoverImageTempFileId() != null && request.getCoverImageFileName() != null) {
+                log.debug("[FacilityService] 커버 이미지 처리 시작. tempFileId={}, fileName={}", 
+                        request.getCoverImageTempFileId(), request.getCoverImageFileName());
+                
+                Long formalFileId = fileService.promoteToFormalFile(
+                    request.getCoverImageTempFileId(),
+                    request.getCoverImageFileName()
+                );
+                
+                if (formalFileId != null) {
+                    // 정식 파일과 시설 연결
+                    linkSingleFile(facilityId, String.valueOf(formalFileId));
+                    log.debug("[FacilityService] 커버 이미지 연결 완료. facilityId={}, formalFileId={}", 
+                            facilityId, formalFileId);
+                } else {
+                    log.warn("[FacilityService] 임시 파일 변환 실패로 커버 이미지 연결 생략. tempFileId={}", 
+                            request.getCoverImageTempFileId());
+                }
+            }
 
-            log.debug("[FacilityService] 시설 등록 완료. id={}, title={}", savedFacility.getId(), savedFacility.getTitle());
+            log.info("[FacilityService] 시설 등록 완료. id={}, title={}", savedFacility.getId(), savedFacility.getTitle());
             
             return ResponseData.ok("0000", "시설이 등록되었습니다", savedFacility.getId());
 
@@ -184,24 +216,51 @@ public class FacilityServiceImpl implements FacilityService {
     @Override
     @Transactional
     public Response updateFacility(Long id, RequestFacilityUpdate request) {
-        log.info("[FacilityService] 시설 수정 시작. id={}, title={}", 
-                id, request.getTitle());
+        log.info("[FacilityService] 시설 수정 시작. id={}, title={}, coverImageTempFileId={}, deleteCoverImage={}", 
+                id, request.getTitle(), request.getCoverImageTempFileId(), request.getDeleteCoverImage());
 
         return facilityRepository.findById(id)
                 .map(facility -> {
                     try {
-                        // 시설 정보 업데이트
-                        facilityMapper.updateEntity(facility, request);
+                        // 1. 시설 기본 정보 업데이트
+                        facility.update(request.getTitle(), request.getIsPublished(), SecurityUtils.getCurrentUserId());
                         Facility savedFacility = facilityRepository.save(facility);
                         
                         log.debug("[FacilityService] 시설 정보 업데이트 완료. id={}", id);
 
-                        // 커버 이미지 변경 처리
-                        if (request.getCoverImageFileId() != null) {
-                            replaceSingleFile(id, request.getCoverImageFileId());
+                        // 2. 커버 이미지 삭제 요청 처리
+                        if (Boolean.TRUE.equals(request.getDeleteCoverImage())) {
+                            deleteExistingCoverImage(id);
+                            log.debug("[FacilityService] 커버 이미지 삭제 완료. facilityId={}", id);
+                            return Response.ok("0000", "시설이 수정되었습니다");
                         }
 
-                        log.debug("[FacilityService] 시설 수정 완료. id={}, title={}", id, savedFacility.getTitle());
+                        // 3. 새 커버 이미지 업로드 처리
+                        if (request.getCoverImageTempFileId() != null && request.getCoverImageFileName() != null) {
+                            log.debug("[FacilityService] 새 커버 이미지 처리 시작. tempFileId={}, fileName={}", 
+                                    request.getCoverImageTempFileId(), request.getCoverImageFileName());
+                            
+                            // 기존 커버 이미지 삭제
+                            deleteExistingCoverImage(id);
+                            
+                            // 임시 → 정식 파일 변환
+                            Long formalFileId = fileService.promoteToFormalFile(
+                                request.getCoverImageTempFileId(),
+                                request.getCoverImageFileName()
+                            );
+                            
+                            if (formalFileId != null) {
+                                // 새 파일 연결
+                                linkSingleFile(id, String.valueOf(formalFileId));
+                                log.debug("[FacilityService] 새 커버 이미지 연결 완료. facilityId={}, formalFileId={}", 
+                                        id, formalFileId);
+                            } else {
+                                log.warn("[FacilityService] 임시 파일 변환 실패로 새 커버 이미지 연결 생략. tempFileId={}", 
+                                        request.getCoverImageTempFileId());
+                            }
+                        }
+
+                        log.info("[FacilityService] 시설 수정 완료. id={}, title={}", id, savedFacility.getTitle());
                         
                         return Response.ok("0000", "시설이 수정되었습니다");
                     } catch (Exception e) {
@@ -294,11 +353,66 @@ public class FacilityServiceImpl implements FacilityService {
     }
 
     /**
+     * 기존 커버 이미지 삭제 (물리 파일 포함).
+     * 
+     * @param facilityId 시설 ID
+     */
+    private void deleteExistingCoverImage(Long facilityId) {
+        log.debug("[FacilityService] 기존 커버 이미지 삭제 시작. facilityId={}", facilityId);
+        
+        try {
+            // 1. 기존 파일 링크 조회
+            List<UploadFileLink> existingLinks = uploadFileLinkRepository
+                .findByOwnerTableAndOwnerIdAndRole("facility", facilityId, FileRole.COVER);
+            
+            if (existingLinks.isEmpty()) {
+                log.debug("[FacilityService] 삭제할 커버 이미지가 없음. facilityId={}", facilityId);
+                return;
+            }
+            
+            log.debug("[FacilityService] 삭제할 커버 이미지 링크 {}개 발견", existingLinks.size());
+            
+            // 2. 물리 파일 삭제
+            for (UploadFileLink link : existingLinks) {
+                try {
+                    Optional<UploadFile> uploadFile = uploadFileRepository.findByIdAndDeletedFalse(String.valueOf(link.getFileId()));
+                    if (uploadFile.isPresent()) {
+                        boolean deleted = fileService.deletePhysicalFileByPath(uploadFile.get().getServerPath());
+                        if (deleted) {
+                            log.debug("[FacilityService] 물리 파일 삭제 완료. facilityId={}, fileId={}, path={}", 
+                                    facilityId, link.getFileId(), uploadFile.get().getServerPath());
+                        } else {
+                            log.warn("[FacilityService] 물리 파일 삭제 실패. facilityId={}, fileId={}, path={}", 
+                                    facilityId, link.getFileId(), uploadFile.get().getServerPath());
+                        }
+                    } else {
+                        log.debug("[FacilityService] 파일 메타데이터를 찾을 수 없음. facilityId={}, fileId={}", 
+                                facilityId, link.getFileId());
+                    }
+                } catch (Exception e) {
+                    log.error("[FacilityService] 물리 파일 삭제 중 오류. facilityId={}, fileId={}, error={}", 
+                            facilityId, link.getFileId(), e.getMessage());
+                }
+            }
+            
+            // 3. 파일 링크 삭제
+            uploadFileLinkRepository.deleteByOwnerTableAndOwnerIdAndRole("facility", facilityId, FileRole.COVER);
+            log.debug("[FacilityService] 커버 이미지 링크 삭제 완료. facilityId={}", facilityId);
+            
+        } catch (Exception e) {
+            log.error("[FacilityService] 커버 이미지 삭제 중 예상치 못한 오류. facilityId={}, error={}", 
+                    facilityId, e.getMessage());
+        }
+    }
+
+    /**
      * 시설의 기존 커버 이미지를 새 파일로 교체.
      * 
+     * @deprecated 새로운 임시파일 시스템으로 대체됨. deleteExistingCoverImage + linkSingleFile 사용 권장
      * @param facilityId 시설 ID
      * @param newFileId 새 파일 ID (null인 경우 기존 파일만 해제)
      */
+    @Deprecated
     private void replaceSingleFile(Long facilityId, String newFileId) {
         // 기존 파일 연결 해제
         uploadFileLinkRepository.deleteByOwnerTableAndOwnerIdAndRole("facility", facilityId, FileRole.COVER);

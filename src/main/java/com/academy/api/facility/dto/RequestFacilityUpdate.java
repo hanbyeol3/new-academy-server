@@ -23,9 +23,18 @@ public class RequestFacilityUpdate {
             requiredMode = Schema.RequiredMode.REQUIRED)
     private String title;
 
-    @Schema(description = "커버 이미지 파일 ID", 
-            example = "uuid-file-123")
-    private String coverImageFileId;
+    @Schema(description = "커버 이미지 임시파일 ID", 
+            example = "550e8400-e29b-41d4-a716-446655440000")
+    private String coverImageTempFileId;
+
+    @Schema(description = "커버 이미지 원본 파일명", 
+            example = "facility_image.jpg")
+    private String coverImageFileName;
+
+    @Schema(description = "커버 이미지 삭제 여부", 
+            example = "false", 
+            defaultValue = "false")
+    private Boolean deleteCoverImage = false;
 
     @Schema(description = "공개 여부", 
             example = "true", 
