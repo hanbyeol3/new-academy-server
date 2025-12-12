@@ -106,8 +106,10 @@ public class ShuttleRouteMapper {
                 .sortOrder(entity.getSortOrder())
                 .stops(toStopResponses(entity.getStops()))
                 .createdBy(entity.getCreatedBy())
+                .createdByName(null) // 서비스에서 별도 설정
                 .createdAt(entity.getCreatedAt())
                 .updatedBy(entity.getUpdatedBy())
+                .updatedByName(null) // 서비스에서 별도 설정
                 .updatedAt(entity.getUpdatedAt())
                 .build();
     }
@@ -134,7 +136,9 @@ public class ShuttleRouteMapper {
                 .sortOrder(entity.getSortOrder())
                 .stops(toStopResponses(entity.getStops()))
                 .stopCount(entity.getStops() != null ? entity.getStops().size() : 0)
+                .createdByName(null) // 서비스에서 별도 설정
                 .createdAt(entity.getCreatedAt())
+                .updatedByName(null) // 서비스에서 별도 설정
                 .updatedAt(entity.getUpdatedAt())
                 .build();
     }
@@ -194,6 +198,69 @@ public class ShuttleRouteMapper {
                 routePage.getNumber(), 
                 routePage.getSize()
         );
+    }
+
+    /**
+     * Entity → 상세 Response DTO 변환 (회원 이름 포함).
+     * 
+     * @param entity 셔틀 노선 엔티티
+     * @param createdByName 등록자 이름
+     * @param updatedByName 수정자 이름
+     * @return 셔틀 노선 상세 응답 DTO
+     */
+    public ResponseShuttleRoute toResponseWithNames(ShuttleRoute entity, String createdByName, String updatedByName) {
+        if (entity == null) {
+            return null;
+        }
+
+        return ResponseShuttleRoute.builder()
+                .routeId(entity.getRouteId())
+                .routeName(entity.getRouteName())
+                .title(entity.getTitle())
+                .returnTime(entity.getReturnTime())
+                .colorHex(entity.getColorHex())
+                .weekdayMask(entity.getWeekdayMask())
+                .isPublished(entity.getIsPublished())
+                .sortOrder(entity.getSortOrder())
+                .stops(toStopResponses(entity.getStops()))
+                .createdBy(entity.getCreatedBy())
+                .createdByName(createdByName)
+                .createdAt(entity.getCreatedAt())
+                .updatedBy(entity.getUpdatedBy())
+                .updatedByName(updatedByName)
+                .updatedAt(entity.getUpdatedAt())
+                .build();
+    }
+
+    /**
+     * Entity → 목록 Response DTO 변환 (회원 이름 포함).
+     * 
+     * @param entity 셔틀 노선 엔티티
+     * @param createdByName 등록자 이름
+     * @param updatedByName 수정자 이름
+     * @return 셔틀 노선 목록 응답 DTO
+     */
+    public ResponseShuttleRouteListItem toListItemWithNames(ShuttleRoute entity, String createdByName, String updatedByName) {
+        if (entity == null) {
+            return null;
+        }
+
+        return ResponseShuttleRouteListItem.builder()
+                .routeId(entity.getRouteId())
+                .routeName(entity.getRouteName())
+                .title(entity.getTitle())
+                .returnTime(entity.getReturnTime())
+                .colorHex(entity.getColorHex())
+                .weekdayMask(entity.getWeekdayMask())
+                .isPublished(entity.getIsPublished())
+                .sortOrder(entity.getSortOrder())
+                .stops(toStopResponses(entity.getStops()))
+                .stopCount(entity.getStops() != null ? entity.getStops().size() : 0)
+                .createdByName(createdByName)
+                .createdAt(entity.getCreatedAt())
+                .updatedByName(updatedByName)
+                .updatedAt(entity.getUpdatedAt())
+                .build();
     }
 
     /**

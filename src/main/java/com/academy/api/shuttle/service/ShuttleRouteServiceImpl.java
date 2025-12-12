@@ -3,6 +3,8 @@ package com.academy.api.shuttle.service;
 import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.member.domain.Member;
+import com.academy.api.member.repository.MemberRepository;
 import com.academy.api.shuttle.domain.ShuttleRoute;
 import com.academy.api.shuttle.domain.ShuttleRouteStop;
 import com.academy.api.shuttle.dto.*;
@@ -42,6 +44,7 @@ public class ShuttleRouteServiceImpl implements ShuttleRouteService {
     private final ShuttleRouteRepository shuttleRouteRepository;
     private final ShuttleRouteStopRepository shuttleRouteStopRepository;
     private final ShuttleRouteMapper shuttleRouteMapper;
+    private final MemberRepository memberRepository;
 
     /**
      * 셔틀 노선 목록 조회 (관리자용).
@@ -118,7 +121,11 @@ public class ShuttleRouteServiceImpl implements ShuttleRouteService {
 
         return shuttleRouteRepository.findByIdWithStops(routeId)
                 .map(route -> {
-                    ResponseShuttleRoute response = shuttleRouteMapper.toResponse(route);
+                    // 회원 이름 조회
+                    String createdByName = getMemberName(route.getCreatedBy());
+                    String updatedByName = getMemberName(route.getUpdatedBy());
+                    
+                    ResponseShuttleRoute response = shuttleRouteMapper.toResponseWithNames(route, createdByName, updatedByName);
                     log.debug("[ShuttleRouteService] 노선 상세 조회 완료. routeId={}, routeName={}, stopCount={}", 
                             routeId, route.getRouteName(), route.getStops().size());
                     return ResponseData.ok(response);
@@ -138,7 +145,11 @@ public class ShuttleRouteServiceImpl implements ShuttleRouteService {
 
         return shuttleRouteRepository.findPublishedByIdWithStops(routeId)
                 .map(route -> {
-                    ResponseShuttleRoute response = shuttleRouteMapper.toResponse(route);
+                    // 회원 이름 조회
+                    String createdByName = getMemberName(route.getCreatedBy());
+                    String updatedByName = getMemberName(route.getUpdatedBy());
+                    
+                    ResponseShuttleRoute response = shuttleRouteMapper.toResponseWithNames(route, createdByName, updatedByName);
                     log.debug("[ShuttleRouteService] 공개 노선 상세 조회 완료. routeId={}, routeName={}, stopCount={}", 
                             routeId, route.getRouteName(), route.getStops().size());
                     return ResponseData.ok(response);
@@ -293,5 +304,17 @@ public class ShuttleRouteServiceImpl implements ShuttleRouteService {
                     log.warn("[ShuttleRouteService] 삭제할 노선을 찾을 수 없음. routeId={}", routeId);
                     return Response.error("R404", "셔틀 노선을 찾을 수 없습니다");
                 });
+    }
+
+    /**
+     * 회원 이름 조회 도우미 메서드.
+     */
+    private String getMemberName(Long memberId) {
+        if (memberId == null) {
+            return "Unknown";
+        }
+        return memberRepository.findById(memberId)
+                .map(Member::getMemberName)
+                .orElse("Unknown");
     }
 }

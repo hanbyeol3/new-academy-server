@@ -1,6 +1,8 @@
 package com.academy.api.shuttle.controller;
 
+import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.shuttle.dto.ResponseShuttleRoute;
 import com.academy.api.shuttle.dto.ResponseShuttleRouteListItem;
 import com.academy.api.shuttle.service.ShuttleRouteService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -67,5 +69,43 @@ public class ShuttleRoutePublicController {
                 pageable.getPageNumber(), pageable.getPageSize());
 
         return shuttleRouteService.getPublicRouteList(pageable);
+    }
+
+    @GetMapping("/{id}")
+    @Operation(
+        summary = "셔틀 노선 상세 조회 (공개)",
+        description = """
+                공개된 셔틀 노선의 상세 정보를 조회합니다.
+                
+                조회 조건:
+                - 공개 상태(isPublished = true)인 노선만 조회 가능
+                - 모든 사용자가 인증 없이 접근 가능
+                
+                응답 데이터:
+                - 노선 상세 정보 (ID, 노선명, 타이틀, 귀가시간, 색상 등)
+                - 정류장 목록 (시간 순으로 정렬)
+                - 생성/수정 이력
+                
+                사용 목적:
+                - 특정 노선의 상세 시간표 제공
+                - 모바일 앱/웹사이트에서 노선별 상세 정보
+                - 정류장별 도착 시간 안내
+                
+                정렬 기준:
+                - 정류장: stopTime (출발/도착 시간 순)
+                
+                주의사항:
+                - 비공개 상태인 노선은 조회되지 않음 (404 반환)
+                - 인증 없이 접근 가능
+                - 존재하지 않는 노선 ID 요청 시 404 에러
+                """
+    )
+    public ResponseData<ResponseShuttleRoute> getPublicRoute(
+            @Parameter(description = "노선 ID", example = "1") 
+            @PathVariable Long id) {
+
+        log.info("[ShuttleRoutePublicController] 공개 노선 상세 조회 요청. routeId={}", id);
+
+        return shuttleRouteService.getPublicRoute(id);
     }
 }

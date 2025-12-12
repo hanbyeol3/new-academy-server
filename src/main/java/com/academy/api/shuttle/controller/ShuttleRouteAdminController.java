@@ -1,5 +1,6 @@
 package com.academy.api.shuttle.controller;
 
+import com.academy.api.common.util.SecurityUtils;
 import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
@@ -196,7 +197,7 @@ public class ShuttleRouteAdminController {
 
         log.info("[ShuttleRouteAdminController] 노선 공개 상태 전환 요청. routeId={}", id);
 
-        Long updatedBy = 1L; // TODO: 실제 로그인 사용자 ID로 변경
+        Long updatedBy = SecurityUtils.getCurrentUserId();
 
         return shuttleRouteService.toggleRoutePublished(id, updatedBy);
     }
