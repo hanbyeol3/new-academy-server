@@ -55,7 +55,14 @@ public enum ErrorCode {
     INVALID_SLUG_FORMAT(HttpStatus.BAD_REQUEST, "INVALID_SLUG_FORMAT", "슬러그는 영문, 숫자, 하이픈만 사용 가능합니다."),
 
     // 공지사항 관련 에러
-    NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTICE_NOT_FOUND", "공지사항을 찾을 수 없습니다.");
+    NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTICE_NOT_FOUND", "공지사항을 찾을 수 없습니다."),
+
+    // 강사 관련 에러
+    TEACHER_NOT_FOUND(HttpStatus.NOT_FOUND, "TEACHER_NOT_FOUND", "강사를 찾을 수 없습니다."),
+    TEACHER_NAME_ALREADY_EXISTS(HttpStatus.CONFLICT, "TEACHER_NAME_ALREADY_EXISTS", "이미 존재하는 강사명입니다."),
+
+    // 파일 관련 에러
+    FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FILE_UPLOAD_FAILED", "파일 업로드에 실패했습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;

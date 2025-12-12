@@ -175,6 +175,42 @@ public class UploadFileLink {
     }
 
     /**
+     * 강사 커버 이미지 연결 생성.
+     * 
+     * @param fileId 파일 ID
+     * @param teacherId 강사 ID
+     * @return UploadFileLink 인스턴스
+     */
+    public static UploadFileLink createTeacherCoverImage(Long fileId, Long teacherId) {
+        return UploadFileLink.builder()
+                .fileId(fileId)
+                .ownerTable("teacher")
+                .ownerId(teacherId)
+                .role(FileRole.COVER)
+                .sortOrder(0)
+                .build();
+    }
+
+    /**
+     * 강사 커버 이미지 연결 생성 (String fileId 오버로드).
+     * 
+     * @param fileId 파일 ID (String)
+     * @param teacherId 강사 ID
+     * @return UploadFileLink 인스턴스
+     */
+    public static UploadFileLink createTeacherCoverImage(String fileId, Long teacherId) {
+        if (fileId == null) {
+            throw new IllegalArgumentException("파일 ID는 null일 수 없습니다");
+        }
+        try {
+            Long longFileId = Long.parseLong(fileId);
+            return createTeacherCoverImage(longFileId, teacherId);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("파일 ID가 유효한 숫자 형식이 아닙니다: " + fileId, e);
+        }
+    }
+
+    /**
      * 특정 역할의 파일 연결인지 확인.
      * 
      * @param role 확인할 역할

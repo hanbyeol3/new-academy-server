@@ -51,6 +51,11 @@ public class Teacher {
     @Column(name = "is_published", nullable = false)
     private Boolean isPublished = true;
 
+    /** 메모 */
+    @Lob
+    @Column(name = "memo", columnDefinition = "TEXT")
+    private String memo;
+
     /** 등록자 ID */
     @Column(name = "created_by")
     private Long createdBy;
@@ -75,21 +80,23 @@ public class Teacher {
 
     @Builder
     private Teacher(String teacherName, String career, String imagePath, String introText,
-                   Boolean isPublished, Long createdBy) {
+                   String memo, Boolean isPublished, Long createdBy) {
         this.teacherName = teacherName;
         this.career = career;
         this.imagePath = imagePath;
         this.introText = introText;
+        this.memo = memo;
         this.isPublished = isPublished != null ? isPublished : true;
         this.createdBy = createdBy;
     }
 
     public void update(String teacherName, String career, String imagePath, String introText,
-                      Boolean isPublished, Long updatedBy) {
+                      String memo, Boolean isPublished, Long updatedBy) {
         this.teacherName = teacherName;
         this.career = career;
         this.imagePath = imagePath;
         this.introText = introText;
+        this.memo = memo;
         this.isPublished = isPublished != null ? isPublished : true;
         this.updatedBy = updatedBy;
     }
