@@ -71,7 +71,7 @@ public class TeacherMapper {
                 .id(teacher.getId())
                 .teacherName(teacher.getTeacherName())
                 .career(teacher.getCareer())
-                .image(getLinkedImage(teacher.getId()))
+                .image(getImageFromPath(teacher.getImagePath()))
                 .introText(teacher.getIntroText())
                 .memo(teacher.getMemo())
                 .isPublished(teacher.getIsPublished())
@@ -102,7 +102,7 @@ public class TeacherMapper {
                 .id(teacher.getId())
                 .teacherName(teacher.getTeacherName())
                 .career(teacher.getCareer())
-                .image(getLinkedImage(teacher.getId()))
+                .image(getImageFromPath(teacher.getImagePath()))
                 .introText(teacher.getIntroText())
                 .isPublished(teacher.getIsPublished())
                 .subjects(subjects)
@@ -199,30 +199,38 @@ public class TeacherMapper {
     }
 
     /**
-     * 강사의 이미지 파일 조회 (단일 파일 최적화).
+     * 강사의 이미지 파일 조회 (imagePath 기반).
      * 
-     * @param teacherId 강사 ID
+     * @param imagePath 이미지 경로
      * @return 이미지 파일 정보, 없으면 null
      */
-    private UploadFileDto getLinkedImage(Long teacherId) {
-        List<UploadFileLink> links = uploadFileLinkRepository.findByOwnerTableAndOwnerIdAndRole("teacher", teacherId, FileRole.COVER);
-        
-        if (links.isEmpty()) {
+    private UploadFileDto getImageFromPath(String imagePath) {
+        if (imagePath == null || imagePath.trim().isEmpty()) {
             return null;
         }
         
-        // 단일 이미지이므로 첫 번째 링크만 사용
-        Long fileId = links.get(0).getFileId();
-        return uploadFileRepository.findById(fileId)
-                .map(file -> UploadFileDto.builder()
-                        .id(file.getId().toString())
-                        .groupKey(null)
-                        .fileName(file.getFileName())
-                        .ext(file.getExt())
-                        .size(file.getSize())
-                        .regDate(file.getCreatedAt())
-                        .downloadUrl("/api/public/files/download/" + file.getId())
-                        .build())
-                .orElse(null);
+        // imagePath가 "formal/123" 형식인 경우 파일 ID 추출
+        if (imagePath.startsWith("formal/")) {
+            try {
+                Long fileId = Long.parseLong(imagePath.substring("formal/".length()));
+                return uploadFileRepository.findById(fileId)
+                        .map(file -> UploadFileDto.builder()
+                                .id(file.getId().toString())
+                                .groupKey(null)
+                                .fileName(file.getFileName())
+                                .ext(file.getExt())
+                                .size(file.getSize())
+                                .regDate(file.getCreatedAt())
+                                .downloadUrl("/api/public/files/download/" + file.getId())
+                                .build())
+                        .orElse(null);
+            } catch (NumberFormatException e) {
+                // 파일 ID 파싱 실패 시 null 반환
+                return null;
+            }
+        }
+        
+        // 다른 형식의 경로는 현재 지원하지 않음
+        return null;
     }
 }

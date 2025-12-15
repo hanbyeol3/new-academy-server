@@ -20,6 +20,7 @@ import com.academy.api.teacher.dto.ResponseTeacherListItem;
 import com.academy.api.teacher.mapper.TeacherMapper;
 import com.academy.api.teacher.repository.TeacherRepository;
 import com.academy.api.teacher.repository.TeacherSubjectRepository;
+import com.academy.api.common.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -166,7 +167,7 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
         Teacher savedTeacher = teacherRepository.save(teacher);
         log.debug("[TeacherService] 강사 엔티티 저장 완료. id={}", savedTeacher.getId());
 
-        // 3. 이미지 파일 처리 (임시파일 → 정식파일 → 연결)
+        // 3. 이미지 파일 처리 (임시파일 → 정식파일 → imagePath 설정)
         if (request.getImageTempFileId() != null) {
             log.debug("[TeacherService] 이미지 파일 처리 시작. tempFileId={}", request.getImageTempFileId());
             
@@ -178,11 +179,19 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
             log.debug("[TeacherService] 파일 승격 결과. formalFileId={}", formalFileId);
             
             if (formalFileId != null) {
-                // 파일 연결 생성
-                UploadFileLink fileLink = UploadFileLink.createTeacherCoverImage(formalFileId, savedTeacher.getId());
-                uploadFileLinkRepository.save(fileLink);
-                log.debug("[TeacherService] 이미지 파일 연결 완료. fileId={}, teacherId={}", 
-                        formalFileId, savedTeacher.getId());
+                // imagePath 필드에 직접 설정
+                String imagePath = "formal/" + formalFileId;
+                savedTeacher.update(
+                    savedTeacher.getTeacherName(),
+                    savedTeacher.getCareer(),
+                    imagePath, // 이미지 경로 설정
+                    savedTeacher.getIntroText(),
+                    savedTeacher.getMemo(),
+                    savedTeacher.getIsPublished(),
+                    savedTeacher.getUpdatedBy()
+                );
+                log.debug("[TeacherService] 이미지 경로 설정 완료. imagePath={}, teacherId={}", 
+                        imagePath, savedTeacher.getId());
             } else {
                 log.warn("[TeacherService] 파일 승격 실패. tempFileId={}", request.getImageTempFileId());
             }
@@ -222,10 +231,18 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
         }
 
         // 2. 이미지 파일 처리
-        handleImageFile(teacher, request);
+        String newImagePath = handleImageFile(teacher, request);
 
-        // 3. 기본 정보 업데이트
-        teacherMapper.updateEntity(teacher, request);
+        // 3. 기본 정보 업데이트 (이미지 경로 포함)
+        teacher.update(
+                getValueOrDefault(request.getTeacherName(), teacher.getTeacherName()),
+                getValueOrDefault(request.getCareer(), teacher.getCareer()),
+                newImagePath, // 처리된 이미지 경로
+                getValueOrDefault(request.getIntroText(), teacher.getIntroText()),
+                getValueOrDefault(request.getMemo(), teacher.getMemo()),
+                getValueOrDefault(request.getIsPublished(), teacher.getIsPublished()),
+                SecurityUtils.getCurrentUserId()
+        );
         log.debug("[TeacherService] 기본 정보 업데이트 완료");
 
         // 4. 과목 관계 업데이트
@@ -347,19 +364,27 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
 
     /**
      * 이미지 파일 처리.
+     * 
+     * @param teacher 강사 엔티티
+     * @param request 수정 요청
+     * @return 새로운 imagePath (삭제시 null, 변경없으면 기존값, 새로 업로드시 새 경로)
      */
-    private void handleImageFile(Teacher teacher, RequestTeacherUpdate request) {
+    private String handleImageFile(Teacher teacher, RequestTeacherUpdate request) {
         if (request.getDeleteImage() != null && request.getDeleteImage()) {
             // 이미지 삭제
             if (teacher.getImagePath() != null) {
                 try {
-                    fileService.deleteFile(teacher.getImagePath());
-                    log.debug("[TeacherService] 기존 이미지 파일 삭제 완료");
+                    // imagePath에서 파일 ID 추출하여 삭제
+                    if (teacher.getImagePath().startsWith("formal/")) {
+                        Long fileId = Long.parseLong(teacher.getImagePath().substring("formal/".length()));
+                        fileService.deleteFile("formal/" + fileId);
+                        log.debug("[TeacherService] 기존 이미지 파일 삭제 완료. fileId={}", fileId);
+                    }
                 } catch (Exception e) {
                     log.warn("[TeacherService] 기존 이미지 파일 삭제 실패: {}", e.getMessage());
                 }
             }
-            // Teacher 엔티티의 imagePath는 update() 메서드에서 null로 설정
+            return null; // imagePath를 null로 설정
         } else if (request.getImageTempFileId() != null) {
             // 새 이미지 업로드
             try {
@@ -367,18 +392,43 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
                         request.getImageTempFileId(),
                         request.getImageFileName()
                 );
-                String imagePath = formalFileId != null ? "formal/" + formalFileId : null;
                 
-                // 기존 이미지 파일 삭제
-                if (teacher.getImagePath() != null) {
-                    fileService.deleteFile(teacher.getImagePath());
+                if (formalFileId != null) {
+                    String newImagePath = "formal/" + formalFileId;
+                    
+                    // 기존 이미지 파일 삭제
+                    if (teacher.getImagePath() != null) {
+                        try {
+                            if (teacher.getImagePath().startsWith("formal/")) {
+                                Long oldFileId = Long.parseLong(teacher.getImagePath().substring("formal/".length()));
+                                fileService.deleteFile("formal/" + oldFileId);
+                                log.debug("[TeacherService] 기존 이미지 파일 교체 삭제 완료. oldFileId={}", oldFileId);
+                            }
+                        } catch (Exception e) {
+                            log.warn("[TeacherService] 기존 이미지 파일 교체 삭제 실패: {}", e.getMessage());
+                        }
+                    }
+                    
+                    log.debug("[TeacherService] 새 이미지 파일 처리 완료. newImagePath={}", newImagePath);
+                    return newImagePath;
+                } else {
+                    log.warn("[TeacherService] 파일 승격 실패. tempFileId={}", request.getImageTempFileId());
+                    return teacher.getImagePath(); // 기존 경로 유지
                 }
-                
-                log.debug("[TeacherService] 새 이미지 파일 처리 완료. imagePath={}", imagePath);
             } catch (Exception e) {
                 log.error("[TeacherService] 이미지 파일 처리 실패: {}", e.getMessage(), e);
                 throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED);
             }
         }
+        
+        // 이미지 변경 없음
+        return teacher.getImagePath();
+    }
+
+    /**
+     * 부분 업데이트를 위한 null 체크 도우미 메서드.
+     */
+    private <T> T getValueOrDefault(T newValue, T defaultValue) {
+        return newValue != null ? newValue : defaultValue;
     }
 }
