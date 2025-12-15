@@ -1384,6 +1384,32 @@ public boolean isValid(Object value, ConstraintValidatorContext context) {
     - 동적 메시지 생성 ✓
     - 타입별 분기 처리 ✓
 
+4. **AcademicScheduleTimeRange + AcademicScheduleTimeRangeValidator**
+    - 클래스 레벨 복합 시간 검증 ✓
+    - startAt, endAt 논리적 검증 ✓
+    - 종일 이벤트 고려 ✓
+
+5. **AcademicScheduleRepeat + AcademicScheduleRepeatValidator**
+    - 반복 일정 논리 검증 ✓
+    - weekdayMask 비트마스크 검증 ✓
+    - 주말 제외 로직 검증 ✓
+
+### 🔄 Validation 분리 원칙
+
+#### 서비스 vs Validation 분리 기준
+
+**Validation으로 분리해야 하는 경우:**
+- 재사용 가능한 검증 로직
+- Bean Validation 표준 활용 (`@Valid`)
+- DTO/Entity 단위 검증
+- 입력값 형식/구조 검증
+
+**서비스에서 처리해야 하는 경우:**
+- 데이터베이스 조회가 필요한 비즈니스 검증
+- 복잡한 도메인 로직 검증
+- 외부 시스템 연동 검증
+- 일회성 검증 로직
+
 #### 📋 Validation 표준 체크리스트
 
 새로운 Custom Validation 생성 시 다음을 확인:
