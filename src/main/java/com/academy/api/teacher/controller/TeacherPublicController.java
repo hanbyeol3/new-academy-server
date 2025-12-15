@@ -148,9 +148,7 @@ public class TeacherPublicController {
         
         log.info("[TeacherPublicController] 과목별 강사 조회 요청. 과목ID={}", categoryId);
         
-        // Repository에서 특정 과목을 담당하는 강사를 조회하고, 공개 상태만 필터링
-        // 실제 구현에서는 Service에 별도 메서드 추가 필요
-        return teacherService.getPublishedTeacherList(null, pageable);
+        return teacherService.getPublishedTeachersBySubject(categoryId, pageable);
     }
 
     /**

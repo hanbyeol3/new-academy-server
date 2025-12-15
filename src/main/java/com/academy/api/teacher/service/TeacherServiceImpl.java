@@ -328,6 +328,54 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
         return Response.ok("0000", "강사 " + statusText + " 상태로 변경되었습니다.");
     }
 
+    /**
+     * 과목별 강사 조회 (관리자용).
+     */
+    @Override
+    public ResponseList<ResponseTeacherListItem> getTeachersBySubject(Long categoryId, Boolean isPublished, Pageable pageable) {
+        log.info("[TeacherService] 과목별 강사 조회 시작 (관리자). categoryId={}, isPublished={}, page={}, size={}", 
+                categoryId, isPublished, pageable.getPageNumber(), pageable.getPageSize());
+        
+        Page<Teacher> teacherPage;
+        
+        if (isPublished != null) {
+            // 공개 상태 필터링
+            teacherPage = teacherRepository.findBySubjectCategoryIdAndIsPublishedWithSubjects(categoryId, isPublished, pageable);
+            log.debug("[TeacherService] 과목별 강사 조회 (필터링). categoryId={}, isPublished={}, 결과수={}", 
+                    categoryId, isPublished, teacherPage.getTotalElements());
+        } else {
+            // 모든 상태
+            teacherPage = teacherRepository.findBySubjectCategoryIdWithSubjects(categoryId, pageable);
+            log.debug("[TeacherService] 과목별 강사 조회 (전체). categoryId={}, 결과수={}", 
+                    categoryId, teacherPage.getTotalElements());
+        }
+        
+        ResponseList<ResponseTeacherListItem> result = teacherMapper.toListItemResponseList(teacherPage);
+        
+        log.debug("[TeacherService] 과목별 강사 조회 완료 (관리자). categoryId={}, isPublished={}, 결과수={}", 
+                categoryId, isPublished, result.getItems().size());
+        
+        return result;
+    }
+
+    /**
+     * 과목별 강사 조회 (공개용).
+     */
+    @Override
+    public ResponseList<ResponseTeacherListItem> getPublishedTeachersBySubject(Long categoryId, Pageable pageable) {
+        log.info("[TeacherService] 과목별 강사 조회 시작 (공개). categoryId={}, page={}, size={}", 
+                categoryId, pageable.getPageNumber(), pageable.getPageSize());
+        
+        Page<Teacher> teacherPage = teacherRepository.findPublishedBySubjectCategoryIdWithSubjects(categoryId, pageable);
+        
+        ResponseList<ResponseTeacherListItem> result = teacherMapper.toListItemResponseList(teacherPage);
+        
+        log.debug("[TeacherService] 과목별 강사 조회 완료 (공개). categoryId={}, 결과수={}", 
+                categoryId, result.getItems().size());
+        
+        return result;
+    }
+
     // ================== 내부 도우미 메서드 ==================
 
     /**

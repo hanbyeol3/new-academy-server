@@ -139,6 +139,92 @@ public interface TeacherRepository extends JpaRepository<Teacher, Long> {
     List<Teacher> findBySubjectCategoryId(@Param("categoryId") Long categoryId);
 
     /**
+     * 특정 과목을 담당하는 강사 목록 조회 (페이징).
+     * 
+     * @param categoryId 과목 카테고리 ID
+     * @param pageable 페이징 정보
+     * @return 해당 과목을 담당하는 강사 목록
+     */
+    @Query(value = """
+        SELECT DISTINCT t 
+        FROM Teacher t 
+        LEFT JOIN FETCH t.subjects ts 
+        LEFT JOIN FETCH ts.category c
+        WHERE EXISTS (
+            SELECT 1 FROM TeacherSubject ts2 
+            WHERE ts2.teacher.id = t.id 
+            AND ts2.category.id = :categoryId
+        )
+        """,
+        countQuery = """
+        SELECT COUNT(DISTINCT t) 
+        FROM Teacher t 
+        JOIN t.subjects ts 
+        WHERE ts.category.id = :categoryId
+        """)
+    Page<Teacher> findBySubjectCategoryIdWithSubjects(@Param("categoryId") Long categoryId, Pageable pageable);
+
+    /**
+     * 특정 과목을 담당하는 강사 목록 조회 (공개 상태 필터링).
+     * 
+     * @param categoryId 과목 카테고리 ID
+     * @param isPublished 공개 여부 필터
+     * @param pageable 페이징 정보
+     * @return 해당 과목을 담당하는 강사 목록 (공개 상태 필터링)
+     */
+    @Query(value = """
+        SELECT DISTINCT t 
+        FROM Teacher t 
+        LEFT JOIN FETCH t.subjects ts 
+        LEFT JOIN FETCH ts.category c
+        WHERE t.isPublished = :isPublished
+        AND EXISTS (
+            SELECT 1 FROM TeacherSubject ts2 
+            WHERE ts2.teacher.id = t.id 
+            AND ts2.category.id = :categoryId
+        )
+        """,
+        countQuery = """
+        SELECT COUNT(DISTINCT t) 
+        FROM Teacher t 
+        JOIN t.subjects ts 
+        WHERE t.isPublished = :isPublished
+        AND ts.category.id = :categoryId
+        """)
+    Page<Teacher> findBySubjectCategoryIdAndIsPublishedWithSubjects(
+            @Param("categoryId") Long categoryId, 
+            @Param("isPublished") Boolean isPublished, 
+            Pageable pageable);
+
+    /**
+     * 특정 과목을 담당하는 공개 강사 목록 조회 (페이징).
+     * 
+     * @param categoryId 과목 카테고리 ID
+     * @param pageable 페이징 정보
+     * @return 해당 과목을 담당하는 공개 강사 목록
+     */
+    @Query(value = """
+        SELECT DISTINCT t 
+        FROM Teacher t 
+        LEFT JOIN FETCH t.subjects ts 
+        LEFT JOIN FETCH ts.category c
+        WHERE t.isPublished = true 
+        AND EXISTS (
+            SELECT 1 FROM TeacherSubject ts2 
+            WHERE ts2.teacher.id = t.id 
+            AND ts2.category.id = :categoryId
+        )
+        """,
+        countQuery = """
+        SELECT COUNT(DISTINCT t) 
+        FROM Teacher t 
+        JOIN t.subjects ts 
+        WHERE t.isPublished = true 
+        AND ts.category.id = :categoryId
+        """)
+    Page<Teacher> findPublishedBySubjectCategoryIdWithSubjects(@Param("categoryId") Long categoryId, Pageable pageable);
+
+    /**
      * 강사명 중복 검사.
      * 
      * @param teacherName 검사할 강사명

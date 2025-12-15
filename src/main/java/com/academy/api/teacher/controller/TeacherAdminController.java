@@ -284,4 +284,58 @@ public class TeacherAdminController {
         log.info("[TeacherAdminController] 강사 공개상태 변경 요청. id={}, isPublished={}", id, isPublished);
         return teacherService.updatePublishedStatus(id, isPublished);
     }
+
+    /**
+     * 과목별 강사 조회 (관리자).
+     * 
+     * @param categoryId 과목 카테고리 ID
+     * @param isPublished 공개 여부 필터 
+     * @param pageable 페이징 정보
+     * @return 해당 과목을 담당하는 강사 목록
+     */
+    @Operation(
+        summary = "과목별 강사 조회 (관리자)",
+        description = """
+                특정 과목을 담당하는 강사 목록을 조회합니다.
+                
+                특징:
+                - 관리자용 API 
+                - 공개 상태 필터링 가능
+                - 강사 기본 정보와 모든 담당 과목 정보 포함
+                
+                필터링 옵션:
+                - isPublished 생략: 모든 강사 (공개/비공개)
+                - isPublished=true: 공개 강사만
+                - isPublished=false: 비공개 강사만
+                
+                용도:
+                - 과목별 강사 관리
+                - 특정 분야 강사 현황 파악
+                - 강사 배정 현황 확인
+                
+                정렬:
+                - 생성일시 기준 최신순
+                
+                권한:
+                - ADMIN 권한 필수
+                
+                예시:
+                - GET /api/admin/teachers/subject/15 (모든 강사)
+                - GET /api/admin/teachers/subject/15?isPublished=true (공개만)
+                - GET /api/admin/teachers/subject/15?isPublished=false (비공개만)
+                """
+    )
+    @GetMapping("/subject/{categoryId}")
+    public ResponseList<ResponseTeacherListItem> getTeachersBySubject(
+            @Parameter(description = "과목 카테고리 ID", example = "1") 
+            @PathVariable Long categoryId,
+            @Parameter(description = "공개 여부 필터 (생략시 모든 상태)", example = "true") 
+            @RequestParam(required = false) Boolean isPublished,
+            @PageableDefault(size = 15, sort = "createdAt", direction = Sort.Direction.DESC) 
+            Pageable pageable) {
+        
+        log.info("[TeacherAdminController] 과목별 강사 조회 요청. 과목ID={}, isPublished={}", categoryId, isPublished);
+        
+        return teacherService.getTeachersBySubject(categoryId, isPublished, pageable);
+    }
 }
