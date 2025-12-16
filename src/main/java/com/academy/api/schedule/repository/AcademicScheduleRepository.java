@@ -4,7 +4,6 @@ import com.academy.api.schedule.domain.AcademicSchedule;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -12,7 +11,6 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * 학사일정 Repository.
@@ -28,11 +26,6 @@ public interface AcademicScheduleRepository extends JpaRepository<AcademicSchedu
     @Query("SELECT a FROM AcademicSchedule a ORDER BY a.startAt DESC")
     Page<AcademicSchedule> findAllSchedules(Pageable pageable);
 
-    /**
-     * 공개 일정만 조회 (페이징) - isPublic 필드가 없어 전체 조회로 변경.
-     */
-    @Query("SELECT a FROM AcademicSchedule a ORDER BY a.startAt DESC")
-    Page<AcademicSchedule> findPublicSchedules(Pageable pageable);
 
 
     /**
@@ -161,11 +154,5 @@ public interface AcademicScheduleRepository extends JpaRepository<AcademicSchedu
         """)
     List<AcademicSchedule> findSchedulesOnDate(@Param("date") LocalDate date);
 
-    /**
-     * 공개/비공개 상태 변경 - isPublic 필드가 없어 사용 불가.
-     */
-    @Modifying
-    @Query("UPDATE AcademicSchedule a SET a.updatedBy = :updatedBy, a.updatedAt = CURRENT_TIMESTAMP WHERE a.id = :id")
-    int updatePublicStatus(@Param("id") Long id, @Param("updatedBy") Long updatedBy);
 
 }

@@ -12,7 +12,7 @@ import org.springframework.data.domain.Pageable;
 public interface AcademicScheduleService {
 
     /**
-     * 월별 공개 학사일정 조회.
+     * 월별 학사일정 조회.
      * 
      * @param searchRequest 검색 조건 (년도, 월, 카테고리 필터)
      * @return 해당 월의 학사일정 목록
@@ -60,11 +60,4 @@ public interface AcademicScheduleService {
      */
     Response deleteSchedule(Long id);
 
-    /**
-     * 학사일정 공개/비공개 상태 변경.
-     * 
-     * @param id 상태 변경할 학사일정 ID
-     * @return 상태 변경 결과
-     */
-    Response togglePublicStatus(Long id);
 }

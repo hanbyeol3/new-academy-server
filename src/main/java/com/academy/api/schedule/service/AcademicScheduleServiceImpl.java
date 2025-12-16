@@ -47,7 +47,7 @@ public class AcademicScheduleServiceImpl implements AcademicScheduleService {
     private final MemberRepository memberRepository;
 
     /**
-     * 월별 공개 학사일정 조회.
+     * 월별 학사일정 조회.
      */
     @Override
     public ResponseList<ResponseAcademicScheduleListItem> getMonthlySchedules(RequestAcademicScheduleSearch searchRequest) {
@@ -284,18 +284,6 @@ public class AcademicScheduleServiceImpl implements AcademicScheduleService {
                 });
     }
 
-    /**
-     * 학사일정 공개/비공개 상태 변경.
-     */
-    @Override
-    @Transactional
-    public Response togglePublicStatus(Long id) {
-        log.info("[AcademicScheduleService] 일정 공개 상태 전환 시작. id={}", id);
-        
-        // isPublic 필드가 제거되어 이 기능은 사용할 수 없음
-        log.warn("[AcademicScheduleService] isPublic 필드가 없어 공개 상태 전환 불가. id={}", id);
-        return Response.error("E501", "공개 상태 전환 기능을 사용할 수 없습니다");
-    }
 
     /**
      * 종일 이벤트 시작시간 정규화 (00:00:00으로 고정).

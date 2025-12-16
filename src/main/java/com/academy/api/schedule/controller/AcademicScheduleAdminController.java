@@ -40,21 +40,20 @@ public class AcademicScheduleAdminController {
                 관리자용 학사일정 전체 목록을 페이징으로 조회합니다.
                 
                 조회 조건:
-                - 공개/비공개 상태 무관 모든 일정 조회
+                - 모든 일정 조회 
                 - 페이징 지원 (기본 20개씩)
-                - 최신 생성일 순으로 정렬
+                - 최신 시작일 순으로 정렬
                 
                 응답 데이터:
-                - 일정 기본 정보 (제목, 설명, 카테고리, 시간)
-                - 반복 설정 (repeatType, weekdayMask, repeatEndDate)
-                - 공개 상태 (isPublic)
+                - 일정 기본 정보 (제목, 설명, 시간)
+                - 반복 설정 (isRepeat, weekdayMask, excludeWeekends)
+                - 종일 이벤트 설정 (isAllDay)
                 - 등록/수정 이력 (생성자/수정자 이름 포함)
                 - 페이징 정보 (total, page, size)
                 
                 사용 목적:
                 - 관리자용 학사일정 관리 화면
                 - 일정 생성/수정/삭제 전 목록 확인
-                - 공개/비공개 상태 일괄 관리
                 
                 정렬 기준:
                 - startAt DESC (최신 시작일 순)
@@ -82,19 +81,19 @@ public class AcademicScheduleAdminController {
                 관리자용 학사일정 상세 정보를 조회합니다.
                 
                 조회 조건:
-                - 공개/비공개 상태 무관 모든 일정 조회 가능
+                - 모든 일정 조회 가능
                 - 존재하는 일정 ID만 조회 가능
                 
                 응답 데이터:
                 - 일정 전체 상세 정보
-                - 반복 설정 상세 (repeatType, weekdayMask, repeatEndDate)
+                - 반복 설정 상세 (isRepeat, weekdayMask, excludeWeekends)
                 - 종일 이벤트 설정 (isAllDay)
                 - 등록/수정 이력 (ID, 이름, 시간 포함)
                 
                 사용 목적:
                 - 관리자용 일정 수정 화면 데이터 로드
                 - 일정 상세 정보 확인
-                - 반복 설정 및 공개 상태 확인
+                - 반복 설정 확인
                 
                 권한 요구사항:
                 - ADMIN 역할 필수
@@ -122,30 +121,30 @@ public class AcademicScheduleAdminController {
                 
                 필수 입력 사항:
                 - title (일정 제목, 255자 이하)
-                - category (카테고리: OPEN_CLOSE, EXAM, NOTICE, EVENT, ETC)
                 - startAt (시작 일시)
                 
                 선택 입력 사항:
                 - description (상세 설명, 500자 이하)
                 - endAt (종료 일시, NULL 가능 - 종료시간 미정)
                 - isAllDay (종일 이벤트 여부, 기본값 false)
-                - repeatType (반복 유형, 기본값 NONE)
-                - weekdayMask (주간 반복 요일, WEEKLY일 때 필수)
-                - repeatEndDate (반복 종료일)
-                - isPublic (공개 여부, 기본값 true)
+                - isRepeat (반복 여부, 기본값 false)
+                - weekdayMask (주간 반복 요일, 반복 설정 시 사용)
+                - excludeWeekends (주말 제외 여부, endAt 있을 때만 사용 가능)
                 
                 종일 이벤트 처리:
                 - isAllDay=true인 경우 시작시간 00:00:00 고정
                 - 종료시간 자동 정규화 (half-open interval)
                 
                 반복 일정 설정:
-                - WEEKLY: weekdayMask 필수 (월:1, 화:2, 수:4, 목:8, 금:16, 토:32, 일:64)
-                - DAILY/MONTHLY/YEARLY: weekdayMask 불필요
+                - isRepeat=true 시 endAt 필수 (종료일 있어야 반복 가능)
+                - weekdayMask: 특정 요일 반복 시 설정 (월:1, 화:2, 수:4, 목:8, 금:16, 토:32, 일:64)
+                - excludeWeekends=true 시 endAt 필수
                 
                 검증 규칙:
                 - 시작시간 < 종료시간
                 - 종일 이벤트 시간 형식 검증
-                - 반복 설정 논리 검증
+                - 반복 설정은 endAt이 있어야만 가능
+                - 주말 제외 설정도 endAt이 있어야만 가능
                 - 동일 시간대 겹침 방지
                 
                 권한 요구사항:
@@ -175,9 +174,8 @@ public class AcademicScheduleAdminController {
                 기존 학사일정을 수정합니다.
                 
                 수정 가능 항목:
-                - 모든 일정 정보 (제목, 설명, 카테고리, 시간)
-                - 반복 설정 (유형, 요일, 종료일)
-                - 공개 상태 (isPublic)
+                - 모든 일정 정보 (제목, 설명, 시간)
+                - 반복 설정 (isRepeat, weekdayMask, excludeWeekends)
                 
                 수정 불가 항목:
                 - 일정 ID (시스템 자동 관리)
@@ -247,8 +245,8 @@ public class AcademicScheduleAdminController {
                 - 반복 일정 삭제 시 모든 인스턴스가 영향받음
                 
                 대안 방안:
-                - 삭제 대신 공개 상태를 비공개로 변경 고려
                 - 중요한 일정은 백업 후 삭제 권장
+                - 임시 숨김이 필요한 경우 별도 관리 방안 고려
                 """
     )
     public Response deleteSchedule(
@@ -260,41 +258,4 @@ public class AcademicScheduleAdminController {
         return academicScheduleService.deleteSchedule(id);
     }
 
-    @PatchMapping("/{id}/public-status")
-    @Operation(
-        summary = "학사일정 공개/비공개 전환",
-        description = """
-                학사일정의 공개/비공개 상태를 전환합니다.
-                
-                동작 방식:
-                - 현재 상태의 반대로 전환 (공개 ↔ 비공개)
-                - 다른 정보는 변경하지 않음
-                - 수정자 정보 자동 업데이트
-                
-                공개 상태 영향:
-                - 공개: 일반 사용자도 조회 가능
-                - 비공개: 관리자만 조회 가능
-                
-                권한 요구사항:
-                - ADMIN 역할 필수
-                - 수정자 ID 자동 설정
-                
-                사용 목적:
-                - 임시로 일정 숨기기
-                - 준비 중인 일정의 단계적 공개
-                - 불필요한 일정의 비활성화
-                
-                주의사항:
-                - 존재하지 않는 ID 요청 시 404 에러
-                - 공개에서 비공개로 변경 시 일반 사용자 접근 차단
-                """
-    )
-    public Response togglePublicStatus(
-            @Parameter(description = "상태 변경할 학사일정 ID", example = "1") 
-            @PathVariable Long id) {
-
-        log.info("[AcademicScheduleAdminController] 일정 공개 상태 전환 요청. id={}", id);
-
-        return academicScheduleService.togglePublicStatus(id);
-    }
 }

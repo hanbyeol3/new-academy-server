@@ -32,9 +32,4 @@ public class RequestAcademicScheduleSearch {
             requiredMode = Schema.RequiredMode.REQUIRED)
     private Integer month;
 
-
-    @Schema(description = "공개 일정만 조회 여부", 
-            example = "true",
-            defaultValue = "true")
-    private Boolean publicOnly = true;
 }
