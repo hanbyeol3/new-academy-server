@@ -5,6 +5,7 @@ import com.academy.api.category.service.CategoryGroupService;
 import com.academy.api.category.service.CategoryService;
 import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
+import com.academy.api.data.responses.common.ResponseList;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -15,8 +16,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 /**
  * 카테고리 관리자 API 컨트롤러.
@@ -43,7 +42,7 @@ public class CategoryAdminController {
         description = "등록된 모든 카테고리 그룹 목록을 조회합니다."
     )
     @GetMapping("/groups")
-    public ResponseData<List<ResponseCategoryGroup>> getCategoryGroupList() {
+    public ResponseList<ResponseCategoryGroup> getCategoryGroupList() {
         log.info("[CategoryAdminController] 카테고리 그룹 목록 조회 요청");
         return categoryGroupService.getCategoryGroupList();
     }
@@ -117,7 +116,7 @@ public class CategoryAdminController {
                 """
     )
     @GetMapping
-    public ResponseData<List<ResponseCategory>> getCategoryList() {
+    public ResponseList<ResponseCategory> getCategoryList() {
         log.info("[CategoryAdminController] 전체 카테고리 목록 조회 요청");
         return categoryService.getCategoryList();
     }
@@ -133,7 +132,7 @@ public class CategoryAdminController {
                 """
     )
     @GetMapping("/groups/{groupId}/categories")
-    public ResponseData<List<ResponseCategory>> getCategoriesByGroupId(
+    public ResponseList<ResponseCategory> getCategoriesByGroupId(
             @Parameter(description = "카테고리 그룹 ID", example = "1") 
             @PathVariable Long groupId) {
         

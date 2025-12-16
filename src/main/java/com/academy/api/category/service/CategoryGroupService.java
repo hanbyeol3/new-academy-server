@@ -5,8 +5,7 @@ import com.academy.api.category.dto.RequestCategoryGroupUpdate;
 import com.academy.api.category.dto.ResponseCategoryGroup;
 import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
-
-import java.util.List;
+import com.academy.api.data.responses.common.ResponseList;
 
 /**
  * 카테고리 그룹 서비스 인터페이스.
@@ -18,7 +17,7 @@ public interface CategoryGroupService {
      * 
      * @return 카테고리 그룹 목록
      */
-    ResponseData<List<ResponseCategoryGroup>> getCategoryGroupList();
+    ResponseList<ResponseCategoryGroup> getCategoryGroupList();
 
     /**
      * 카테고리 그룹 상세 조회.

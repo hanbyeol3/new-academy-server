@@ -571,7 +571,7 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
     }
 
     @Override
-    public ResponseData<List<ResponseNoticeSimple>> getRecentNotices(int limit) {
+    public ResponseList<ResponseNoticeSimple> getRecentNotices(int limit) {
         log.info("[NoticeService] 최근 공지사항 조회 시작. 개수={}", limit);
         
         List<Notice> notices = noticeRepository.findRecentNotices(limit);
@@ -579,7 +579,7 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
         
         log.debug("[NoticeService] 최근 공지사항 조회 완료. 반환개수={}", response.size());
         
-        return ResponseData.ok(response);
+        return ResponseList.ok(response, response.size(), 0, response.size());
     }
 
     @Override

@@ -16,8 +16,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 /**
  * 공지사항 공개 API 컨트롤러.
  * 
@@ -113,7 +111,7 @@ public class NoticePublicController {
                 """
     )
     @GetMapping("/important")
-    public ResponseData<List<ResponseNoticeSimple>> getImportantNotices(
+    public ResponseList<ResponseNoticeSimple> getImportantNotices(
             @Parameter(description = "조회할 중요 공지 개수", example = "5") 
             @RequestParam(defaultValue = "5") int limit) {
         
@@ -126,12 +124,10 @@ public class NoticePublicController {
         searchCondition.setIsImportant(true);
         searchCondition.setSortBy("CREATED_DESC");
         
-        ResponseList<ResponseNoticeSimple> result = noticeService.getExposableNoticeList(
+        return noticeService.getExposableNoticeList(
                 searchCondition, 
                 Pageable.ofSize(actualLimit)
         );
-        
-        return ResponseData.ok(result.getItems());
     }
 
     @Operation(
@@ -151,7 +147,7 @@ public class NoticePublicController {
                 """
     )
     @GetMapping("/recent")
-    public ResponseData<List<ResponseNoticeSimple>> getRecentNotices(
+    public ResponseList<ResponseNoticeSimple> getRecentNotices(
             @Parameter(description = "조회할 최근 공지 개수", example = "5") 
             @RequestParam(defaultValue = "5") int limit) {
         

@@ -11,6 +11,7 @@ import com.academy.api.common.exception.BusinessException;
 import com.academy.api.common.exception.ErrorCode;
 import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
+import com.academy.api.data.responses.common.ResponseList;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -43,7 +44,7 @@ public class CategoryGroupServiceImpl implements CategoryGroupService {
     private final CategoryGroupMapper categoryGroupMapper;
 
     @Override
-    public ResponseData<List<ResponseCategoryGroup>> getCategoryGroupList() {
+    public ResponseList<ResponseCategoryGroup> getCategoryGroupList() {
         log.info("[CategoryGroupService] 카테고리 그룹 목록 조회 시작");
         
         List<CategoryGroup> categoryGroups = categoryGroupRepository.findAllOrderByCreatedAtDesc();
@@ -51,7 +52,7 @@ public class CategoryGroupServiceImpl implements CategoryGroupService {
         log.debug("[CategoryGroupService] 카테고리 그룹 조회 완료. 총 {}개", categoryGroups.size());
         
         List<ResponseCategoryGroup> response = categoryGroupMapper.toResponseList(categoryGroups);
-        return ResponseData.ok(response);
+        return ResponseList.ok(response, response.size(), 0, response.size());
     }
 
     @Override

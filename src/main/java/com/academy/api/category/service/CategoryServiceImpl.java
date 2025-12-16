@@ -13,6 +13,7 @@ import com.academy.api.common.exception.ErrorCode;
 import com.academy.api.common.util.SecurityUtils;
 import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
+import com.academy.api.data.responses.common.ResponseList;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -47,7 +48,7 @@ public class CategoryServiceImpl implements CategoryService {
     private final List<CategoryUsageChecker> categoryUsageCheckers;
 
     @Override
-    public ResponseData<List<ResponseCategory>> getCategoryList() {
+    public ResponseList<ResponseCategory> getCategoryList() {
         log.info("[CategoryService] 전체 카테고리 목록 조회 시작");
         
         List<Category> categories = categoryRepository.findAllWithCategoryGroupOrderBySortOrder();
@@ -55,11 +56,11 @@ public class CategoryServiceImpl implements CategoryService {
         log.debug("[CategoryService] 카테고리 조회 완료. 총 {}개", categories.size());
         
         List<ResponseCategory> response = categoryMapper.toResponseList(categories);
-        return ResponseData.ok(response);
+        return ResponseList.ok(response, response.size(), 0, response.size());
     }
 
     @Override
-    public ResponseData<List<ResponseCategory>> getCategoriesByGroupId(Long categoryGroupId) {
+    public ResponseList<ResponseCategory> getCategoriesByGroupId(Long categoryGroupId) {
         log.info("[CategoryService] 카테고리 그룹별 목록 조회 시작. groupId={}", categoryGroupId);
         
         // 카테고리 그룹 존재 여부 확인
@@ -72,7 +73,7 @@ public class CategoryServiceImpl implements CategoryService {
         log.debug("[CategoryService] 카테고리 그룹별 조회 완료. groupId={}, 카테고리수={}", categoryGroupId, categories.size());
         
         List<ResponseCategory> response = categoryMapper.toResponseList(categories);
-        return ResponseData.ok(response);
+        return ResponseList.ok(response, response.size(), 0, response.size());
     }
 
     @Override

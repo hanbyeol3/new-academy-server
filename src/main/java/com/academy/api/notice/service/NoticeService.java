@@ -135,7 +135,7 @@ public interface NoticeService {
      * @param limit 조회할 개수
      * @return 최근 공지사항 목록
      */
-    ResponseData<List<ResponseNoticeSimple>> getRecentNotices(int limit);
+    ResponseList<ResponseNoticeSimple> getRecentNotices(int limit);
 
     /**
      * 카테고리별 공지사항 통계.
