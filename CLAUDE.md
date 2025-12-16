@@ -629,6 +629,214 @@ public Response deleteNotice(Long id) {
 - [ ] **에러 코드**: "0000" (성공) 또는 적절한 에러 코드 ✓
 - [ ] **타입 일관성**: Controller 내 메서드별 적절한 타입 선택 ✓
 
+## 📊 통합 검색 API 설계 표준
+
+### 🎯 목록 조회 API 통합 원칙
+
+목록 조회 API는 **단일 엔드포인트**로 모든 검색 조건을 처리해야 합니다.
+
+#### ✅ 권장 패턴: 통합 검색 API
+```java
+@GetMapping
+public ResponseList<ResponseDomainListItem> getDomainList(
+    @RequestParam(required = false) String keyword,        // 키워드 검색
+    @RequestParam(required = false) Long categoryId,       // 카테고리 필터
+    @RequestParam(required = false) Boolean isPublished,   // 상태 필터
+    @RequestParam(required = false) String status,         // 추가 상태 필터
+    Pageable pageable) {
+    
+    return domainService.getDomainList(keyword, categoryId, isPublished, status, pageable);
+}
+```
+
+**사용 예시:**
+```
+GET /api/admin/teachers                                    # 전체 목록
+GET /api/admin/teachers?keyword=김교수                      # 키워드 검색
+GET /api/admin/teachers?categoryId=15                      # 카테고리 필터
+GET /api/admin/teachers?isPublished=true                   # 상태 필터
+GET /api/admin/teachers?keyword=김&categoryId=15&isPublished=true  # 복합 조건
+```
+
+#### ❌ 지양 패턴: 분리된 엔드포인트
+```java
+// 잘못된 예시 - 여러 엔드포인트로 분산
+@GetMapping                                    // 기본 목록
+@GetMapping("/published")                      // 공개만
+@GetMapping("/category/{categoryId}")          // 카테고리별
+@GetMapping("/search")                         // 검색
+```
+
+### 🔥 통합 API 구현 표준
+
+#### 1. Controller 패턴
+```java
+@Operation(
+    summary = "도메인 목록 조회 (관리자)",
+    description = """
+            관리자용 도메인 목록을 조회합니다.
+            
+            주요 기능:
+            - 키워드 검색 (부분 일치)
+            - 카테고리별 필터링
+            - 공개/비공개 상태 필터링
+            - 복합 조건 검색 지원
+            
+            검색 옵션:
+            - keyword: 이름/제목 검색
+            - categoryId: 특정 카테고리만
+            - isPublished: 공개 상태 필터
+            
+            예시:
+            - GET /api/admin/domain (전체)
+            - GET /api/admin/domain?keyword=검색어 (키워드)
+            - GET /api/admin/domain?categoryId=15 (카테고리)
+            - GET /api/admin/domain?keyword=검색어&categoryId=15&isPublished=true (복합)
+            """
+)
+@GetMapping
+public ResponseList<ResponseDomainListItem> getDomainList(
+        @Parameter(description = "검색 키워드", example = "김교수") 
+        @RequestParam(required = false) String keyword,
+        @Parameter(description = "카테고리 ID", example = "15") 
+        @RequestParam(required = false) Long categoryId,
+        @Parameter(description = "공개 여부 (생략시 모든 상태)", example = "true") 
+        @RequestParam(required = false) Boolean isPublished,
+        @Parameter(description = "페이징 정보") 
+        @PageableDefault(size = 15, sort = "createdAt", direction = Sort.Direction.DESC) 
+        Pageable pageable) {
+    
+    log.info("도메인 목록 조회 요청. keyword={}, categoryId={}, isPublished={}", 
+             keyword, categoryId, isPublished);
+    return domainService.getDomainList(keyword, categoryId, isPublished, pageable);
+}
+```
+
+#### 2. Service 인터페이스
+```java
+/**
+ * 도메인 목록 조회 (관리자용 - 통합 검색).
+ * 
+ * @param keyword 검색 키워드 (제목/이름)
+ * @param categoryId 카테고리 ID (null이면 전체 카테고리)
+ * @param isPublished 공개 여부 필터 (null이면 모든 상태)
+ * @param pageable 페이징 정보
+ * @return 도메인 목록
+ */
+ResponseList<ResponseDomainListItem> getDomainList(
+    String keyword, Long categoryId, Boolean isPublished, Pageable pageable);
+```
+
+#### 3. Service 구현체 패턴
+```java
+@Override
+public ResponseList<ResponseDomainListItem> getDomainList(String keyword, Long categoryId, Boolean isPublished, Pageable pageable) {
+    log.info("도메인 목록 조회 시작. keyword={}, categoryId={}, isPublished={}", keyword, categoryId, isPublished);
+
+    Page<Domain> domainPage;
+    boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
+    boolean hasCategoryId = categoryId != null;
+    
+    // 조건 조합별 분기 처리
+    if (hasCategoryId) {
+        if (hasKeyword && isPublished != null) {
+            // 카테고리 + 키워드 + 공개상태 (3개 조건)
+            domainPage = repository.findByCategoryAndKeywordAndStatus(categoryId, keyword, isPublished, pageable);
+        } else if (hasKeyword) {
+            // 카테고리 + 키워드 (2개 조건)  
+            domainPage = repository.findByCategoryAndKeyword(categoryId, keyword, pageable);
+        } else if (isPublished != null) {
+            // 카테고리 + 공개상태 (2개 조건)
+            domainPage = repository.findByCategoryAndStatus(categoryId, isPublished, pageable);
+        } else {
+            // 카테고리만 (1개 조건)
+            domainPage = repository.findByCategory(categoryId, pageable);
+        }
+    } else {
+        // 기존 패턴 (카테고리 필터링 없음)
+        if (hasKeyword && isPublished != null) {
+            domainPage = repository.findByKeywordAndStatus(keyword, isPublished, pageable);
+        } else if (hasKeyword) {
+            domainPage = repository.findByKeyword(keyword, pageable);
+        } else if (isPublished != null) {
+            domainPage = repository.findByStatus(isPublished, pageable);
+        } else {
+            domainPage = repository.findAllWithRelations(pageable);
+        }
+    }
+    
+    return domainMapper.toListItemResponseList(domainPage);
+}
+```
+
+### 📋 통합 API 체크리스트
+
+새로운 목록 조회 API 개발 시 다음을 확인:
+
+#### Controller 레벨
+- [ ] **단일 엔드포인트**: 하나의 `@GetMapping`으로 모든 조건 처리 ✓
+- [ ] **선택적 파라미터**: 모든 검색 조건을 `required = false`로 설정 ✓
+- [ ] **복합 조건 예시**: `@Operation` description에 모든 조합 예시 포함 ✓
+- [ ] **ResponseList 반환**: 목록 조회는 반드시 `ResponseList<T>` 사용 ✓
+
+#### Service 레벨  
+- [ ] **조건 조합 분기**: keyword, categoryId, isPublished 모든 조합 처리 ✓
+- [ ] **null 안전성**: `keyword != null && !keyword.trim().isEmpty()` 체크 ✓
+- [ ] **로깅**: 입력 파라미터와 결과 요약 로그 필수 ✓
+- [ ] **성능 최적화**: N+1 문제 방지를 위한 fetch join 쿼리 활용 ✓
+
+#### Repository 레벨
+- [ ] **메서드 최적화**: 자주 사용되는 조건 조합은 전용 메서드 제공 ✓
+- [ ] **QueryDSL 활용**: 복잡한 동적 쿼리는 QueryDSL 구현 고려 ✓
+- [ ] **페이징 지원**: 모든 검색 메서드에 `Pageable` 파라미터 포함 ✓
+
+### 🎯 성공 사례: TeacherAdminController
+
+#### Before (분리된 API)
+```java
+// 문제가 있는 구조
+@GetMapping                                    // 기본 목록
+public ResponseList<ResponseTeacherListItem> getTeacherList(...)
+
+@GetMapping("/subject/{categoryId}")           // 과목별 목록  
+public ResponseList<ResponseTeacherListItem> getTeachersBySubject(...)
+```
+
+#### After (통합 API)
+```java
+// 개선된 구조
+@GetMapping
+public ResponseList<ResponseTeacherListItem> getTeacherList(
+    @RequestParam(required = false) String keyword,
+    @RequestParam(required = false) Long categoryId,  // 통합된 파라미터
+    @RequestParam(required = false) Boolean isPublished,
+    Pageable pageable) {
+    
+    return teacherService.getTeacherList(keyword, categoryId, isPublished, pageable);
+}
+
+// 기존 /subject/{categoryId} 엔드포인트는 완전 삭제
+```
+
+**결과**: 2개의 엔드포인트 → 1개의 통합 엔드포인트로 API 단순화 및 일관성 확보
+
+### 📝 개발 가이드
+
+#### 1. 신규 도메인 개발시
+- **처음부터 통합 API로 설계**: 분리된 엔드포인트 생성 금지
+- **모든 필터링 조건을 하나의 메서드에서 처리**
+- **공개/관리자 API 구분**: Public Controller는 공개 데이터만, Admin Controller는 모든 데이터
+
+#### 2. 기존 API 개선시  
+- **분리된 엔드포인트 발견시 통합 검토**: 사용자 혼란 방지
+- **URL 호환성 고려**: 기존 클라이언트 영향 최소화
+- **점진적 마이그레이션**: 한 번에 모든 API를 변경하지 않고 단계적 적용
+
+#### 3. 프론트엔드 연동
+- **파라미터 조합 명세**: 모든 가능한 검색 조건 조합 문서화  
+- **기본값 명시**: 파라미터 생략시 동작 방식 명확히 전달
+- **에러 케이스 정의**: 잘못된 파라미터 조합시 에러 응답 규칙
+
 ## 🎮 Controller 설계 표준
 
 ### 🏆 표준 기준

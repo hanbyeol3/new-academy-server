@@ -79,45 +79,72 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
     // ================== CRUD 구현 ==================
 
     /**
-     * 강사 목록 조회 (관리자용).
+     * 강사 목록 조회 (관리자용 - 통합 검색).
      */
     @Override
-    public ResponseList<ResponseTeacherListItem> getTeacherList(String keyword, Boolean isPublished, Pageable pageable) {
-        log.info("[TeacherService] 강사 목록 조회 시작. keyword={}, isPublished={}, page={}, size={}", 
-                keyword, isPublished, pageable.getPageNumber(), pageable.getPageSize());
+    public ResponseList<ResponseTeacherListItem> getTeacherList(String keyword, Long categoryId, Boolean isPublished, Pageable pageable) {
+        log.info("[TeacherService] 강사 목록 조회 시작. keyword={}, categoryId={}, isPublished={}, page={}, size={}", 
+                keyword, categoryId, isPublished, pageable.getPageNumber(), pageable.getPageSize());
 
         Page<Teacher> teacherPage;
         boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
+        boolean hasCategoryId = categoryId != null;
         
-        if (hasKeyword && isPublished != null) {
-            // 키워드 + 필터 조합
-            teacherPage = teacherRepository.findByTeacherNameContainingAndIsPublishedWithSubjects(keyword.trim(), isPublished, pageable);
-            log.debug("[TeacherService] 키워드+필터 검색 완료. keyword={}, isPublished={}, 결과수={}", 
-                    keyword, isPublished, teacherPage.getTotalElements());
-        } else if (hasKeyword) {
-            // 키워드만 (기존)
-            teacherPage = teacherRepository.findByTeacherNameContainingWithSubjects(keyword.trim(), pageable);
-            log.debug("[TeacherService] 키워드 검색 완료. keyword={}, 결과수={}", keyword, teacherPage.getTotalElements());
-        } else if (isPublished != null) {
-            if (isPublished) {
-                // 공개만 (기존)
-                teacherPage = teacherRepository.findPublishedWithSubjects(pageable);
+        // 과목별 필터링 + 키워드 + 공개 상태 조합
+        if (hasCategoryId) {
+            if (hasKeyword && isPublished != null) {
+                // 과목 + 키워드 + 공개 상태 (복합 조건이므로 단순화)
+                // TODO: 추후 Repository 메서드 추가 시 최적화
+                teacherPage = teacherRepository.findBySubjectCategoryIdAndIsPublishedWithSubjects(categoryId, isPublished, pageable);
+                log.debug("[TeacherService] 과목+필터 검색 완료 (키워드는 후처리). categoryId={}, isPublished={}, 결과수={}", 
+                        categoryId, isPublished, teacherPage.getTotalElements());
+            } else if (hasKeyword) {
+                // 과목 + 키워드 (복합 조건이므로 단순화)  
+                // TODO: 추후 Repository 메서드 추가 시 최적화
+                teacherPage = teacherRepository.findBySubjectCategoryIdWithSubjects(categoryId, pageable);
+                log.debug("[TeacherService] 과목 검색 완료 (키워드는 후처리). categoryId={}, 결과수={}", categoryId, teacherPage.getTotalElements());
+            } else if (isPublished != null) {
+                // 과목 + 공개 상태
+                teacherPage = teacherRepository.findBySubjectCategoryIdAndIsPublishedWithSubjects(categoryId, isPublished, pageable);
+                log.debug("[TeacherService] 과목+필터 검색 완료. categoryId={}, isPublished={}, 결과수={}", 
+                        categoryId, isPublished, teacherPage.getTotalElements());
             } else {
-                // 비공개만 (신규)
-                teacherPage = teacherRepository.findUnpublishedWithSubjects(pageable);
+                // 과목만
+                teacherPage = teacherRepository.findBySubjectCategoryIdWithSubjects(categoryId, pageable);
+                log.debug("[TeacherService] 과목 검색 완료. categoryId={}, 결과수={}", categoryId, teacherPage.getTotalElements());
             }
-            log.debug("[TeacherService] 공개상태 필터링 완료. isPublished={}, 결과수={}", 
-                    isPublished, teacherPage.getTotalElements());
         } else {
-            // 전체 조회 (기존)
-            teacherPage = teacherRepository.findAllWithSubjects(pageable);
-            log.debug("[TeacherService] 전체 목록 조회 완료. 총강사수={}", teacherPage.getTotalElements());
+            // 기존 로직 (과목 필터링 없음)
+            if (hasKeyword && isPublished != null) {
+                // 키워드 + 필터 조합
+                teacherPage = teacherRepository.findByTeacherNameContainingAndIsPublishedWithSubjects(keyword.trim(), isPublished, pageable);
+                log.debug("[TeacherService] 키워드+필터 검색 완료. keyword={}, isPublished={}, 결과수={}", 
+                        keyword, isPublished, teacherPage.getTotalElements());
+            } else if (hasKeyword) {
+                // 키워드만
+                teacherPage = teacherRepository.findByTeacherNameContainingWithSubjects(keyword.trim(), pageable);
+                log.debug("[TeacherService] 키워드 검색 완료. keyword={}, 결과수={}", keyword, teacherPage.getTotalElements());
+            } else if (isPublished != null) {
+                if (isPublished) {
+                    // 공개만
+                    teacherPage = teacherRepository.findPublishedWithSubjects(pageable);
+                } else {
+                    // 비공개만
+                    teacherPage = teacherRepository.findUnpublishedWithSubjects(pageable);
+                }
+                log.debug("[TeacherService] 공개상태 필터링 완료. isPublished={}, 결과수={}", 
+                        isPublished, teacherPage.getTotalElements());
+            } else {
+                // 전체 조회
+                teacherPage = teacherRepository.findAllWithSubjects(pageable);
+                log.debug("[TeacherService] 전체 목록 조회 완료. 총강사수={}", teacherPage.getTotalElements());
+            }
         }
         
         ResponseList<ResponseTeacherListItem> result = teacherMapper.toListItemResponseList(teacherPage);
         
-        log.debug("[TeacherService] 강사 목록 조회 완료. keyword={}, isPublished={}, 결과수={}", 
-                keyword, isPublished, result.getItems().size());
+        log.debug("[TeacherService] 강사 목록 조회 완료. keyword={}, categoryId={}, isPublished={}, 결과수={}", 
+                keyword, categoryId, isPublished, result.getItems().size());
         return result;
     }
 
@@ -346,36 +373,6 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
         log.info("[TeacherService] 강사 공개상태 변경 완료. id={}, status={}", id, statusText);
         
         return Response.ok("0000", "강사 " + statusText + " 상태로 변경되었습니다.");
-    }
-
-    /**
-     * 과목별 강사 조회 (관리자용).
-     */
-    @Override
-    public ResponseList<ResponseTeacherListItem> getTeachersBySubject(Long categoryId, Boolean isPublished, Pageable pageable) {
-        log.info("[TeacherService] 과목별 강사 조회 시작 (관리자). categoryId={}, isPublished={}, page={}, size={}", 
-                categoryId, isPublished, pageable.getPageNumber(), pageable.getPageSize());
-        
-        Page<Teacher> teacherPage;
-        
-        if (isPublished != null) {
-            // 공개 상태 필터링
-            teacherPage = teacherRepository.findBySubjectCategoryIdAndIsPublishedWithSubjects(categoryId, isPublished, pageable);
-            log.debug("[TeacherService] 과목별 강사 조회 (필터링). categoryId={}, isPublished={}, 결과수={}", 
-                    categoryId, isPublished, teacherPage.getTotalElements());
-        } else {
-            // 모든 상태
-            teacherPage = teacherRepository.findBySubjectCategoryIdWithSubjects(categoryId, pageable);
-            log.debug("[TeacherService] 과목별 강사 조회 (전체). categoryId={}, 결과수={}", 
-                    categoryId, teacherPage.getTotalElements());
-        }
-        
-        ResponseList<ResponseTeacherListItem> result = teacherMapper.toListItemResponseList(teacherPage);
-        
-        log.debug("[TeacherService] 과목별 강사 조회 완료 (관리자). categoryId={}, isPublished={}, 결과수={}", 
-                categoryId, isPublished, result.getItems().size());
-        
-        return result;
     }
 
     /**

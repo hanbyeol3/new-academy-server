@@ -22,14 +22,15 @@ import org.springframework.data.domain.Pageable;
 public interface TeacherService extends CategoryUsageChecker {
 
     /**
-     * 강사 목록 조회 (관리자용).
+     * 강사 목록 조회 (관리자용 - 통합 검색).
      * 
      * @param keyword 검색 키워드 (강사명)
+     * @param categoryId 과목 카테고리 ID (null이면 전체 과목)
      * @param isPublished 공개 여부 필터 (null이면 모든 상태)
      * @param pageable 페이징 정보
      * @return 강사 목록
      */
-    ResponseList<ResponseTeacherListItem> getTeacherList(String keyword, Boolean isPublished, Pageable pageable);
+    ResponseList<ResponseTeacherListItem> getTeacherList(String keyword, Long categoryId, Boolean isPublished, Pageable pageable);
 
     /**
      * 공개 강사 목록 조회 (공개용).
@@ -81,16 +82,6 @@ public interface TeacherService extends CategoryUsageChecker {
      * @return 상태 변경 결과
      */
     Response updatePublishedStatus(Long id, Boolean isPublished);
-
-    /**
-     * 과목별 강사 조회 (관리자용).
-     * 
-     * @param categoryId 과목 카테고리 ID
-     * @param isPublished 공개 여부 필터 (null이면 모든 상태)
-     * @param pageable 페이징 정보
-     * @return 해당 과목을 담당하는 강사 목록
-     */
-    ResponseList<ResponseTeacherListItem> getTeachersBySubject(Long categoryId, Boolean isPublished, Pageable pageable);
 
     /**
      * 과목별 강사 조회 (공개용).
