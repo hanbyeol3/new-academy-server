@@ -2,7 +2,6 @@ package com.academy.api.notice.controller;
 
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
-import com.academy.api.notice.dto.RequestNoticeSearch;
 import com.academy.api.notice.dto.ResponseNotice;
 import com.academy.api.notice.dto.ResponseNoticeSimple;
 import com.academy.api.notice.service.NoticeService;
@@ -42,10 +41,13 @@ public class NoticePublicController {
                 - 비공개 공지사항은 제외
                 - 기간 설정된 공지사항은 기간 내에서만 노출
                 
-                검색 기능:
-                - 키워드 검색 (제목, 내용)
-                - 카테고리 필터링
-                - 중요 공지만 조회
+                검색 옵션:
+                - keyword: 검색 키워드
+                - searchType: 검색 대상 (TITLE, CONTENT, AUTHOR, ALL)
+                - categoryId: 특정 카테고리만
+                - isImportant: 중요 공지 필터
+                - exposureType: 노출 기간 유형 (ALWAYS, PERIOD)
+                - sortBy: 정렬 기준 (CREATED_DESC, CREATED_ASC, IMPORTANT_FIRST, VIEW_COUNT_DESC)
                 
                 정렬 옵션:
                 - IMPORTANT_FIRST: 중요 공지 우선 (기본값)
@@ -55,17 +57,30 @@ public class NoticePublicController {
     )
     @GetMapping
     public ResponseList<ResponseNoticeSimple> getNoticeList(
-            @Parameter(description = "검색 조건") RequestNoticeSearch searchCondition,
+            @Parameter(description = "검색 키워드", example = "학사일정") 
+            @RequestParam(required = false) String keyword,
+            @Parameter(description = "검색 타입 (TITLE, CONTENT, AUTHOR, ALL)", example = "ALL") 
+            @RequestParam(required = false) String searchType,
+            @Parameter(description = "카테고리 ID", example = "1") 
+            @RequestParam(required = false) Long categoryId,
+            @Parameter(description = "중요 공지만 조회", example = "true") 
+            @RequestParam(required = false) Boolean isImportant,
+            @Parameter(description = "공개 상태", example = "true") 
+            @RequestParam(required = false) Boolean isPublished,
+            @Parameter(description = "노출 기간 유형 (ALWAYS, PERIOD)", example = "ALWAYS") 
+            @RequestParam(required = false) String exposureType,
+            @Parameter(description = "정렬 기준 (CREATED_DESC, CREATED_ASC, IMPORTANT_FIRST, VIEW_COUNT_DESC)", example = "IMPORTANT_FIRST") 
+            @RequestParam(required = false) String sortBy,
+            @Parameter(description = "페이징 정보") 
             @PageableDefault(size = 12, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         
-        log.info("[NoticePublicController] 공개 공지사항 목록 조회 요청");
+        log.info("[NoticePublicController] 공개 공지사항 목록 조회 요청. keyword={}, searchType={}, categoryId={}, isImportant={}, exposureType={}, sortBy={}", 
+                keyword, searchType, categoryId, isImportant, exposureType, sortBy);
         
         // 공개용은 기본적으로 중요 공지 우선 정렬
-        if (searchCondition.getSortBy() == null) {
-            searchCondition.setSortBy("IMPORTANT_FIRST");
-        }
+        String effectiveSortBy = sortBy != null ? sortBy : "IMPORTANT_FIRST";
         
-        return noticeService.getExposableNoticeList(searchCondition, pageable);
+        return noticeService.getExposableNoticeList(keyword, searchType, categoryId, isImportant, isPublished, exposureType, effectiveSortBy, pageable);
     }
 
     @Operation(
@@ -120,12 +135,14 @@ public class NoticePublicController {
         // 최대 10개로 제한
         int actualLimit = Math.min(limit, 10);
         
-        RequestNoticeSearch searchCondition = new RequestNoticeSearch();
-        searchCondition.setIsImportant(true);
-        searchCondition.setSortBy("CREATED_DESC");
-        
         return noticeService.getExposableNoticeList(
-                searchCondition, 
+                null, // keyword
+                null, // searchType  
+                null, // categoryId
+                true, // isImportant
+                null, // isPublished
+                null, // exposureType
+                "CREATED_DESC", // sortBy
                 Pageable.ofSize(actualLimit)
         );
     }
@@ -181,11 +198,16 @@ public class NoticePublicController {
         
         log.info("[NoticePublicController] 카테고리별 공지사항 조회 요청. 카테고리ID={}", categoryId);
         
-        RequestNoticeSearch searchCondition = new RequestNoticeSearch();
-        searchCondition.setCategoryId(categoryId);
-        searchCondition.setSortBy("IMPORTANT_FIRST");
-        
-        return noticeService.getExposableNoticeList(searchCondition, pageable);
+        return noticeService.getExposableNoticeList(
+                null, // keyword
+                null, // searchType
+                categoryId, // categoryId
+                null, // isImportant
+                null, // isPublished
+                null, // exposureType
+                "IMPORTANT_FIRST", // sortBy
+                pageable
+        );
     }
 
     @Operation(
@@ -215,10 +237,15 @@ public class NoticePublicController {
         
         log.info("[NoticePublicController] 공지사항 검색 요청. 키워드={}", keyword);
         
-        RequestNoticeSearch searchCondition = new RequestNoticeSearch();
-        searchCondition.setKeyword(keyword);
-        searchCondition.setSortBy("IMPORTANT_FIRST");
-        
-        return noticeService.getExposableNoticeList(searchCondition, pageable);
+        return noticeService.getExposableNoticeList(
+                keyword, // keyword
+                null, // searchType (default ALL)
+                null, // categoryId
+                null, // isImportant
+                null, // isPublished
+                null, // exposureType
+                "IMPORTANT_FIRST", // sortBy
+                pageable
+        );
     }
 }

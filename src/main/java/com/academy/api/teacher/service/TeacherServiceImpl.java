@@ -82,65 +82,28 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
      * 강사 목록 조회 (관리자용 - 통합 검색).
      */
     @Override
-    public ResponseList<ResponseTeacherListItem> getTeacherList(String keyword, Long categoryId, Boolean isPublished, Pageable pageable) {
-        log.info("[TeacherService] 강사 목록 조회 시작. keyword={}, categoryId={}, isPublished={}, page={}, size={}", 
-                keyword, categoryId, isPublished, pageable.getPageNumber(), pageable.getPageSize());
+    public ResponseList<ResponseTeacherListItem> getTeacherList(String keyword, Long categoryId, Boolean isPublished, String sortType, Pageable pageable) {
+        log.info("[TeacherService] 강사 목록 조회 시작. keyword={}, categoryId={}, isPublished={}, sortType={}, 페이지={}", 
+                keyword, categoryId, isPublished, sortType, pageable);
 
-        Page<Teacher> teacherPage;
-        boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
-        boolean hasCategoryId = categoryId != null;
-        
-        // 과목별 필터링 + 키워드 + 공개 상태 조합
-        if (hasCategoryId) {
-            if (hasKeyword && isPublished != null) {
-                // 과목 + 키워드 + 공개 상태 (복합 조건이므로 단순화)
-                // TODO: 추후 Repository 메서드 추가 시 최적화
-                teacherPage = teacherRepository.findBySubjectCategoryIdAndIsPublishedWithSubjects(categoryId, isPublished, pageable);
-                log.debug("[TeacherService] 과목+필터 검색 완료 (키워드는 후처리). categoryId={}, isPublished={}, 결과수={}", 
-                        categoryId, isPublished, teacherPage.getTotalElements());
-            } else if (hasKeyword) {
-                // 과목 + 키워드 (복합 조건이므로 단순화)  
-                // TODO: 추후 Repository 메서드 추가 시 최적화
-                teacherPage = teacherRepository.findBySubjectCategoryIdWithSubjects(categoryId, pageable);
-                log.debug("[TeacherService] 과목 검색 완료 (키워드는 후처리). categoryId={}, 결과수={}", categoryId, teacherPage.getTotalElements());
-            } else if (isPublished != null) {
-                // 과목 + 공개 상태
-                teacherPage = teacherRepository.findBySubjectCategoryIdAndIsPublishedWithSubjects(categoryId, isPublished, pageable);
-                log.debug("[TeacherService] 과목+필터 검색 완료. categoryId={}, isPublished={}, 결과수={}", 
-                        categoryId, isPublished, teacherPage.getTotalElements());
-            } else {
-                // 과목만
-                teacherPage = teacherRepository.findBySubjectCategoryIdWithSubjects(categoryId, pageable);
-                log.debug("[TeacherService] 과목 검색 완료. categoryId={}, 결과수={}", categoryId, teacherPage.getTotalElements());
+        // sortType 유효성 검사 및 기본값 설정
+        String effectiveSortType = sortType;
+        if (sortType != null && !sortType.trim().isEmpty()) {
+            // 유효한 sortType 값인지 확인
+            if (!isValidSortType(sortType.trim())) {
+                log.warn("[TeacherService] 유효하지 않은 정렬 타입: {}. 기본값 사용", sortType);
+                effectiveSortType = "CREATED_DESC";
             }
         } else {
-            // 기존 로직 (과목 필터링 없음)
-            if (hasKeyword && isPublished != null) {
-                // 키워드 + 필터 조합
-                teacherPage = teacherRepository.findByTeacherNameContainingAndIsPublishedWithSubjects(keyword.trim(), isPublished, pageable);
-                log.debug("[TeacherService] 키워드+필터 검색 완료. keyword={}, isPublished={}, 결과수={}", 
-                        keyword, isPublished, teacherPage.getTotalElements());
-            } else if (hasKeyword) {
-                // 키워드만
-                teacherPage = teacherRepository.findByTeacherNameContainingWithSubjects(keyword.trim(), pageable);
-                log.debug("[TeacherService] 키워드 검색 완료. keyword={}, 결과수={}", keyword, teacherPage.getTotalElements());
-            } else if (isPublished != null) {
-                if (isPublished) {
-                    // 공개만
-                    teacherPage = teacherRepository.findPublishedWithSubjects(pageable);
-                } else {
-                    // 비공개만
-                    teacherPage = teacherRepository.findUnpublishedWithSubjects(pageable);
-                }
-                log.debug("[TeacherService] 공개상태 필터링 완료. isPublished={}, 결과수={}", 
-                        isPublished, teacherPage.getTotalElements());
-            } else {
-                // 전체 조회
-                teacherPage = teacherRepository.findAllWithSubjects(pageable);
-                log.debug("[TeacherService] 전체 목록 조회 완료. 총강사수={}", teacherPage.getTotalElements());
-            }
+            effectiveSortType = "CREATED_DESC";
         }
+
+        // ✅ 단일 경로: QueryDSL 통합 처리
+        Page<Teacher> teacherPage = teacherRepository.searchTeachersForAdmin(keyword, categoryId, isPublished, effectiveSortType, pageable);
         
+        log.debug("[TeacherService] 강사 검색 결과. 전체={}건, 현재페이지={}, 실제반환={}건", 
+                teacherPage.getTotalElements(), teacherPage.getNumber(), teacherPage.getNumberOfElements());
+
         ResponseList<ResponseTeacherListItem> result = teacherMapper.toListItemResponseList(teacherPage);
         
         log.debug("[TeacherService] 강사 목록 조회 완료. keyword={}, categoryId={}, isPublished={}, 결과수={}", 
@@ -495,5 +458,15 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
      */
     private <T> T getValueOrDefault(T newValue, T defaultValue) {
         return newValue != null ? newValue : defaultValue;
+    }
+
+    /**
+     * 정렬 타입 유효성 검사 도우미 메서드.
+     */
+    private boolean isValidSortType(String sortType) {
+        return sortType.equals("CREATED_DESC") || 
+               sortType.equals("CREATED_ASC") || 
+               sortType.equals("NAME_ASC") || 
+               sortType.equals("NAME_DESC");
     }
 }

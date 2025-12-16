@@ -11,11 +11,12 @@ import com.academy.api.common.util.SecurityUtils;
 import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.notice.domain.ExposureType;
 import com.academy.api.notice.domain.Notice;
+import com.academy.api.notice.domain.NoticeSearchType;
 import com.academy.api.notice.dto.FileReference;
 import com.academy.api.notice.dto.RequestNoticeCreate;
 import com.academy.api.notice.dto.RequestNoticePublishedUpdate;
-import com.academy.api.notice.dto.RequestNoticeSearch;
 import com.academy.api.notice.dto.RequestNoticeUpdate;
 import com.academy.api.notice.dto.ResponseNotice;
 import com.academy.api.notice.dto.ResponseNoticeListItem;
@@ -77,71 +78,34 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
     private final UploadFileLinkRepository uploadFileLinkRepository;
     private final FileService fileService;
 
-    /**
-     * 공지사항 목록 조회 (파일 개수 포함).
-     * 
-     * IN절을 활용한 일괄 조회로 성능을 최적화했습니다.
-     * 각 공지사항의 첨부파일과 본문이미지 개수를 함께 제공합니다.
-     * 
-     * @param searchCondition 검색 조건
-     * @param pageable 페이징 정보
-     * @return 공지사항 목록 (파일 개수 포함)
-     */
-    public ResponseList<ResponseNoticeListItem> getNoticeListWithFileCount(RequestNoticeSearch searchCondition, Pageable pageable) {
-        log.info("[NoticeService] 공지사항 목록 조회 (파일 개수 포함) 시작. 검색조건={}, 페이지={}", searchCondition, pageable);
-        
-        // 1. 공지사항 목록 조회
-        Page<Notice> noticePage = noticeRepository.searchNotices(searchCondition, pageable);
-        List<Notice> notices = noticePage.getContent();
-        
-        if (notices.isEmpty()) {
-            log.debug("[NoticeService] 조회된 공지사항이 없음");
-            return ResponseList.ok(
-                    ResponseNoticeListItem.fromList(notices),
-                    noticePage.getTotalElements(),
-                    noticePage.getNumber(),
-                    noticePage.getSize()
-            );
-        }
-        
-        // 2. 공지사항 ID 목록 추출
-        List<Long> noticeIds = notices.stream()
-                .map(Notice::getId)
-                .toList();
-        
-        // 3. IN절을 활용한 파일 개수 일괄 조회
-        List<Object[]> fileCounts = uploadFileLinkRepository.countFilesByOwnerIdsGroupByRole(
-                "notices", noticeIds);
-        
-        // 4. Map으로 변환: noticeId -> role -> count
-        Map<Long, Map<FileRole, Long>> fileCountMap = fileCounts.stream()
-                .collect(Collectors.groupingBy(
-                        row -> (Long) row[0], // ownerId
-                        Collectors.toMap(
-                                row -> (FileRole) row[1], // role
-                                row -> (Long) row[2]      // count
-                        )
-                ));
-        
-        log.debug("[NoticeService] 공지사항 검색 결과. 전체={}건, 현재페이지={}, 실제반환={}건, 파일연결조회={}건", 
-                noticePage.getTotalElements(), noticePage.getNumber(), notices.size(), fileCounts.size());
-        
-        // 5. DTO 변환 (파일 개수 제외)
-        List<ResponseNoticeListItem> items = ResponseNoticeListItem.fromList(notices);
-        
-        return ResponseList.ok(
-                items,
-                noticePage.getTotalElements(),
-                noticePage.getNumber(),
-                noticePage.getSize()
-        );
-    }
 
     @Override
-    public ResponseList<ResponseNoticeSimple> getNoticeList(RequestNoticeSearch searchCondition, Pageable pageable) {
-        log.info("[NoticeService] 공지사항 목록 조회 시작. 검색조건={}, 페이지={}", searchCondition, pageable);
+    public ResponseList<ResponseNoticeSimple> getNoticeList(String keyword, String searchType, Long categoryId, Boolean isImportant, Boolean isPublished, String exposureType, String sortBy, Pageable pageable) {
+        log.info("[NoticeService] 공지사항 목록 조회 시작. keyword={}, searchType={}, categoryId={}, isImportant={}, isPublished={}, exposureType={}, sortBy={}, 페이지={}", 
+                keyword, searchType, categoryId, isImportant, isPublished, exposureType, sortBy, pageable);
+
+        // searchType enum 변환
+        NoticeSearchType effectiveSearchType = null;
+        if (searchType != null) {
+            try {
+                effectiveSearchType = NoticeSearchType.valueOf(searchType.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("[NoticeService] 유효하지 않은 searchType, 기본값 적용. searchType={}", searchType);
+                effectiveSearchType = NoticeSearchType.ALL;
+            }
+        }
         
-        Page<Notice> noticePage = noticeRepository.searchNotices(searchCondition, pageable);
+        // exposureType enum 변환
+        ExposureType effectiveExposureType = null;
+        if (exposureType != null) {
+            try {
+                effectiveExposureType = ExposureType.valueOf(exposureType.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("[NoticeService] 유효하지 않은 exposureType 무시. exposureType={}", exposureType);
+            }
+        }
+        
+        Page<Notice> noticePage = noticeRepository.searchNotices(keyword, effectiveSearchType, categoryId, isImportant, isPublished, effectiveExposureType, sortBy != null ? sortBy : "CREATED_DESC", pageable);
         
         log.debug("[NoticeService] 공지사항 검색 결과. 전체={}건, 현재페이지={}, 실제반환={}건", 
                 noticePage.getTotalElements(), noticePage.getNumber(), noticePage.getContent().size());
@@ -150,11 +114,33 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
     }
 
     @Override
-    public ResponseList<ResponseNoticeListItem> getNoticeListForAdmin(RequestNoticeSearch searchCondition, Pageable pageable) {
-        log.info("[NoticeService] 관리자용 공지사항 목록 조회 시작. 검색조건={}, 페이지={}", searchCondition, pageable);
+    public ResponseList<ResponseNoticeListItem> getNoticeListForAdmin(String keyword, String searchType, Long categoryId, Boolean isImportant, Boolean isPublished, String exposureType, String sortBy, Pageable pageable) {
+        log.info("[NoticeService] 관리자용 공지사항 목록 조회 시작. keyword={}, searchType={}, categoryId={}, isImportant={}, isPublished={}, exposureType={}, sortBy={}, 페이지={}", 
+                keyword, searchType, categoryId, isImportant, isPublished, exposureType, sortBy, pageable);
+
+        // searchType enum 변환
+        NoticeSearchType effectiveSearchType = null;
+        if (searchType != null) {
+            try {
+                effectiveSearchType = NoticeSearchType.valueOf(searchType.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("[NoticeService] 유효하지 않은 searchType, 기본값 적용. searchType={}", searchType);
+                effectiveSearchType = NoticeSearchType.ALL;
+            }
+        }
+        
+        // exposureType enum 변환
+        ExposureType effectiveExposureType = null;
+        if (exposureType != null) {
+            try {
+                effectiveExposureType = ExposureType.valueOf(exposureType.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("[NoticeService] 유효하지 않은 exposureType 무시. exposureType={}", exposureType);
+            }
+        }
         
         // ✅ 단일 경로: QueryDSL 통합 처리 (searchType 포함)
-        Page<Notice> noticePage = noticeRepository.searchNoticesForAdmin(searchCondition, pageable);
+        Page<Notice> noticePage = noticeRepository.searchNoticesForAdmin(keyword, effectiveSearchType, categoryId, isImportant, isPublished, effectiveExposureType, sortBy != null ? sortBy : "CREATED_DESC", pageable);
         List<Notice> notices = noticePage.getContent();
         
         log.debug("[NoticeService] 관리자 공지사항 검색 결과. 전체={}건, 현재페이지={}, 실제반환={}건", 
@@ -178,10 +164,32 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
     }
 
     @Override
-    public ResponseList<ResponseNoticeSimple> getExposableNoticeList(RequestNoticeSearch searchCondition, Pageable pageable) {
-        log.info("[NoticeService] 공개용 공지사항 목록 조회 시작. 검색조건={}, 페이지={}", searchCondition, pageable);
+    public ResponseList<ResponseNoticeSimple> getExposableNoticeList(String keyword, String searchType, Long categoryId, Boolean isImportant, Boolean isPublished, String exposureType, String sortBy, Pageable pageable) {
+        log.info("[NoticeService] 공개용 공지사항 목록 조회 시작. keyword={}, searchType={}, categoryId={}, isImportant={}, isPublished={}, exposureType={}, sortBy={}, 페이지={}", 
+                keyword, searchType, categoryId, isImportant, isPublished, exposureType, sortBy, pageable);
+
+        // searchType enum 변환
+        NoticeSearchType effectiveSearchType = null;
+        if (searchType != null) {
+            try {
+                effectiveSearchType = NoticeSearchType.valueOf(searchType.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("[NoticeService] 유효하지 않은 searchType, 기본값 적용. searchType={}", searchType);
+                effectiveSearchType = NoticeSearchType.ALL;
+            }
+        }
         
-        Page<Notice> noticePage = noticeRepository.searchExposableNotices(searchCondition, pageable);
+        // exposureType enum 변환
+        ExposureType effectiveExposureType = null;
+        if (exposureType != null) {
+            try {
+                effectiveExposureType = ExposureType.valueOf(exposureType.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("[NoticeService] 유효하지 않은 exposureType 무시. exposureType={}", exposureType);
+            }
+        }
+        
+        Page<Notice> noticePage = noticeRepository.searchExposableNotices(keyword, effectiveSearchType, categoryId, isImportant, isPublished, effectiveExposureType, sortBy != null ? sortBy : "CREATED_DESC", pageable);
         
         log.debug("[NoticeService] 공개 공지사항 검색 결과. 전체={}건, 현재페이지={}, 실제반환={}건", 
                 noticePage.getTotalElements(), noticePage.getNumber(), noticePage.getContent().size());

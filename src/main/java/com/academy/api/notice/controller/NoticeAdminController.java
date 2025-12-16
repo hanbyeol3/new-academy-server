@@ -5,7 +5,6 @@ import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
 import com.academy.api.notice.dto.RequestNoticeCreate;
 import com.academy.api.notice.dto.RequestNoticePublishedUpdate;
-import com.academy.api.notice.dto.RequestNoticeSearch;
 import com.academy.api.notice.dto.RequestNoticeUpdate;
 import com.academy.api.notice.dto.ResponseNotice;
 import com.academy.api.notice.dto.ResponseNoticeListItem;
@@ -46,7 +45,13 @@ public class NoticeAdminController {
 	/**
 	 * 관리자용 공지사항 목록 조회 (모든 상태 포함).
 	 *
-	 * @param searchCondition 검색 조건
+	 * @param keyword 검색 키워드
+	 * @param searchType 검색 타입 (TITLE, CONTENT, AUTHOR, ALL)
+	 * @param categoryId 카테고리 ID
+	 * @param isImportant 중요 공지 여부
+	 * @param isPublished 공개 상태
+	 * @param exposureType 노출 기간 유형 (ALWAYS, PERIOD)
+	 * @param sortBy 정렬 기준
 	 * @param pageable 페이징 정보
 	 * @return 검색 결과
 	 */
@@ -57,31 +62,56 @@ public class NoticeAdminController {
                 
                 주요 기능:
                 - 키워드 검색 (제목, 내용)
-                - 작성자 검색
+                - 작성자 검색  
                 - 카테고리 필터링
                 - 중요 공지 필터링
                 - 공개/비공개 상태 필터링
                 - 노출 기간 유형 필터링
                 - 페이징 처리
                 
-                정렬 옵션:
-                - CREATED_DESC: 생성일시 내림차순 (기본값)
-                - CREATED_ASC: 생성일시 오름차순
-                - IMPORTANT_FIRST: 중요 공지 우선
-                - VIEW_COUNT_DESC: 조회수 내림차순
+                검색 옵션:
+                - keyword: 검색 키워드
+                - searchType: 검색 대상 (TITLE, CONTENT, AUTHOR, ALL)
+                - categoryId: 특정 카테고리만
+                - isImportant: 중요 공지 필터
+                - isPublished: 공개 상태 필터
+                - exposureType: 노출 기간 유형 (ALWAYS, PERIOD)
+                - sortBy: 정렬 기준 (CREATED_DESC, CREATED_ASC, IMPORTANT_FIRST, VIEW_COUNT_DESC)
                 
                 관리자는 모든 상태의 공지사항을 조회할 수 있습니다.
+                
+                QueryDSL 동적 쿼리로 모든 검색 조건 조합을 지원합니다.
+                
+                예시:
+                - GET /api/admin/notices (모든 공지사항)
+                - GET /api/admin/notices?keyword=학사일정&searchType=TITLE (제목 검색)
+                - GET /api/admin/notices?categoryId=1&isImportant=true (카테고리+중요공지)
+                - GET /api/admin/notices?keyword=공지&isPublished=false&sortBy=CREATED_DESC (복합 검색)
                 """
     )
     @GetMapping
     public ResponseList<ResponseNoticeListItem> getNoticeList(
-            @Parameter(description = "검색 조건") RequestNoticeSearch searchCondition,
-            @Parameter(description = "페이징 정보", 
-                      example = "{\"page\":0,\"size\":15,\"sort\":[\"createdAt\"]}")
-            @PageableDefault(size = 15, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+            @Parameter(description = "검색 키워드", example = "학사일정") 
+            @RequestParam(required = false) String keyword,
+            @Parameter(description = "검색 타입 (TITLE, CONTENT, AUTHOR, ALL)", example = "ALL") 
+            @RequestParam(required = false) String searchType,
+            @Parameter(description = "카테고리 ID", example = "1") 
+            @RequestParam(required = false) Long categoryId,
+            @Parameter(description = "중요 공지만 조회", example = "true") 
+            @RequestParam(required = false) Boolean isImportant,
+            @Parameter(description = "공개 상태", example = "true") 
+            @RequestParam(required = false) Boolean isPublished,
+            @Parameter(description = "노출 기간 유형 (ALWAYS, PERIOD)", example = "ALWAYS") 
+            @RequestParam(required = false) String exposureType,
+            @Parameter(description = "정렬 기준 (CREATED_DESC, CREATED_ASC, IMPORTANT_FIRST, VIEW_COUNT_DESC)", example = "CREATED_DESC") 
+            @RequestParam(required = false) String sortBy,
+            @Parameter(description = "페이징 정보") 
+            @PageableDefault(size = 15, sort = "createdAt", direction = Sort.Direction.DESC) 
+            Pageable pageable) {
         
-        log.info("[NoticeAdminController] 관리자 공지사항 목록 조회 요청");
-        return noticeService.getNoticeListForAdmin(searchCondition, pageable);
+        log.info("[NoticeAdminController] 관리자 공지사항 목록 조회 요청. keyword={}, searchType={}, categoryId={}, isImportant={}, isPublished={}, exposureType={}, sortBy={}", 
+                 keyword, searchType, categoryId, isImportant, isPublished, exposureType, sortBy);
+        return noticeService.getNoticeListForAdmin(keyword, searchType, categoryId, isImportant, isPublished, exposureType, sortBy, pageable);
     }
 
 	/**

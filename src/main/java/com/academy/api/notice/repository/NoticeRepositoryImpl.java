@@ -4,7 +4,6 @@ import com.academy.api.notice.domain.ExposureType;
 import com.academy.api.notice.domain.Notice;
 import com.academy.api.notice.domain.NoticeSearchType;
 import com.academy.api.notice.domain.QNotice;
-import com.academy.api.notice.dto.RequestNoticeSearch;
 import com.academy.api.member.domain.QMember;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.BooleanExpression;
@@ -31,28 +30,36 @@ public class NoticeRepositoryImpl implements NoticeRepositoryCustom {
     private static final QMember member = QMember.member;
 
     @Override
-    public Page<Notice> searchNotices(RequestNoticeSearch condition, Pageable pageable) {
-        return searchNoticesInternal(condition, pageable, false);
+    public Page<Notice> searchNotices(String keyword, NoticeSearchType searchType, Long categoryId, 
+                                     Boolean isImportant, Boolean isPublished, ExposureType exposureType, 
+                                     String sortBy, Pageable pageable) {
+        return searchNoticesInternal(keyword, searchType, categoryId, isImportant, isPublished, exposureType, sortBy, pageable, false);
     }
 
     @Override
-    public Page<Notice> searchNoticesForAdmin(RequestNoticeSearch condition, Pageable pageable) {
-        return searchNoticesInternal(condition, pageable, true);
+    public Page<Notice> searchNoticesForAdmin(String keyword, NoticeSearchType searchType, Long categoryId, 
+                                             Boolean isImportant, Boolean isPublished, ExposureType exposureType, 
+                                             String sortBy, Pageable pageable) {
+        return searchNoticesInternal(keyword, searchType, categoryId, isImportant, isPublished, exposureType, sortBy, pageable, true);
     }
 
     @Override
-    public Page<Notice> searchExposableNotices(RequestNoticeSearch condition, Pageable pageable) {
+    public Page<Notice> searchExposableNotices(String keyword, NoticeSearchType searchType, Long categoryId, 
+                                              Boolean isImportant, Boolean isPublished, ExposureType exposureType, 
+                                              String sortBy, Pageable pageable) {
+        NoticeSearchType effectiveSearchType = searchType != null ? searchType : NoticeSearchType.ALL;
+        
         List<Notice> content = queryFactory
                 .selectFrom(notice)
                 .leftJoin(notice.category).fetchJoin()
                 .where(
-                        keywordCondition(condition.getKeyword(), condition.getEffectiveSearchType()),
-                        categoryCondition(condition.getCategoryId()),
-                        importantCondition(condition.getIsImportant()),
-                        exposureTypeCondition(condition.getExposureType()),
+                        keywordCondition(keyword, effectiveSearchType),
+                        categoryCondition(categoryId),
+                        importantCondition(isImportant),
+                        exposureTypeCondition(exposureType),
                         exposableCondition() // 노출 가능한 것만
                 )
-                .orderBy(getOrderSpecifiers(condition.getSortBy()))
+                .orderBy(getOrderSpecifiers(sortBy))
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
@@ -61,10 +68,10 @@ public class NoticeRepositoryImpl implements NoticeRepositoryCustom {
                 .select(notice.count())
                 .from(notice)
                 .where(
-                        keywordCondition(condition.getKeyword(), condition.getEffectiveSearchType()),
-                        categoryCondition(condition.getCategoryId()),
-                        importantCondition(condition.getIsImportant()),
-                        exposureTypeCondition(condition.getExposureType()),
+                        keywordCondition(keyword, effectiveSearchType),
+                        categoryCondition(categoryId),
+                        importantCondition(isImportant),
+                        exposureTypeCondition(exposureType),
                         exposableCondition()
                 );
 
@@ -96,18 +103,22 @@ public class NoticeRepositoryImpl implements NoticeRepositoryCustom {
                 .fetch();
     }
 
-    private Page<Notice> searchNoticesInternal(RequestNoticeSearch condition, Pageable pageable, boolean isAdmin) {
+    private Page<Notice> searchNoticesInternal(String keyword, NoticeSearchType searchType, Long categoryId, 
+                                              Boolean isImportant, Boolean isPublished, ExposureType exposureType, 
+                                              String sortBy, Pageable pageable, boolean isAdmin) {
+        NoticeSearchType effectiveSearchType = searchType != null ? searchType : NoticeSearchType.ALL;
+        
         List<Notice> content = queryFactory
                 .selectFrom(notice)
                 .leftJoin(notice.category).fetchJoin()
                 .where(
-                        keywordCondition(condition.getKeyword(), condition.getEffectiveSearchType()),
-                        categoryCondition(condition.getCategoryId()),
-                        importantCondition(condition.getIsImportant()),
-                        publishedCondition(condition.getIsPublished(), isAdmin),
-                        exposureTypeCondition(condition.getExposureType())
+                        keywordCondition(keyword, effectiveSearchType),
+                        categoryCondition(categoryId),
+                        importantCondition(isImportant),
+                        publishedCondition(isPublished, isAdmin),
+                        exposureTypeCondition(exposureType)
                 )
-                .orderBy(getOrderSpecifiers(condition.getSortBy()))
+                .orderBy(getOrderSpecifiers(sortBy))
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
@@ -116,11 +127,11 @@ public class NoticeRepositoryImpl implements NoticeRepositoryCustom {
                 .select(notice.count())
                 .from(notice)
                 .where(
-                        keywordCondition(condition.getKeyword(), condition.getEffectiveSearchType()),
-                        categoryCondition(condition.getCategoryId()),
-                        importantCondition(condition.getIsImportant()),
-                        publishedCondition(condition.getIsPublished(), isAdmin),
-                        exposureTypeCondition(condition.getExposureType())
+                        keywordCondition(keyword, effectiveSearchType),
+                        categoryCondition(categoryId),
+                        importantCondition(isImportant),
+                        publishedCondition(isPublished, isAdmin),
+                        exposureTypeCondition(exposureType)
                 );
 
         return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);

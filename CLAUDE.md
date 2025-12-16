@@ -629,103 +629,396 @@ public Response deleteNotice(Long id) {
 - [ ] **에러 코드**: "0000" (성공) 또는 적절한 에러 코드 ✓
 - [ ] **타입 일관성**: Controller 내 메서드별 적절한 타입 선택 ✓
 
-## 📊 통합 검색 API 설계 표준
+## 📊 목록 조회 API 표준
 
-### 🎯 목록 조회 API 통합 원칙
+### 🎯 핵심 원칙: @RequestParam + QueryDSL 동적 쿼리
 
-목록 조회 API는 **단일 엔드포인트**로 모든 검색 조건을 처리해야 합니다.
+목록 조회 API는 **@RequestParam으로 검색 조건을 받고, 내부적으로 QueryDSL 동적 쿼리**를 사용하여 처리합니다.
 
-#### ✅ 권장 패턴: 통합 검색 API
+#### ✅ 표준 패턴: @RequestParam + QueryDSL
 ```java
 @GetMapping
 public ResponseList<ResponseDomainListItem> getDomainList(
     @RequestParam(required = false) String keyword,        // 키워드 검색
     @RequestParam(required = false) Long categoryId,       // 카테고리 필터
     @RequestParam(required = false) Boolean isPublished,   // 상태 필터
-    @RequestParam(required = false) String status,         // 추가 상태 필터
+    @RequestParam(required = false) String sortType,       // 정렬 타입 (enum 문자열)
     Pageable pageable) {
     
-    return domainService.getDomainList(keyword, categoryId, isPublished, status, pageable);
+    return domainService.getDomainList(keyword, categoryId, isPublished, sortType, pageable);
 }
 ```
 
 **사용 예시:**
 ```
 GET /api/admin/teachers                                    # 전체 목록
-GET /api/admin/teachers?keyword=김교수                      # 키워드 검색
+GET /api/admin/teachers?keyword=test                       # 키워드 검색  
 GET /api/admin/teachers?categoryId=15                      # 카테고리 필터
 GET /api/admin/teachers?isPublished=true                   # 상태 필터
-GET /api/admin/teachers?keyword=김&categoryId=15&isPublished=true  # 복합 조건
+GET /api/admin/teachers?keyword=test&categoryId=12         # 복합 조건
+GET /api/admin/teachers?sortType=NAME_ASC                  # 정렬
 ```
 
-#### ❌ 지양 패턴: 분리된 엔드포인트
-```java
-// 잘못된 예시 - 여러 엔드포인트로 분산
-@GetMapping                                    // 기본 목록
-@GetMapping("/published")                      // 공개만
-@GetMapping("/category/{categoryId}")          // 카테고리별
-@GetMapping("/search")                         // 검색
-```
+### 🔥 핵심 구현 방식
 
-### 🔥 통합 API 구현 표준
-
-#### 1. Controller 패턴
+#### ❌ 지양 패턴: RequestXxxSearch 객체 사용
 ```java
-@Operation(
-    summary = "도메인 목록 조회 (관리자)",
-    description = """
-            관리자용 도메인 목록을 조회합니다.
-            
-            주요 기능:
-            - 키워드 검색 (부분 일치)
-            - 카테고리별 필터링
-            - 공개/비공개 상태 필터링
-            - 복합 조건 검색 지원
-            
-            검색 옵션:
-            - keyword: 이름/제목 검색
-            - categoryId: 특정 카테고리만
-            - isPublished: 공개 상태 필터
-            
-            예시:
-            - GET /api/admin/domain (전체)
-            - GET /api/admin/domain?keyword=검색어 (키워드)
-            - GET /api/admin/domain?categoryId=15 (카테고리)
-            - GET /api/admin/domain?keyword=검색어&categoryId=15&isPublished=true (복합)
-            """
-)
+// 과거 방식 - 복잡하고 REST 원칙에 맞지 않음
 @GetMapping
-public ResponseList<ResponseDomainListItem> getDomainList(
-        @Parameter(description = "검색 키워드", example = "김교수") 
-        @RequestParam(required = false) String keyword,
-        @Parameter(description = "카테고리 ID", example = "15") 
-        @RequestParam(required = false) Long categoryId,
-        @Parameter(description = "공개 여부 (생략시 모든 상태)", example = "true") 
-        @RequestParam(required = false) Boolean isPublished,
-        @Parameter(description = "페이징 정보") 
-        @PageableDefault(size = 15, sort = "createdAt", direction = Sort.Direction.DESC) 
-        Pageable pageable) {
+public ResponseList<ResponseTeacherListItem> getTeacherList(
+    @RequestBody RequestTeacherSearch searchRequest, 
+    Pageable pageable) {
     
-    log.info("도메인 목록 조회 요청. keyword={}, categoryId={}, isPublished={}", 
-             keyword, categoryId, isPublished);
-    return domainService.getDomainList(keyword, categoryId, isPublished, pageable);
+    return teacherService.searchTeachers(searchRequest, pageable);
 }
+
+// 문제점:
+// 1. GET 요청에 RequestBody 사용 (REST 원칙 위반)
+// 2. 프론트엔드에서 사용하기 어려운 구조
+// 3. URL에서 검색 조건 확인 불가
+// 4. 브라우저 북마크/링크 공유 불가
 ```
 
-#### 2. Service 인터페이스
+#### ✅ 권장 패턴: @RequestParam + QueryDSL
+```java
+// 새로운 방식 - 단순하고 REST 친화적
+@GetMapping
+public ResponseList<ResponseTeacherListItem> getTeacherList(
+    @Parameter(description = "강사명 검색", example = "김교수")
+    @RequestParam(required = false) String keyword,
+    @Parameter(description = "과목 카테고리 ID", example = "15") 
+    @RequestParam(required = false) Long categoryId,
+    @Parameter(description = "공개 여부", example = "true")
+    @RequestParam(required = false) Boolean isPublished,
+    @Parameter(description = "정렬 방식", example = "NAME_ASC")
+    @RequestParam(required = false) String sortType,
+    Pageable pageable) {
+    
+    return teacherService.getTeacherList(keyword, categoryId, isPublished, sortType, pageable);
+}
+
+// 장점:
+// 1. 표준 HTTP GET 쿼리 파라미터 사용
+// 2. 직관적이고 사용하기 쉬운 API
+// 3. URL로 모든 검색 조건 확인 가능  
+// 4. 브라우저에서 직접 테스트 가능
+// 5. 북마크 및 링크 공유 가능
+```
+
+### 🏗️ Service 레이어 구현 표준
+
+#### 1. Service Interface
 ```java
 /**
- * 도메인 목록 조회 (관리자용 - 통합 검색).
+ * 도메인 목록 조회 (통합 검색).
  * 
  * @param keyword 검색 키워드 (제목/이름)
  * @param categoryId 카테고리 ID (null이면 전체 카테고리)
  * @param isPublished 공개 여부 필터 (null이면 모든 상태)
+ * @param sortType 정렬 방식 (null이면 기본 정렬)
  * @param pageable 페이징 정보
  * @return 도메인 목록
  */
 ResponseList<ResponseDomainListItem> getDomainList(
-    String keyword, Long categoryId, Boolean isPublished, Pageable pageable);
+    String keyword, Long categoryId, Boolean isPublished, String sortType, Pageable pageable);
 ```
+
+#### 2. Service Implementation 
+```java
+@Override
+@Transactional(readOnly = true)
+public ResponseList<ResponseTeacherListItem> getTeacherList(String keyword, Long categoryId, Boolean isPublished, String sortType, Pageable pageable) {
+    log.info("[TeacherService] 강사 목록 조회 시작. keyword={}, categoryId={}, isPublished={}, sortType={}", 
+             keyword, categoryId, isPublished, sortType);
+
+    // 정렬 타입 유효성 검증
+    if (sortType != null && !isValidSortType(sortType)) {
+        log.warn("[TeacherService] 유효하지 않은 정렬 타입: {}", sortType);
+        sortType = "CREATED_DESC"; // 기본값으로 fallback
+    }
+
+    // Repository 호출 (QueryDSL 동적 쿼리)
+    Page<Teacher> teacherPage = teacherRepository.searchTeachersForAdmin(
+        keyword, categoryId, isPublished, sortType, pageable);
+    
+    log.debug("[TeacherService] 강사 목록 조회 완료. 총 {}명, 현재 페이지 {}개", 
+             teacherPage.getTotalElements(), teacherPage.getNumberOfElements());
+    
+    return teacherMapper.toListItemResponseList(teacherPage);
+}
+
+/**
+ * 정렬 타입 유효성 검증.
+ */
+private boolean isValidSortType(String sortType) {
+    return sortType.equals("CREATED_DESC") || sortType.equals("CREATED_ASC") || 
+           sortType.equals("NAME_ASC") || sortType.equals("NAME_DESC");
+}
+```
+
+### 🗄️ Repository 레이어 구현 표준
+
+#### 1. Repository Custom Interface
+```java
+public interface TeacherRepositoryCustom {
+    
+    /**
+     * 관리자용 강사 검색 (QueryDSL 동적 쿼리).
+     * 
+     * @param keyword 강사명 검색 키워드
+     * @param categoryId 과목 카테고리 ID  
+     * @param isPublished 공개 여부
+     * @param sortType 정렬 방식
+     * @param pageable 페이징 정보
+     * @return 검색 결과
+     */
+    Page<Teacher> searchTeachersForAdmin(String keyword, Long categoryId, Boolean isPublished, String sortType, Pageable pageable);
+}
+```
+
+#### 2. QueryDSL 구현체
+```java
+@Repository
+@RequiredArgsConstructor
+public class TeacherRepositoryImpl implements TeacherRepositoryCustom {
+
+    private final JPAQueryFactory queryFactory;
+    
+    private static final QTeacher teacher = QTeacher.teacher;
+    private static final QTeacherSubject teacherSubject = QTeacherSubject.teacherSubject;
+    private static final QCategory category = QCategory.category;
+
+    @Override
+    public Page<Teacher> searchTeachersForAdmin(String keyword, Long categoryId, Boolean isPublished, String sortType, Pageable pageable) {
+        log.debug("[TeacherRepositoryImpl] QueryDSL 강사 검색 시작. keyword={}, categoryId={}, isPublished={}, sortType={}", 
+                keyword, categoryId, isPublished, sortType);
+
+        // 동적 검색 조건 생성
+        BooleanExpression predicate = createSearchPredicate(keyword, categoryId, isPublished);
+
+        // 메인 쿼리 (fetch join으로 N+1 문제 해결)
+        JPAQuery<Teacher> query = queryFactory
+                .selectFrom(teacher)
+                .distinct()
+                .leftJoin(teacher.subjects, teacherSubject).fetchJoin()
+                .leftJoin(teacherSubject.category, category).fetchJoin()
+                .where(predicate)
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize());
+
+        // 동적 정렬 적용
+        OrderSpecifier<?>[] orderSpecifiers = createOrderSpecifiers(sortType);
+        if (orderSpecifiers.length > 0) {
+            query.orderBy(orderSpecifiers);
+        }
+
+        List<Teacher> teachers = query.fetch();
+
+        // 카운트 쿼리 (성능 최적화)
+        long total = queryFactory
+                .select(teacher.countDistinct())
+                .from(teacher)
+                .leftJoin(teacher.subjects, teacherSubject)
+                .leftJoin(teacherSubject.category, category)
+                .where(predicate)
+                .fetchOne();
+
+        log.debug("[TeacherRepositoryImpl] QueryDSL 강사 검색 완료. 결과수={}, 전체수={}", teachers.size(), total);
+
+        return new PageImpl<>(teachers, pageable, total);
+    }
+
+    /**
+     * 동적 검색 조건 생성.
+     */
+    private BooleanExpression createSearchPredicate(String keyword, Long categoryId, Boolean isPublished) {
+        BooleanExpression predicate = null;
+
+        // 키워드 검색 (강사명 부분 일치)
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            predicate = and(predicate, teacher.teacherName.containsIgnoreCase(keyword.trim()));
+        }
+
+        // 카테고리 필터
+        if (categoryId != null) {
+            predicate = and(predicate, teacherSubject.category.id.eq(categoryId));
+        }
+
+        // 공개 상태 필터
+        if (isPublished != null) {
+            predicate = and(predicate, teacher.isPublished.eq(isPublished));
+        }
+
+        return predicate;
+    }
+
+    /**
+     * 동적 정렬 조건 생성.
+     */
+    private OrderSpecifier<?>[] createOrderSpecifiers(String sortType) {
+        if (sortType == null) {
+            return new OrderSpecifier[]{teacher.createdAt.desc()};
+        }
+
+        return switch (sortType) {
+            case "CREATED_ASC" -> new OrderSpecifier[]{teacher.createdAt.asc()};
+            case "NAME_ASC" -> new OrderSpecifier[]{teacher.teacherName.asc()};
+            case "NAME_DESC" -> new OrderSpecifier[]{teacher.teacherName.desc()};
+            default -> new OrderSpecifier[]{teacher.createdAt.desc()};
+        };
+    }
+
+    /**
+     * BooleanExpression AND 연산 도우미.
+     */
+    private BooleanExpression and(BooleanExpression left, BooleanExpression right) {
+        if (left == null) return right;
+        if (right == null) return left;
+        return left.and(right);
+    }
+}
+```
+
+### 🎛️ Enum 파라미터 처리 표준
+
+#### 공지사항 예시 - 문자열 enum 변환
+```java
+@Override
+public ResponseList<ResponseNoticeListItem> getNoticeList(String keyword, String searchType, Long categoryId, 
+                                                          Boolean isImportant, Boolean isPublished, String exposureType, 
+                                                          String sortBy, Pageable pageable) {
+    
+    // SearchType enum 안전 변환
+    NoticeSearchType effectiveSearchType = null;
+    if (searchType != null) {
+        try {
+            effectiveSearchType = NoticeSearchType.valueOf(searchType.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            log.warn("[NoticeService] 유효하지 않은 검색 타입: {}. ALL로 기본 설정", searchType);
+            effectiveSearchType = NoticeSearchType.ALL;
+        }
+    }
+    
+    // ExposureType enum 안전 변환
+    ExposureType effectiveExposureType = null;
+    if (exposureType != null) {
+        try {
+            effectiveExposureType = ExposureType.valueOf(exposureType.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            log.warn("[NoticeService] 유효하지 않은 노출 타입: {}. null로 설정", exposureType);
+        }
+    }
+
+    // Repository 호출
+    Page<Notice> noticePage = noticeRepository.searchNoticesForAdmin(
+        keyword, effectiveSearchType, categoryId, isImportant, isPublished, effectiveExposureType, sortBy, pageable);
+    
+    return noticeMapper.toListItemResponseList(noticePage);
+}
+```
+
+### 📋 구현 체크리스트
+
+새로운 목록 조회 API 개발 시 다음을 확인:
+
+#### Controller 레벨
+- [ ] **@RequestParam 사용**: 모든 검색 조건을 개별 파라미터로 받기 ✓
+- [ ] **required = false**: 모든 검색 조건을 선택적 파라미터로 설정 ✓
+- [ ] **@Parameter 문서화**: 각 파라미터에 상세한 설명과 예시 포함 ✓
+- [ ] **ResponseList 반환**: 목록 조회는 반드시 `ResponseList<T>` 사용 ✓
+- [ ] **Swagger 문서**: `@Operation`에 모든 사용 예시 포함 ✓
+
+#### Service 레벨  
+- [ ] **파라미터 검증**: null 체크 및 trim() 처리 ✓
+- [ ] **Enum 안전 변환**: try-catch로 잘못된 enum 값 처리 ✓
+- [ ] **기본값 설정**: 유효하지 않은 값에 대한 fallback 로직 ✓
+- [ ] **로깅**: 입력 파라미터와 결과 요약 로그 필수 ✓
+- [ ] **@Transactional(readOnly = true)**: 조회 전용 메서드에 필수 ✓
+
+#### Repository 레이어
+- [ ] **Custom Interface**: QueryDSL용 커스텀 인터페이스 정의 ✓
+- [ ] **동적 쿼리**: BooleanExpression을 활용한 조건부 where 절 ✓
+- [ ] **fetch join**: N+1 문제 방지를 위한 연관 엔티티 join ✓
+- [ ] **distinct()**: 중복 제거로 정확한 페이징 ✓
+- [ ] **성능 최적화**: 메인 쿼리와 카운트 쿼리 분리 ✓
+
+### ✅ 검증된 성공 사례
+
+#### 🎯 Teacher 도메인 (완전 구현)
+```
+✅ GET /api/teachers                                 # 전체 목록 (9개 결과)
+✅ GET /api/teachers?keyword=test                    # 키워드 검색 (1개 결과)  
+✅ GET /api/teachers?categoryId=12                   # 카테고리 필터 (3개 결과)
+✅ GET /api/teachers?keyword=test&categoryId=12      # 복합 조건 (1개 결과)
+✅ GET /api/teachers?page=0&size=5                   # 페이징 처리
+```
+
+#### 🎯 Notice 도메인 (완전 구현)
+```
+✅ GET /api/notices                                  # 전체 목록 (39개 결과)
+✅ GET /api/notices?keyword=test                     # 키워드 검색 (6개 결과)
+✅ GET /api/notices?categoryId=3&isImportant=true   # 복합 필터 (4개 결과)
+✅ GET /api/notices?searchType=TITLE                # Enum 파라미터 (2개 결과)
+✅ GET /api/notices?exposureType=ALWAYS             # 상태 필터 (37개 결과)
+```
+
+### 💡 핵심 성능 최적화
+
+#### 1. N+1 문제 해결
+```java
+// ✅ 올바른 방식 - fetch join 사용
+.leftJoin(teacher.subjects, teacherSubject).fetchJoin()
+.leftJoin(teacherSubject.category, category).fetchJoin()
+
+// ❌ 잘못된 방식 - lazy loading으로 N+1 발생
+.leftJoin(teacher.subjects, teacherSubject) // fetchJoin 없음
+```
+
+#### 2. 카운트 쿼리 최적화  
+```java
+// ✅ 올바른 방식 - 메인 쿼리와 카운트 쿼리 분리
+List<Teacher> teachers = mainQuery.fetch();
+long total = countQuery.fetchOne();
+
+// ❌ 잘못된 방식 - PageableExecutionUtils 없이 중복 쿼리
+Page<Teacher> page = repository.findAll(predicate, pageable); 
+```
+
+#### 3. 동적 조건 최적화
+```java
+// ✅ 올바른 방식 - null 체크로 불필요한 조건 제거
+if (keyword != null && !keyword.trim().isEmpty()) {
+    predicate = and(predicate, teacher.teacherName.containsIgnoreCase(keyword.trim()));
+}
+
+// ❌ 잘못된 방식 - 무조건 조건 추가
+predicate = teacher.teacherName.containsIgnoreCase(keyword); // NPE 위험
+```
+
+### 🚫 피해야 할 패턴
+
+#### 절대 금지
+1. **RequestXxxSearch 객체**: GET 요청에 @RequestBody 사용 금지
+2. **분리된 엔드포인트**: /search, /filter 등 별도 엔드포인트 금지  
+3. **Enum 직접 파라미터**: String으로 받아서 안전하게 변환 필수
+4. **QueryDSL 없는 복잡 조건**: 동적 쿼리는 반드시 QueryDSL 사용
+5. **fetch join 누락**: 연관 엔티티가 있으면 반드시 fetch join
+
+#### 주의 사항  
+1. **한글 키워드**: URL 인코딩 이슈로 영문 테스트 권장
+2. **대소문자 구분**: containsIgnoreCase() 사용으로 검색 편의성 향상
+3. **페이징 성능**: 대용량 데이터에서는 offset 대신 cursor 방식 고려
+4. **캐싱 전략**: 자주 조회되는 목록은 Redis 캐싱 검토
+
+### 📈 마이그레이션 가이드
+
+#### 기존 RequestXxxSearch → @RequestParam 변환 절차
+1. **Controller 수정**: @RequestBody → @RequestParam 개별 파라미터로 변경
+2. **Service 시그니처 변경**: 객체 파라미터 → 개별 파라미터로 변경  
+3. **Repository 수정**: 메서드 시그니처를 개별 파라미터로 변경
+4. **DTO 삭제**: RequestXxxSearch 클래스 완전 삭제
+5. **테스트 검증**: 모든 파라미터 조합으로 기능 테스트
+6. **문서 업데이트**: Swagger 문서 및 API 명세서 갱신
 
 #### 3. Service 구현체 패턴
 ```java

@@ -45,6 +45,7 @@ public class TeacherAdminController {
      * @param keyword 검색 키워드 (강사명)
      * @param categoryId 과목 카테고리 ID
      * @param isPublished 공개 여부 필터
+     * @param sortType 정렬 방식
      * @param pageable 페이징 정보
      * @return 검색 결과
      */
@@ -57,6 +58,7 @@ public class TeacherAdminController {
                 - 강사명 검색 (부분 일치)
                 - 과목별 필터링
                 - 공개/비공개 상태 필터링
+                - 다양한 정렬 옵션
                 - 담당 과목 정보 포함
                 - 페이징 처리
                 
@@ -64,9 +66,7 @@ public class TeacherAdminController {
                 - keyword: 강사명 검색
                 - categoryId: 특정 과목 담당 강사만
                 - isPublished: 공개 상태 필터
-                
-                정렬:
-                - 생성일시 내림차순 (기본값)
+                - sortType: 정렬 방식 (CREATED_DESC, CREATED_ASC, NAME_ASC, NAME_DESC)
                 
                 반환 정보:
                 - 강사 기본 정보 (ID, 이름, 경력, 소개)
@@ -77,12 +77,13 @@ public class TeacherAdminController {
                 
                 관리자는 비공개 강사도 모두 조회할 수 있습니다.
                 
+                QueryDSL 동적 쿼리로 모든 검색 조건 조합을 지원합니다.
+                
                 예시:
                 - GET /api/admin/teachers (모든 강사)
                 - GET /api/admin/teachers?keyword=김교수 (이름 검색)
                 - GET /api/admin/teachers?categoryId=15 (과목별)
-                - GET /api/admin/teachers?categoryId=15&isPublished=true (과목별+공개만)
-                - GET /api/admin/teachers?keyword=김&categoryId=15&isPublished=false
+                - GET /api/admin/teachers?keyword=김&categoryId=15&isPublished=true (복합 검색)
                 """
     )
     @GetMapping
@@ -93,13 +94,15 @@ public class TeacherAdminController {
             @RequestParam(required = false) Long categoryId,
             @Parameter(description = "공개 여부 필터 (생략시 모든 상태)", example = "true") 
             @RequestParam(required = false) Boolean isPublished,
+            @Parameter(description = "정렬 방식 (CREATED_DESC, CREATED_ASC, NAME_ASC, NAME_DESC)", example = "CREATED_DESC") 
+            @RequestParam(required = false) String sortType,
             @Parameter(description = "페이징 정보") 
             @PageableDefault(size = 15, sort = "createdAt", direction = Sort.Direction.DESC) 
             Pageable pageable) {
         
-        log.info("[TeacherAdminController] 강사 목록 조회 요청. keyword={}, categoryId={}, isPublished={}", 
-                 keyword, categoryId, isPublished);
-        return teacherService.getTeacherList(keyword, categoryId, isPublished, pageable);
+        log.info("[TeacherAdminController] 강사 목록 조회 요청. keyword={}, categoryId={}, isPublished={}, sortType={}", 
+                 keyword, categoryId, isPublished, sortType);
+        return teacherService.getTeacherList(keyword, categoryId, isPublished, sortType, pageable);
     }
 
     /**

@@ -20,7 +20,7 @@ import java.util.Optional;
  * - N+1 문제 방지를 위한 fetch join 쿼리 제공
  */
 @Repository
-public interface TeacherRepository extends JpaRepository<Teacher, Long> {
+public interface TeacherRepository extends JpaRepository<Teacher, Long>, TeacherRepositoryCustom {
 
     /**
      * 특정 카테고리(과목)를 담당하는 강사 수 조회.
