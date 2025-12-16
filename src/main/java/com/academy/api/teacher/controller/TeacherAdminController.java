@@ -74,12 +74,14 @@ public class TeacherAdminController {
     public ResponseList<ResponseTeacherListItem> getTeacherList(
             @Parameter(description = "강사명 검색 키워드", example = "김교수") 
             @RequestParam(required = false) String keyword,
+            @Parameter(description = "공개 여부 필터 (생략시 모든 상태)", example = "true") 
+            @RequestParam(required = false) Boolean isPublished,
             @Parameter(description = "페이징 정보") 
             @PageableDefault(size = 15, sort = "createdAt", direction = Sort.Direction.DESC) 
             Pageable pageable) {
         
-        log.info("[TeacherAdminController] 관리자 강사 목록 조회 요청. keyword={}", keyword);
-        return teacherService.getTeacherList(keyword, pageable);
+        log.info("[TeacherAdminController] 관리자 강사 목록 조회 요청. keyword={}, isPublished={}", keyword, isPublished);
+        return teacherService.getTeacherList(keyword, isPublished, pageable);
     }
 
     /**

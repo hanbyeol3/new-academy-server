@@ -102,6 +102,49 @@ public interface TeacherRepository extends JpaRepository<Teacher, Long> {
     Page<Teacher> findByTeacherNameContainingWithSubjects(@Param("teacherName") String teacherName, Pageable pageable);
 
     /**
+     * 키워드 검색 + 공개 상태 필터링.
+     * 
+     * @param teacherName 검색할 강사명
+     * @param isPublished 공개 여부 필터
+     * @param pageable 페이징 정보
+     * @return 검색된 강사 목록
+     */
+    @Query(value = """
+        SELECT DISTINCT t 
+        FROM Teacher t 
+        LEFT JOIN FETCH t.subjects ts 
+        LEFT JOIN FETCH ts.category 
+        WHERE t.teacherName LIKE %:teacherName%
+        AND t.isPublished = :isPublished
+        """,
+        countQuery = """
+        SELECT COUNT(DISTINCT t) 
+        FROM Teacher t 
+        WHERE t.teacherName LIKE %:teacherName%
+        AND t.isPublished = :isPublished
+        """)
+    Page<Teacher> findByTeacherNameContainingAndIsPublishedWithSubjects(
+            @Param("teacherName") String teacherName, 
+            @Param("isPublished") Boolean isPublished, 
+            Pageable pageable);
+
+    /**
+     * 비공개 강사 목록 조회 (공개 강사 메서드 복사 후 수정).
+     * 
+     * @param pageable 페이징 정보
+     * @return 비공개 강사 목록
+     */
+    @Query(value = """
+        SELECT DISTINCT t 
+        FROM Teacher t 
+        LEFT JOIN FETCH t.subjects ts 
+        LEFT JOIN FETCH ts.category 
+        WHERE t.isPublished = false
+        """,
+        countQuery = "SELECT COUNT(DISTINCT t) FROM Teacher t WHERE t.isPublished = false")
+    Page<Teacher> findUnpublishedWithSubjects(Pageable pageable);
+
+    /**
      * 공개된 강사 중 강사명으로 검색.
      * 
      * @param teacherName 검색할 강사명
