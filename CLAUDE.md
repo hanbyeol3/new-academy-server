@@ -23,7 +23,7 @@ domain/
 
 ### 🎯 핵심 규칙
 
-#### 1. 필수 레이어 (5개)
+#### 1. 필수 레이어 (6개)
 - **controller**: REST API 엔드포인트
 - **domain**: JPA 엔티티
 - **dto**: 요청/응답 데이터 구조
@@ -70,6 +70,34 @@ auth/
 
 - **새로운 기능 추가 시 표준 구조 적용**
 
+### 📋 프로젝트 내 도메인 현황
+
+#### 🎯 핵심 도메인 (표준 구조 완비)
+- **academy**: 학원 소개 및 상세 정보
+- **notice**: 공지사항 관리
+- **teacher**: 강사 정보 및 과목 관리
+- **schedule**: 학사일정 관리
+- **member**: 회원 관리 및 인증
+- **category**: 카테고리 그룹 및 분류 관리
+- **file**: 파일 업로드 및 관리
+
+#### 🔧 기능 도메인 (표준 구조 적용)
+- **explanation**: 설명회 예약 및 관리
+- **qna**: 질의응답 관리
+- **faq**: 자주 묻는 질문 관리
+- **inquiry**: 상담 문의 관리
+- **recruitment**: 강사 채용 공고 및 지원자 관리
+- **universities**: 대학 정보 관리
+- **success**: 합격 성공사례 관리
+- **improvement**: 성적 향상 사례 관리
+- **popup**: 팝업 공지 관리
+- **student**: 학생 정보 관리
+- **shuttle**: 셔틀버스 노선 관리
+- **facility**: 시설 안내 관리
+
+#### ⚙️ 특수 도메인
+- **auth**: 인증/JWT (domain, repository 없음)
+
 ### 🔍 검증 체크리스트
 
 새 도메인 생성 또는 기존 도메인 수정 시 다음을 확인:
@@ -91,28 +119,28 @@ auth/
 
 현재 프로젝트에서 가장 표준화된 Response DTO 구조:
 
-#### 1. **ResponseGalleryItem** (표준 기본형)
+#### 1. **ResponseNoticeSimple** (표준 기본형)
 ```java
 @Getter
 @Builder
-@Schema(description = "갤러리 항목 응답")
-public class ResponseGalleryItem {
+@Schema(description = "공지사항 간단 응답 (목록용)")
+public class ResponseNoticeSimple {
     
-    @Schema(description = "갤러리 항목 ID", example = "1")
+    @Schema(description = "공지사항 ID", example = "1")
     private Long id;
     
-    @Schema(description = "갤러리 제목", example = "학원 전경")
+    @Schema(description = "공지사항 제목", example = "새로운 학사일정 안내")
     private String title;
     
-    @Schema(description = "갤러리 설명", example = "아름다운 가을 캠퍼스 전경입니다.")
-    private String description;
+    @Schema(description = "중요 공지 여부", example = "false")
+    private Boolean isImportant;
     
     // ... 비즈니스 필드들 ...
     
-    @Schema(description = "생성 시각", example = "2024-01-01T10:00:00")
+    @Schema(description = "생성 시각", example = "2024-01-01 10:00:00")
     private LocalDateTime createdAt;
     
-    @Schema(description = "수정 시각", example = "2024-01-01T10:00:00")
+    @Schema(description = "수정 시각", example = "2024-01-01 10:00:00")
     private LocalDateTime updatedAt;
 }
 ```
@@ -124,34 +152,7 @@ public class ResponseGalleryItem {
 - 필드 문서화: 모든 필드에 `@Schema` + example ✓
 - 단순성: 복잡한 내부 클래스 없음 ✓
 - 일관성: 표준 CRUD 필드 구성 (id, createdAt, updatedAt) ✓
-
-#### 2. **ResponseAcademicScheduleListItem** (용도별 특화형)
-```java
-@Getter
-@Builder
-@Schema(description = "학사일정 항목 응답")
-public class ResponseAcademicScheduleListItem {
-    
-    @Schema(description = "학사일정 ID", example = "1")
-    private Long id;
-    
-    @Schema(description = "일정 분류", example = "EXAM", 
-            allowableValues = {"OPEN_CLOSE", "EXAM", "NOTICE", "EVENT", "ETC"})
-    private ScheduleCategory category;
-    
-    @Schema(description = "시작 일자", example = "2025-09-04")
-    private LocalDate startDate;
-    
-    // ... 도메인 특화 필드들 ...
-}
-```
-
-**✅ 장점:**
-- 용도 명시형 네이밝 (ListItem) ✓
-- 도메인 enum 활용 ✓
-- `allowableValues`로 제약사항 명시 ✓
-- 완벽한 Swagger 문서화 ✓
-
+- 
 ### 🎯 Response DTO 표준 패턴
 
 #### A. 기본 Response DTO 템플릿
@@ -374,7 +375,7 @@ public class ResponseDomainSummary { ... }
 - **❌ model 패키지 사용**
 - **❌ 복잡한 중첩 클래스 (Criteria, Projection 포함)**
 - **❌ 문서화 누락** (`@Schema` 없음)
-- **❌ 네이밍 불일치** (SignInResponse vs ResponseGalleryItem)
+- **❌ 네이밍 불일치** (SignInResponse vs ResponseNoticeSimple)
 - **❌ 과도한 책임** (한 파일에 여러 역할)
 
 ## 📝 Request DTO 설계 표준
@@ -632,7 +633,7 @@ public Response deleteNotice(Long id) {
 
 ### 🏆 표준 기준
 
-현재 프로젝트에서 가장 완성도 높은 `AcademicScheduleAdminController`와 `GalleryAdminController`를 기준으로 표준 정의:
+현재 프로젝트에서 가장 완성도 높은 `AcademicScheduleAdminController`와 `NoticeAdminController`를 기준으로 표준 정의:
 
 ### 🔥 Controller 표준 체크리스트
 
@@ -1161,103 +1162,6 @@ if (entity.isNotEditable()) {
 4. **Response 타입 혼재** - 도메인별 일관성 유지
 5. **회원 이름 누락** - `createdBy`, `updatedBy` 있으면 `createdByName`, `updatedByName` 필수 제공
 
-### 🧪 테스트 요구사항
-
-새 도메인 생성 후 **반드시** 다음 테스트를 작성하고 실행:
-
-#### 1. 필수 테스트 항목
-- [ ] **CRUD 테스트** - Create, Read, Update, Delete 모든 기본 기능
-- [ ] **유효성 검증 테스트** - DTO 및 엔티티 검증 로직
-- [ ] **예외 처리 테스트** - 에러 케이스 및 예외 상황
-- [ ] **비즈니스 로직 테스트** - 서비스 레이어 핵심 기능
-- [ ] **API 통합 테스트** - 컨트롤러 엔드포인트 테스트
-
-#### 2. 테스트 패턴
-```java
-// 서비스 테스트 예시
-@ExtendWith(MockitoExtension.class)
-class ExampleServiceTest {
-    
-    @Mock
-    private ExampleRepository repository;
-    
-    @InjectMocks
-    private ExampleService service;
-    
-    @Test
-    void createExample_Success() { 
-        // CRUD 테스트 작성
-    }
-    
-    @Test 
-    void createExample_ValidationError() { 
-        // 검증 실패 테스트 작성
-    }
-    
-    @Test
-    void findExample_NotFound() { 
-        // 예외 처리 테스트 작성
-    }
-}
-
-// 컨트롤러 테스트 예시
-@WebMvcTest(ExampleAdminController.class)
-class ExampleAdminControllerTest {
-    
-    @MockBean
-    private ExampleService service;
-    
-    @Test
-    void createExample_Success() { 
-        // API 성공 테스트 작성
-    }
-    
-    @Test
-    void createExample_BadRequest() { 
-        // API 실패 테스트 작성
-    }
-}
-```
-
-#### 3. 테스트 실행 절차
-```bash
-# 1. 단위 테스트 실행
-./gradlew test --tests "*{Domain}*Test"
-
-# 2. 통합 테스트 실행  
-./gradlew test --tests "*{Domain}*IntegrationTest"
-
-# 3. 전체 테스트 실행 및 검증
-./gradlew test
-
-# 4. 빌드 검증
-./gradlew build
-```
-
-#### 4. 커버리지 목표
-- **서비스 레이어**: 90% 이상
-
-### 🔧 테스트 실무 팁
-
-#### Entity ID 설정 (테스트용)
-테스트에서 Entity ID가 필요한 경우 리플렉션 사용:
-
-```java
-// Entity ID 설정을 위한 리플렉션 패턴
-CategoryGroup savedCategoryGroup = CategoryGroup.builder()
-        .name("테스트 그룹")
-        .build();
-        
-// ID 설정 (테스트 전용)
-try {
-    var idField = CategoryGroup.class.getDeclaredField("id");
-    idField.setAccessible(true);
-    idField.set(savedCategoryGroup, 1L);
-} catch (Exception e) {
-    // 테스트에서 리플렉션 오류 무시
-}
-```
-
 #### ErrorCode 확장
 새 도메인 추가 시 ErrorCode enum에 관련 에러 코드 추가:
 
@@ -1345,7 +1249,6 @@ private String color;
 
 // 클래스 레벨 - 복합 필드 검증  
 @DateRange
-@ImageSourceValidation
 public class RequestDomainCreate {
     // ...
 }
@@ -1379,17 +1282,12 @@ public boolean isValid(Object value, ConstraintValidatorContext context) {
     - 리플렉션으로 유연한 구현 ✓
     - 예외 안전성 ✓
 
-3. **ImageSourceValidation + ImageSourceValidator**
-    - 비즈니스 로직 검증 ✓
-    - 동적 메시지 생성 ✓
-    - 타입별 분기 처리 ✓
-
-4. **AcademicScheduleTimeRange + AcademicScheduleTimeRangeValidator**
+3. **AcademicScheduleTimeRange + AcademicScheduleTimeRangeValidator**
     - 클래스 레벨 복합 시간 검증 ✓
     - startAt, endAt 논리적 검증 ✓
     - 종일 이벤트 고려 ✓
 
-5. **AcademicScheduleRepeat + AcademicScheduleRepeatValidator**
+4. **AcademicScheduleRepeat + AcademicScheduleRepeatValidator**
     - 반복 일정 논리 검증 ✓
     - weekdayMask 비트마스크 검증 ✓
     - 주말 제외 로직 검증 ✓
@@ -1427,7 +1325,7 @@ public boolean isValid(Object value, ConstraintValidatorContext context) {
 
 ### 🏆 표준 기준
 
-현재 프로젝트에서 가장 완성도 높은 `SecurityConfiguration`, `DatabaseConfig`, `QuerydslConfig`를 기준으로 표준 정의:
+현재 프로젝트에서 가장 완성도 높은 `auth.security.SecurityConfiguration`, `config.DatabaseConfig`, `config.QuerydslConfig`를 기준으로 표준 정의:
 
 ### 🔥 Configuration 표준 체크리스트
 
@@ -1573,7 +1471,7 @@ public static class FeatureProperties {
     - 데이터베이스별 최적화 ✓
 
 #### ⚠️ 개선 필요
-1. **SecurityConfig** - Deprecated, 삭제 필요
+1. **SecurityConfig** - Deprecated, 참고용으로만 유지 (실제 보안 설정은 auth.security.SecurityConfiguration 사용)
 
 #### 📋 Configuration 표준 체크리스트
 
@@ -1858,5 +1756,5 @@ SPRING_PROFILES_ACTIVE=local ./gradlew bootRun
 - **권한 최소화**: 테스트 시에만 일시적으로 권한 부여
 
 ---
-📅 **최종 업데이트**: 2024.11.13  
+📅 **최종 업데이트**: 2024.12.16  
 🎯 **목표**: 모든 도메인의 아키텍처 일관성 확보 및 안전한 테스트 환경 구축
