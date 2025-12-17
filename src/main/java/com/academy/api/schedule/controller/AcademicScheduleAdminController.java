@@ -37,12 +37,21 @@ public class AcademicScheduleAdminController {
     @Operation(
         summary = "학사일정 목록 조회 (관리자)",
         description = """
-                관리자용 학사일정 전체 목록을 페이징으로 조회합니다.
+                관리자용 학사일정 목록을 페이징으로 조회합니다.
                 
                 조회 조건:
-                - 모든 일정 조회 
+                - year 파라미터 없음: 전체 일정 조회
+                - year 파라미터 있음: 해당 연도의 모든 일정 조회
+                  * 시작일이 해당 연도인 일정
+                  * 종료일이 해당 연도인 일정  
+                  * 해당 연도를 관통하는 일정 (예: 2024.12 ~ 2025.02)
                 - 페이징 지원 (기본 20개씩)
                 - 최신 시작일 순으로 정렬
+                
+                사용 예시:
+                - GET /api/admin/academic-schedules (전체 조회)
+                - GET /api/admin/academic-schedules?year=2025 (2025년 조회)
+                - GET /api/admin/academic-schedules?year=2024&page=0&size=50 (페이징)
                 
                 응답 데이터:
                 - 일정 기본 정보 (제목, 설명, 시간)
@@ -51,27 +60,25 @@ public class AcademicScheduleAdminController {
                 - 등록/수정 이력 (생성자/수정자 이름 포함)
                 - 페이징 정보 (total, page, size)
                 
-                사용 목적:
-                - 관리자용 학사일정 관리 화면
-                - 일정 생성/수정/삭제 전 목록 확인
-                
-                정렬 기준:
-                - startAt DESC (최신 시작일 순)
-                
                 권한 요구사항:
                 - ADMIN 역할 필수
                 - JWT 토큰 인증 필요
+                
+                주의사항:
+                - 유효하지 않은 연도(1900-2100 범위 외)는 빈 목록 반환
                 """
     )
     public ResponseList<ResponseAcademicScheduleListItem> getScheduleList(
+            @Parameter(description = "조회할 연도 (예: 2025, null이면 전체 조회)", example = "2025")
+            @RequestParam(required = false) Integer year,
             @Parameter(description = "페이징 정보")
             @PageableDefault(size = 20, sort = "startAt", direction = Sort.Direction.DESC) 
             Pageable pageable) {
 
-        log.info("[AcademicScheduleAdminController] 일정 목록 조회 요청. page={}, size={}", 
-                pageable.getPageNumber(), pageable.getPageSize());
+        log.info("[AcademicScheduleAdminController] 일정 목록 조회 요청. year={}, page={}, size={}", 
+                year, pageable.getPageNumber(), pageable.getPageSize());
 
-        return academicScheduleService.getScheduleList(pageable);
+        return academicScheduleService.getScheduleList(year, pageable);
     }
 
     @GetMapping("/{id}")

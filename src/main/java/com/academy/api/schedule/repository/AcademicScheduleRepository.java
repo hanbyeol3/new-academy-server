@@ -26,6 +26,19 @@ public interface AcademicScheduleRepository extends JpaRepository<AcademicSchedu
     @Query("SELECT a FROM AcademicSchedule a ORDER BY a.startAt DESC")
     Page<AcademicSchedule> findAllSchedules(Pageable pageable);
 
+    /**
+     * 연도별 일정 조회 (관리자용).
+     * 해당 연도에 시작되거나, 종료되거나, 연도를 관통하는 모든 일정 조회.
+     */
+    @Query("""
+        SELECT DISTINCT a FROM AcademicSchedule a 
+        WHERE (YEAR(a.startAt) = :year)
+           OR (a.endAt IS NOT NULL AND YEAR(a.endAt) = :year)
+           OR (YEAR(a.startAt) < :year AND a.endAt IS NOT NULL AND YEAR(a.endAt) > :year)
+        ORDER BY a.startAt DESC
+        """)
+    Page<AcademicSchedule> findSchedulesByYear(@Param("year") Integer year, Pageable pageable);
+
 
 
     /**

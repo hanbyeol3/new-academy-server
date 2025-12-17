@@ -20,12 +20,13 @@ public interface AcademicScheduleService {
     ResponseList<ResponseAcademicScheduleListItem> getMonthlySchedules(RequestAcademicScheduleSearch searchRequest);
 
     /**
-     * 관리자용 전체 학사일정 목록 조회.
+     * 관리자용 학사일정 목록 조회.
      * 
+     * @param year 조회할 연도 (null이면 전체 조회)
      * @param pageable 페이징 정보
      * @return 학사일정 목록
      */
-    ResponseList<ResponseAcademicScheduleListItem> getScheduleList(Pageable pageable);
+    ResponseList<ResponseAcademicScheduleListItem> getScheduleList(Integer year, Pageable pageable);
 
     /**
      * 학사일정 상세 조회.

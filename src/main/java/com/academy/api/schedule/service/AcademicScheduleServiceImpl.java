@@ -81,15 +81,31 @@ public class AcademicScheduleServiceImpl implements AcademicScheduleService {
     }
 
     /**
-     * 관리자용 전체 학사일정 목록 조회.
+     * 관리자용 학사일정 목록 조회 (연도별 필터링 지원).
      */
     @Override
-    public ResponseList<ResponseAcademicScheduleListItem> getScheduleList(Pageable pageable) {
-        log.info("[AcademicScheduleService] 전체 일정 목록 조회 시작. page={}, size={}", 
-                pageable.getPageNumber(), pageable.getPageSize());
+    public ResponseList<ResponseAcademicScheduleListItem> getScheduleList(Integer year, Pageable pageable) {
+        log.info("[AcademicScheduleService] 일정 목록 조회 시작. year={}, page={}, size={}", 
+                year, pageable.getPageNumber(), pageable.getPageSize());
 
         try {
-            Page<AcademicSchedule> schedulePage = scheduleRepository.findAllSchedules(pageable);
+            // 연도 유효성 검증
+            if (year != null && (year < 1900 || year > 2100)) {
+                log.warn("[AcademicScheduleService] 유효하지 않은 연도: {}", year);
+                return ResponseList.ok(List.of(), 0L, 0, 0);
+            }
+
+            Page<AcademicSchedule> schedulePage;
+            
+            if (year != null) {
+                // 연도별 조회
+                schedulePage = scheduleRepository.findSchedulesByYear(year, pageable);
+                log.debug("[AcademicScheduleService] {}년도 일정 조회 완료. 총 {}개", year, schedulePage.getTotalElements());
+            } else {
+                // 전체 조회 (기존 로직)
+                schedulePage = scheduleRepository.findAllSchedules(pageable);
+                log.debug("[AcademicScheduleService] 전체 일정 조회 완료. 총 {}개", schedulePage.getTotalElements());
+            }
             
             List<ResponseAcademicScheduleListItem> items = schedulePage.getContent()
                     .stream()
