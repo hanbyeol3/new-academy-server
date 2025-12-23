@@ -49,7 +49,8 @@ public class ResponseAcademicScheduleListItem {
     @Schema(description = "주간 반복 요일 비트마스크", example = "31")
     private Integer weekdayMask;
 
-
+    @Schema(description = "공개 여부", example = "true")
+    private Boolean isPublished;
 
     @Schema(description = "등록자 이름", example = "관리자")
     private String createdByName;
@@ -79,6 +80,7 @@ public class ResponseAcademicScheduleListItem {
                 .isRepeat(schedule.getIsRepeat())
                 .excludeWeekends(schedule.getExcludeWeekends())
                 .weekdayMask(schedule.getWeekdayMask())
+                .isPublished(schedule.getIsPublished())
                 .createdByName(null) // 서비스에서 별도 설정
                 .createdAt(schedule.getCreatedAt())
                 .updatedByName(null) // 서비스에서 별도 설정
@@ -102,6 +104,7 @@ public class ResponseAcademicScheduleListItem {
                 .isRepeat(schedule.getIsRepeat())
                 .excludeWeekends(schedule.getExcludeWeekends())
                 .weekdayMask(schedule.getWeekdayMask())
+                .isPublished(schedule.getIsPublished())
                 .createdByName(createdByName)
                 .createdAt(schedule.getCreatedAt())
                 .updatedByName(updatedByName)

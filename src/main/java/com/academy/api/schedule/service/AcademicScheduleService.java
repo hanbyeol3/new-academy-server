@@ -61,4 +61,13 @@ public interface AcademicScheduleService {
      */
     Response deleteSchedule(Long id);
 
+    /**
+     * 학사일정 공개 상태 변경.
+     * 
+     * @param id 대상 학사일정 ID
+     * @param isPublished 공개 여부 (true: 공개, false: 비공개)
+     * @return 변경 결과
+     */
+    Response updatePublishedStatus(Long id, Boolean isPublished);
+
 }

@@ -329,6 +329,42 @@ public class AcademicScheduleServiceImpl implements AcademicScheduleService {
     }
 
     /**
+     * 학사일정 공개 상태 변경.
+     *
+     * @param id 대상 학사일정 ID
+     * @param isPublished 공개 여부 (true: 공개, false: 비공개)
+     * @return 변경 결과
+     */
+    @Override
+    @Transactional
+    public Response updatePublishedStatus(Long id, Boolean isPublished) {
+        log.info("[AcademicScheduleService] 공개 상태 변경 시작. id={}, isPublished={}", id, isPublished);
+        
+        return scheduleRepository.findById(id)
+                .map(schedule -> {
+                    try {
+                        schedule.updatePublishedStatus(isPublished);
+                        
+                        log.debug("[AcademicScheduleService] 공개 상태 변경 완료. id={}, 새상태={}", id, isPublished);
+                        
+                        String statusMessage = Boolean.TRUE.equals(isPublished) 
+                            ? "학사일정이 공개로 변경되었습니다" 
+                            : "학사일정이 비공개로 변경되었습니다";
+                            
+                        return Response.ok("0000", statusMessage);
+                        
+                    } catch (Exception e) {
+                        log.error("[AcademicScheduleService] 공개 상태 변경 중 예상치 못한 오류: {}", e.getMessage(), e);
+                        return Response.error("E500", "공개 상태 변경 중 오류가 발생했습니다");
+                    }
+                })
+                .orElseGet(() -> {
+                    log.warn("[AcademicScheduleService] 공개 상태를 변경할 일정을 찾을 수 없음. id={}", id);
+                    return Response.error("S404", "학사일정을 찾을 수 없습니다");
+                });
+    }
+
+    /**
      * 회원 이름 조회 도우미 메서드.
      */
     private String getMemberName(Long memberId) {

@@ -47,7 +47,8 @@ public class ResponseAcademicSchedule {
     @Schema(description = "주간 반복 요일 비트마스크", example = "31")
     private Integer weekdayMask;
 
-
+    @Schema(description = "공개 여부", example = "true")
+    private Boolean isPublished;
 
     @Schema(description = "등록자 사용자 ID", example = "1")
     private Long createdBy;
@@ -83,6 +84,7 @@ public class ResponseAcademicSchedule {
                 .isRepeat(schedule.getIsRepeat())
                 .excludeWeekends(schedule.getExcludeWeekends())
                 .weekdayMask(schedule.getWeekdayMask())
+                .isPublished(schedule.getIsPublished())
                 .createdBy(schedule.getCreatedBy())
                 .createdByName(null) // 서비스에서 별도 설정
                 .createdAt(schedule.getCreatedAt())
@@ -108,6 +110,7 @@ public class ResponseAcademicSchedule {
                 .isRepeat(schedule.getIsRepeat())
                 .excludeWeekends(schedule.getExcludeWeekends())
                 .weekdayMask(schedule.getWeekdayMask())
+                .isPublished(schedule.getIsPublished())
                 .createdBy(schedule.getCreatedBy())
                 .createdByName(createdByName)
                 .createdAt(schedule.getCreatedAt())

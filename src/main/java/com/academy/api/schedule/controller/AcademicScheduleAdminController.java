@@ -230,6 +230,40 @@ public class AcademicScheduleAdminController {
         }
     }
 
+    @PatchMapping("/{id}/published")
+    @Operation(
+        summary = "학사일정 공개/비공개 상태 변경",
+        description = """
+                학사일정의 공개/비공개 상태를 변경합니다.
+                
+                기능:
+                - 개별 일정의 공개 상태만 변경
+                - 다른 정보는 그대로 유지
+                
+                상태 변경:
+                - true: 공개 (일반 사용자에게 노출)
+                - false: 비공개 (관리자만 조회 가능)
+                
+                용도:
+                - 긴급하게 일정 노출을 중단해야 할 때
+                - 일정 정보 수정 중 임시 비공개
+                - 확정되지 않은 일정의 노출 중단
+                
+                권한 요구사항:
+                - ADMIN 역할 필수
+                - JWT 토큰 인증 필요
+                """
+    )
+    public Response updatePublishedStatus(
+            @Parameter(description = "일정 ID", example = "1") 
+            @PathVariable Long id,
+            @Parameter(description = "공개 여부", example = "true") 
+            @RequestParam Boolean isPublished) {
+        
+        log.info("[AcademicScheduleAdminController] 일정 공개상태 변경 요청. id={}, isPublished={}", id, isPublished);
+        return academicScheduleService.updatePublishedStatus(id, isPublished);
+    }
+
     @DeleteMapping("/{id}")
     @Operation(
         summary = "학사일정 삭제",

@@ -71,7 +71,9 @@ public class AcademicSchedule {
     @Column(name = "weekday_mask", nullable = false)
     private Integer weekdayMask = 0;
 
-
+    /** 공개 여부 (1: 공개, 0: 비공개) */
+    @Column(name = "is_published", nullable = false)
+    private Boolean isPublished = true;
 
     /** 등록자 */
     @Column(name = "created_by")
@@ -118,6 +120,7 @@ public class AcademicSchedule {
         this.weekdayMask = weekdayMask != null ? weekdayMask : 0;
         this.excludeWeekends = excludeWeekends != null ? excludeWeekends : false;
         this.createdBy = createdBy;
+        this.isPublished = true;
     }
 
     /**
@@ -177,5 +180,35 @@ public class AcademicSchedule {
         
         LocalDate scheduleEnd = endAt.toLocalDate();
         return !date.isBefore(scheduleStart) && !date.isAfter(scheduleEnd);
+    }
+
+    /**
+     * 공개 상태 여부를 확인합니다.
+     */
+    public boolean isActive() {
+        return Boolean.TRUE.equals(this.isPublished);
+    }
+
+    /**
+     * 학사일정을 공개로 변경합니다.
+     */
+    public void publish() {
+        this.isPublished = true;
+    }
+
+    /**
+     * 학사일정을 비공개로 변경합니다.
+     */
+    public void unpublish() {
+        this.isPublished = false;
+    }
+
+    /**
+     * 공개 상태를 변경합니다.
+     * 
+     * @param isPublished 공개 여부
+     */
+    public void updatePublishedStatus(Boolean isPublished) {
+        this.isPublished = isPublished != null ? isPublished : true;
     }
 }
