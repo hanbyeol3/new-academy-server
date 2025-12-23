@@ -180,12 +180,8 @@ public class AcademicScheduleServiceImpl implements AcademicScheduleService {
                 log.debug("[AcademicScheduleService] 종일 이벤트 정규화. startAt={}, endAt={}", startAt, endAt);
             }
 
-            // 시간 겹침 검증
-            long overlappingCount = scheduleRepository.countOverlappingSchedules(startAt, endAt);
-            if (overlappingCount > 0) {
-                log.warn("[AcademicScheduleService] 동일 시간대 일정 존재. overlappingCount={}", overlappingCount);
-                return ResponseData.error("S409", "동일한 시간대에 다른 일정이 존재합니다");
-            }
+            // 시간 겹침 검증 제거 - 학교 환경에서는 여러 일정이 동시에 진행될 수 있음
+            // 예: 개강일, 신입생 오리엔테이션, 정기수업, 도서관 운영 등이 같은 날 동시 진행 가능
 
             // 엔티티 생성 및 저장
             AcademicSchedule schedule = AcademicSchedule.builder()
@@ -235,12 +231,8 @@ public class AcademicScheduleServiceImpl implements AcademicScheduleService {
                             log.debug("[AcademicScheduleService] 종일 이벤트 정규화. startAt={}, endAt={}", startAt, endAt);
                         }
 
-                        // 시간 겹침 검증 (자기 자신 제외)
-                        long overlappingCount = scheduleRepository.countOverlappingSchedulesExcluding(startAt, endAt, id);
-                        if (overlappingCount > 0) {
-                            log.warn("[AcademicScheduleService] 동일 시간대 다른 일정 존재. overlappingCount={}", overlappingCount);
-                            return Response.error("S409", "동일한 시간대에 다른 일정이 존재합니다");
-                        }
+                        // 시간 겹침 검증 제거 - 학교 환경에서는 여러 일정이 동시에 진행될 수 있음
+                        // 수정 시에도 다른 일정과 시간이 겹치는 것을 허용
 
                         // 엔티티 업데이트
                         schedule.update(
