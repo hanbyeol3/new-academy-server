@@ -31,6 +31,9 @@ public class ResponsePopup {
     @Schema(description = "유튜브 링크", example = "https://www.youtube.com/watch?v=example")
     private String youtubeUrl;
 
+    @Schema(description = "이미지 URL (IMAGE 타입인 경우)", example = "/api/public/files/download/123")
+    private String imageUrl;
+
     @Schema(description = "공개 여부", example = "true")
     private Boolean isPublished;
 

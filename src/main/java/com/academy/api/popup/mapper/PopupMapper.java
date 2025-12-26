@@ -2,8 +2,13 @@ package com.academy.api.popup.mapper;
 
 import com.academy.api.common.util.SecurityUtils;
 import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.file.domain.FileRole;
+import com.academy.api.file.domain.UploadFileLink;
+import com.academy.api.file.repository.UploadFileLinkRepository;
 import com.academy.api.popup.domain.Popup;
 import com.academy.api.popup.dto.*;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
@@ -12,8 +17,12 @@ import java.util.List;
 /**
  * 팝업 엔티티 ↔ DTO 매핑 유틸리티.
  */
+@Slf4j
 @Component
+@RequiredArgsConstructor
 public class PopupMapper {
+
+    private final UploadFileLinkRepository uploadFileLinkRepository;
 
     /**
      * 생성 요청 DTO를 엔티티로 변환.
@@ -43,7 +52,39 @@ public class PopupMapper {
      * 엔티티를 상세 응답 DTO로 변환.
      */
     public ResponsePopup toResponse(Popup popup) {
-        return ResponsePopup.from(popup);
+        log.debug("[PopupMapper] toResponse 호출. popupId={}, type={}", popup.getId(), popup.getType());
+        String imageUrl = null;
+        if (popup.getType() == Popup.PopupType.IMAGE) {
+            log.debug("[PopupMapper] IMAGE 타입 팝업 확인. getPopupImageUrl 호출 시작");
+            imageUrl = getPopupImageUrl(popup.getId());
+            log.debug("[PopupMapper] getPopupImageUrl 호출 완료. imageUrl={}", imageUrl);
+        }
+        
+        return ResponsePopup.builder()
+                .id(popup.getId())
+                .title(popup.getTitle())
+                .type(popup.getType())
+                .youtubeUrl(popup.getYoutubeUrl())
+                .imageUrl(imageUrl)
+                .isPublished(popup.getIsPublished())
+                .exposureType(popup.getExposureType())
+                .exposureStartAt(popup.getExposureStartAt())
+                .exposureEndAt(popup.getExposureEndAt())
+                .widthPx(popup.getWidthPx())
+                .heightPx(popup.getHeightPx())
+                .positionTopPx(popup.getPositionTopPx())
+                .positionLeftPx(popup.getPositionLeftPx())
+                .pcLinkUrl(popup.getPcLinkUrl())
+                .mobileLinkUrl(popup.getMobileLinkUrl())
+                .dismissForDays(popup.getDismissForDays())
+                .sortOrder(popup.getSortOrder())
+                .createdBy(popup.getCreatedBy())
+                .createdByName(null)
+                .createdAt(popup.getCreatedAt())
+                .updatedBy(popup.getUpdatedBy())
+                .updatedByName(null)
+                .updatedAt(popup.getUpdatedAt())
+                .build();
     }
 
     /**
@@ -57,7 +98,29 @@ public class PopupMapper {
      * 엔티티를 공개용 응답 DTO로 변환.
      */
     public ResponsePopupPublic toPublicResponse(Popup popup) {
-        return ResponsePopupPublic.from(popup);
+        String imageUrl = null;
+        if (popup.getType() == Popup.PopupType.IMAGE) {
+            imageUrl = getPopupImageUrl(popup.getId());
+        }
+        
+        return ResponsePopupPublic.builder()
+                .id(popup.getId())
+                .title(popup.getTitle())
+                .type(popup.getType())
+                .youtubeUrl(popup.getYoutubeUrl())
+                .imageUrl(imageUrl)
+                .exposureType(popup.getExposureType())
+                .exposureStartAt(popup.getExposureStartAt())
+                .exposureEndAt(popup.getExposureEndAt())
+                .widthPx(popup.getWidthPx())
+                .heightPx(popup.getHeightPx())
+                .positionTopPx(popup.getPositionTopPx())
+                .positionLeftPx(popup.getPositionLeftPx())
+                .pcLinkUrl(popup.getPcLinkUrl())
+                .mobileLinkUrl(popup.getMobileLinkUrl())
+                .dismissForDays(popup.getDismissForDays())
+                .sortOrder(popup.getSortOrder())
+                .build();
     }
 
     /**
@@ -100,6 +163,32 @@ public class PopupMapper {
      */
     public ResponseList<ResponsePopupPublic> toPublicResponseList(Page<Popup> page) {
         return ResponseList.from(page.map(this::toPublicResponse));
+    }
+
+    /**
+     * 팝업 이미지 URL 조회.
+     * 
+     * @param popupId 팝업 ID
+     * @return 이미지 다운로드 URL 또는 null
+     */
+    private String getPopupImageUrl(Long popupId) {
+        log.debug("[PopupMapper] 팝업 이미지 URL 조회 시작. popupId={}", popupId);
+        
+        List<UploadFileLink> links = uploadFileLinkRepository
+            .findByOwnerTableAndOwnerIdAndRole("popups", popupId, FileRole.COVER);
+        
+        log.debug("[PopupMapper] 파일 링크 조회 결과. popupId={}, 링크 수={}", popupId, links.size());
+        
+        if (!links.isEmpty()) {
+            UploadFileLink link = links.get(0);
+            String imageUrl = "/api/public/files/download/" + link.getFileId();
+            log.debug("[PopupMapper] 이미지 URL 생성 완료. popupId={}, fileId={}, imageUrl={}", 
+                     popupId, link.getFileId(), imageUrl);
+            return imageUrl;
+        } else {
+            log.warn("[PopupMapper] 팝업에 연결된 파일 링크가 없습니다. popupId={}", popupId);
+            return null;
+        }
     }
 
     /**

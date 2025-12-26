@@ -4,6 +4,11 @@ import com.academy.api.common.util.SecurityUtils;
 import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.file.domain.FileRole;
+import com.academy.api.file.domain.UploadFile;
+import com.academy.api.file.domain.UploadFileLink;
+import com.academy.api.file.repository.UploadFileLinkRepository;
+import com.academy.api.file.repository.UploadFileRepository;
 import com.academy.api.file.service.FileService;
 import com.academy.api.member.domain.Member;
 import com.academy.api.member.repository.MemberRepository;
@@ -20,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 팝업 서비스 구현체.
@@ -46,6 +52,8 @@ public class PopupServiceImpl implements PopupService {
     private final PopupRepository popupRepository;
     private final PopupMapper popupMapper;
     private final MemberRepository memberRepository;
+    private final UploadFileLinkRepository uploadFileLinkRepository;
+    private final UploadFileRepository uploadFileRepository;
     private final FileService fileService;
 
     /**
@@ -122,9 +130,26 @@ public class PopupServiceImpl implements PopupService {
             Popup popup = popupMapper.toEntity(request);
             Popup savedPopup = popupRepository.save(popup);
             
-            // IMAGE 타입인 경우 파일 처리
-            if (request.getType() == Popup.PopupType.IMAGE && request.getAttachmentFiles() != null && !request.getAttachmentFiles().isEmpty()) {
-                processImageFiles(savedPopup.getId(), request.getAttachmentFiles());
+            // IMAGE 타입인 경우 파일 처리 (Facility 패턴과 동일)
+            if (request.getType() == Popup.PopupType.IMAGE && 
+                request.getImageTempFileId() != null && request.getImageFileName() != null) {
+                log.debug("[PopupService] 이미지 파일 처리 시작. popupId={}, tempFileId={}, fileName={}", 
+                        savedPopup.getId(), request.getImageTempFileId(), request.getImageFileName());
+                
+                Long formalFileId = fileService.promoteToFormalFile(
+                    request.getImageTempFileId(),
+                    request.getImageFileName()
+                );
+                
+                if (formalFileId != null) {
+                    // Facility 패턴처럼 String으로 변환해서 전달
+                    linkPopupImage(savedPopup.getId(), String.valueOf(formalFileId));
+                    log.debug("[PopupService] 이미지 파일 연결 완료. popupId={}, formalFileId={}", 
+                            savedPopup.getId(), formalFileId);
+                } else {
+                    log.warn("[PopupService] 임시 파일 변환 실패로 이미지 연결 생략. tempFileId={}", 
+                            request.getImageTempFileId());
+                }
             }
             
             log.debug("[PopupService] 팝업 생성 완료. id={}, title={}", savedPopup.getId(), savedPopup.getTitle());
@@ -152,9 +177,36 @@ public class PopupServiceImpl implements PopupService {
                         popupMapper.updateEntity(popup, request);
                         popup.setUpdatedBy(SecurityUtils.getCurrentUserId());
                         
-                        // IMAGE 타입으로 변경하거나 첨부파일이 있는 경우 파일 처리
-                        if (request.getType() == Popup.PopupType.IMAGE && request.getAttachmentFiles() != null && !request.getAttachmentFiles().isEmpty()) {
-                            processImageFilesForUpdate(id, request.getAttachmentFiles());
+                        // IMAGE 타입인 경우 파일 처리
+                        if (request.getType() == Popup.PopupType.IMAGE) {
+                            // 기존 이미지 삭제 요청 처리
+                            if (Boolean.TRUE.equals(request.getDeleteImage())) {
+                                deleteExistingPopupImage(id);
+                                log.debug("[PopupService] 기존 이미지 삭제 완료. popupId={}", id);
+                            } 
+                            // 새 이미지 업로드 처리
+                            else if (request.getImageTempFileId() != null) {
+                                log.debug("[PopupService] 새 이미지 처리 시작. popupId={}, tempFileId={}, fileName={}", 
+                                        id, request.getImageTempFileId(), request.getImageFileName());
+                                
+                                // 기존 이미지 삭제 (새 이미지로 교체)
+                                deleteExistingPopupImage(id);
+                                
+                                // 임시 → 정식 파일 변환
+                                Long formalFileId = fileService.promoteToFormalFile(
+                                    request.getImageTempFileId(),
+                                    request.getImageFileName()
+                                );
+                                
+                                if (formalFileId != null) {
+                                    linkPopupImage(id, String.valueOf(formalFileId));
+                                    log.debug("[PopupService] 새 이미지 연결 완료. popupId={}, formalFileId={}", 
+                                            id, formalFileId);
+                                } else {
+                                    log.warn("[PopupService] 임시 파일 변환 실패로 새 이미지 연결 생략. tempFileId={}", 
+                                            request.getImageTempFileId());
+                                }
+                            }
                         }
                         
                         popupRepository.save(popup);
@@ -187,7 +239,7 @@ public class PopupServiceImpl implements PopupService {
                     try {
                         // 관련 파일 삭제 (IMAGE 타입인 경우)
                         if (popup.getType() == Popup.PopupType.IMAGE) {
-                            deletePopupFiles(id);
+                            deleteExistingPopupImage(id);
                         }
                         
                         popupRepository.delete(popup);
@@ -266,69 +318,75 @@ public class PopupServiceImpl implements PopupService {
     }
 
     /**
-     * IMAGE 파일 처리 (임시파일 → 정식파일) - 생성용.
+     * 팝업에 이미지 파일 연결.
+     * 
+     * @param popupId 팝업 ID
+     * @param fileId 파일 ID
      */
-    private void processImageFiles(Long popupId, List<RequestPopupCreate.AttachmentFileInfo> attachmentFiles) {
-        log.debug("[PopupService] IMAGE 파일 처리 시작. popupId={}, 파일수={}", popupId, attachmentFiles.size());
-        
-        try {
-            for (RequestPopupCreate.AttachmentFileInfo fileInfo : attachmentFiles) {
-                if (fileInfo.getTempFileId() != null && fileInfo.getFileName() != null) {
-                    fileService.promoteToFormalFile(fileInfo.getTempFileId(), fileInfo.getFileName());
-                }
+    private void linkPopupImage(Long popupId, String fileId) {
+        if (fileId != null && !fileId.trim().isEmpty()) {
+            try {
+                UploadFileLink fileLink = UploadFileLink.createPopupImage(fileId, popupId);
+                uploadFileLinkRepository.save(fileLink);
+                log.debug("[PopupService] 팝업 이미지 연결 완료. popupId={}, fileId={}", popupId, fileId);
+            } catch (IllegalArgumentException e) {
+                log.warn("[PopupService] 유효하지 않은 파일 ID. popupId={}, fileId={}, error={}", 
+                        popupId, fileId, e.getMessage());
+                throw e;
             }
-            log.debug("[PopupService] IMAGE 파일 처리 완료. popupId={}", popupId);
-            
-        } catch (Exception e) {
-            log.warn("[PopupService] IMAGE 파일 처리 중 오류: {}", e.getMessage());
-            // 파일 처리 실패해도 팝업 생성은 진행
         }
     }
 
     /**
-     * IMAGE 파일 처리 (임시파일 → 정식파일) - 수정용.
+     * 기존 팝업 이미지 삭제 (물리 파일 포함).
+     * 
+     * @param popupId 팝업 ID
      */
-    private void processImageFilesForUpdate(Long popupId, List<RequestPopupUpdate.AttachmentFileInfo> attachmentFiles) {
-        log.debug("[PopupService] 수정용 IMAGE 파일 처리 시작. popupId={}, 파일수={}", popupId, attachmentFiles.size());
+    private void deleteExistingPopupImage(Long popupId) {
+        log.debug("[PopupService] 기존 팝업 이미지 삭제 시작. popupId={}", popupId);
         
         try {
-            for (RequestPopupUpdate.AttachmentFileInfo fileInfo : attachmentFiles) {
-                if (fileInfo.getTempFileId() != null && fileInfo.getFileName() != null) {
-                    fileService.promoteToFormalFile(fileInfo.getTempFileId(), fileInfo.getFileName());
+            // 1. 기존 파일 링크 조회
+            List<UploadFileLink> existingLinks = uploadFileLinkRepository
+                .findByOwnerTableAndOwnerIdAndRole("popups", popupId, FileRole.COVER);
+            
+            if (existingLinks.isEmpty()) {
+                log.debug("[PopupService] 삭제할 팝업 이미지가 없음. popupId={}", popupId);
+                return;
+            }
+            
+            log.debug("[PopupService] 삭제할 팝업 이미지 링크 {}개 발견", existingLinks.size());
+            
+            // 2. 물리 파일 삭제
+            for (UploadFileLink link : existingLinks) {
+                try {
+                    Optional<UploadFile> uploadFile = uploadFileRepository.findByIdAndDeletedFalse(String.valueOf(link.getFileId()));
+                    if (uploadFile.isPresent()) {
+                        boolean deleted = fileService.deletePhysicalFileByPath(uploadFile.get().getServerPath());
+                        if (deleted) {
+                            log.debug("[PopupService] 물리 파일 삭제 완료. popupId={}, fileId={}, path={}", 
+                                    popupId, link.getFileId(), uploadFile.get().getServerPath());
+                        } else {
+                            log.warn("[PopupService] 물리 파일 삭제 실패. popupId={}, fileId={}, path={}", 
+                                    popupId, link.getFileId(), uploadFile.get().getServerPath());
+                        }
+                    } else {
+                        log.debug("[PopupService] 파일 메타데이터를 찾을 수 없음. popupId={}, fileId={}", 
+                                popupId, link.getFileId());
+                    }
+                } catch (Exception e) {
+                    log.error("[PopupService] 물리 파일 삭제 중 오류. popupId={}, fileId={}, error={}", 
+                            popupId, link.getFileId(), e.getMessage());
                 }
             }
-            log.debug("[PopupService] 수정용 IMAGE 파일 처리 완료. popupId={}", popupId);
+            
+            // 3. 파일 링크 삭제
+            uploadFileLinkRepository.deleteByOwnerTableAndOwnerIdAndRole("popups", popupId, FileRole.COVER);
+            log.debug("[PopupService] 팝업 이미지 링크 삭제 완료. popupId={}", popupId);
             
         } catch (Exception e) {
-            log.warn("[PopupService] 수정용 IMAGE 파일 처리 중 오류: {}", e.getMessage());
-            // 파일 처리 실패해도 팝업 수정은 진행
-        }
-    }
-
-    /**
-     * 팝업 관련 파일 삭제.
-     * 
-     * 현재 팝업과 파일 간 직접적인 연결 정보가 없어 개별 파일 삭제가 어려움.
-     * 파일 시스템의 정리는 별도 배치 작업이나 파일 서비스의 정리 프로세스에서 처리됨.
-     * 
-     * 향후 개선사항:
-     * - 팝업 엔티티에 imagePath 필드 추가
-     * - 또는 팝업-파일 연결 테이블 생성
-     * - 파일 메타데이터에서 참조 관계 추적
-     */
-    private void deletePopupFiles(Long popupId) {
-        log.debug("[PopupService] 팝업 관련 파일 정리 시작. popupId={}", popupId);
-        
-        try {
-            // 현재는 팝업과 파일 간 직접 연결 정보가 없어 개별 파일 삭제 불가
-            // 임시파일 → 정식파일 변환 과정에서만 파일 서비스와 연동됨
-            // 실제 파일 정리는 파일 서비스의 주기적 정리 작업에서 처리
-            
-            log.info("[PopupService] 팝업 삭제 완료. 관련 파일은 파일 서비스 정리 프로세스에서 처리됨. popupId={}", popupId);
-            
-        } catch (Exception e) {
-            log.warn("[PopupService] 팝업 파일 정리 중 예외 발생: {}, popupId={}", e.getMessage(), popupId);
-            // 파일 처리 실패해도 팝업 삭제는 진행 (의도된 동작)
+            log.error("[PopupService] 팝업 이미지 삭제 중 예상치 못한 오류. popupId={}, error={}", 
+                    popupId, e.getMessage());
         }
     }
 

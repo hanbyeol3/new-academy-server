@@ -11,8 +11,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.ArrayList;
 
 /**
  * 팝업 생성 요청 DTO.
@@ -89,17 +87,9 @@ public class RequestPopupCreate {
     @Schema(description = "정렬순서 (낮을수록 상단)", example = "1000")
     private Integer sortOrder = 1000;
 
-    @Schema(description = "첨부 이미지 파일 정보 목록 (IMAGE 타입인 경우)")
-    private List<AttachmentFileInfo> attachmentFiles = new ArrayList<>();
+    @Schema(description = "이미지 임시 파일 ID (IMAGE 타입인 경우)", example = "550e8400-e29b-41d4-a716-446655440000")
+    private String imageTempFileId;
 
-    @Getter
-    @Setter
-    @Schema(description = "첨부파일 정보")
-    public static class AttachmentFileInfo {
-        @Schema(description = "임시파일 ID", example = "550e8400-e29b-41d4-a716-446655440000")
-        private String tempFileId;
-        
-        @Schema(description = "원본 파일명", example = "popup_image.jpg")
-        private String fileName;
-    }
+    @Schema(description = "이미지 파일명 (IMAGE 타입인 경우)", example = "popup_image.jpg")
+    private String imageFileName;
 }

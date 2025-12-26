@@ -211,6 +211,42 @@ public class UploadFileLink {
     }
 
     /**
+     * 팝업 이미지 연결 생성.
+     * 
+     * @param fileId 파일 ID
+     * @param popupId 팝업 ID
+     * @return UploadFileLink 인스턴스
+     */
+    public static UploadFileLink createPopupImage(Long fileId, Long popupId) {
+        return UploadFileLink.builder()
+                .fileId(fileId)
+                .ownerTable("popups")
+                .ownerId(popupId)
+                .role(FileRole.COVER)
+                .sortOrder(0)
+                .build();
+    }
+
+    /**
+     * 팝업 이미지 연결 생성 (String fileId 오버로드).
+     * 
+     * @param fileId 파일 ID (String)
+     * @param popupId 팝업 ID
+     * @return UploadFileLink 인스턴스
+     */
+    public static UploadFileLink createPopupImage(String fileId, Long popupId) {
+        if (fileId == null) {
+            throw new IllegalArgumentException("파일 ID는 null일 수 없습니다");
+        }
+        try {
+            Long longFileId = Long.parseLong(fileId);
+            return createPopupImage(longFileId, popupId);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("파일 ID가 유효한 숫자 형식이 아닙니다: " + fileId, e);
+        }
+    }
+
+    /**
      * 특정 역할의 파일 연결인지 확인.
      * 
      * @param role 확인할 역할

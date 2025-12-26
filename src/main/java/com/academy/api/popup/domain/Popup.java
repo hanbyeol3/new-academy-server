@@ -42,6 +42,7 @@ public class Popup {
     @Column(name = "youtube_url", length = 500)
     private String youtubeUrl;
 
+
     /** 공개 여부 */
     @Column(name = "is_published", nullable = false)
     private Boolean isPublished = true;
