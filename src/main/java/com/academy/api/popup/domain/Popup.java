@@ -75,11 +75,6 @@ public class Popup {
     @Column(name = "position_left_px", nullable = false)
     private Integer positionLeftPx;
 
-    /** 디바이스 타겟 */
-    @Enumerated(EnumType.STRING)
-    @Column(name = "device_target", nullable = false)
-    private DeviceTarget deviceTarget = DeviceTarget.ALL;
-
     /** PC 링크 */
     @Column(name = "pc_link_url", length = 500)
     private String pcLinkUrl;
@@ -88,21 +83,13 @@ public class Popup {
     @Column(name = "mobile_link_url", length = 500)
     private String mobileLinkUrl;
 
-    /** 닫기 가능 여부 */
-    @Column(name = "is_dismissible", nullable = false)
-    private Boolean isDismissible = true;
-
     /** 다시 보지 않기(일) */
     @Column(name = "dismiss_for_days", nullable = false)
-    private Integer dismissForDays = 1;
+    private Integer dismissForDays = 0;
 
-    /** 레이어 우선순위 */
-    @Column(name = "z_index")
-    private Integer zIndex = 1000;
-
-    /** 오버레이 불투명도(0~100) */
-    @Column(name = "overlay_opacity")
-    private Integer overlayOpacity = 0;
+    /** 정렬순서 (낮을수록 상단) */
+    @Column(name = "sort_order")
+    private Integer sortOrder = 1000;
 
     /** 등록자 */
     @Column(name = "created_by")
@@ -126,8 +113,7 @@ public class Popup {
     private Popup(String title, PopupType type, String youtubeUrl, Boolean isPublished,
                  ExposureType exposureType, LocalDateTime exposureStartAt, LocalDateTime exposureEndAt,
                  Integer widthPx, Integer heightPx, Integer positionTopPx, Integer positionLeftPx,
-                 DeviceTarget deviceTarget, String pcLinkUrl, String mobileLinkUrl,
-                 Boolean isDismissible, Integer dismissForDays, Integer zIndex, Integer overlayOpacity,
+                 String pcLinkUrl, String mobileLinkUrl, Integer dismissForDays, Integer sortOrder,
                  Long createdBy) {
         this.title = title;
         this.type = type;
@@ -140,14 +126,107 @@ public class Popup {
         this.heightPx = heightPx;
         this.positionTopPx = positionTopPx;
         this.positionLeftPx = positionLeftPx;
-        this.deviceTarget = deviceTarget != null ? deviceTarget : DeviceTarget.ALL;
         this.pcLinkUrl = pcLinkUrl;
         this.mobileLinkUrl = mobileLinkUrl;
-        this.isDismissible = isDismissible != null ? isDismissible : true;
-        this.dismissForDays = dismissForDays != null ? dismissForDays : 1;
-        this.zIndex = zIndex != null ? zIndex : 1000;
-        this.overlayOpacity = overlayOpacity != null ? overlayOpacity : 0;
+        this.dismissForDays = dismissForDays != null ? dismissForDays : 0;
+        this.sortOrder = sortOrder != null ? sortOrder : 1000;
         this.createdBy = createdBy;
+    }
+
+    /**
+     * 기본 정보 업데이트.
+     */
+    public void updateBasicInfo(String title) {
+        this.title = title;
+    }
+
+    /**
+     * 팝업 타입 및 유튜브 URL 업데이트.
+     */
+    public void updateType(PopupType type, String youtubeUrl) {
+        this.type = type;
+        this.youtubeUrl = youtubeUrl;
+    }
+
+    /**
+     * 공개 상태 업데이트.
+     */
+    public void updatePublishedStatus(Boolean isPublished) {
+        this.isPublished = isPublished != null ? isPublished : true;
+    }
+
+    /**
+     * 노출 기간 설정 업데이트.
+     */
+    public void updateExposurePeriod(ExposureType exposureType, LocalDateTime exposureStartAt, LocalDateTime exposureEndAt) {
+        this.exposureType = exposureType != null ? exposureType : ExposureType.ALWAYS;
+        this.exposureStartAt = exposureStartAt;
+        this.exposureEndAt = exposureEndAt;
+    }
+
+    /**
+     * 팝업 크기 업데이트.
+     */
+    public void updateSize(Integer widthPx, Integer heightPx) {
+        this.widthPx = widthPx;
+        this.heightPx = heightPx;
+    }
+
+    /**
+     * 팝업 위치 업데이트.
+     */
+    public void updatePosition(Integer positionTopPx, Integer positionLeftPx) {
+        this.positionTopPx = positionTopPx;
+        this.positionLeftPx = positionLeftPx;
+    }
+
+    /**
+     * 링크 URL 업데이트.
+     */
+    public void updateLinks(String pcLinkUrl, String mobileLinkUrl) {
+        this.pcLinkUrl = pcLinkUrl;
+        this.mobileLinkUrl = mobileLinkUrl;
+    }
+
+    /**
+     * 다시 보지 않기 일수 업데이트.
+     */
+    public void updateDismissForDays(Integer dismissForDays) {
+        this.dismissForDays = dismissForDays != null ? dismissForDays : 0;
+    }
+
+    /**
+     * 정렬순서 업데이트.
+     */
+    public void updateSortOrder(Integer sortOrder) {
+        this.sortOrder = sortOrder != null ? sortOrder : 1000;
+    }
+
+    /**
+     * 현재 시각 기준 노출 여부 확인.
+     */
+    public boolean isActiveAt(LocalDateTime now) {
+        if (!Boolean.TRUE.equals(isPublished)) {
+            return false;
+        }
+        
+        if (exposureType == ExposureType.ALWAYS) {
+            return true;
+        }
+        
+        if (exposureType == ExposureType.PERIOD) {
+            return exposureStartAt != null && exposureEndAt != null
+                && !now.isBefore(exposureStartAt) && now.isBefore(exposureEndAt);
+        }
+        
+        return false;
+    }
+
+    /**
+     * 수정자 설정 (서비스에서 사용).
+     */
+    public void setUpdatedBy(Long updatedBy) {
+        this.updatedBy = updatedBy;
     }
 
     public enum PopupType {
@@ -158,7 +237,4 @@ public class Popup {
         ALWAYS, PERIOD
     }
 
-    public enum DeviceTarget {
-        ALL, PC, MOBILE
-    }
 }
