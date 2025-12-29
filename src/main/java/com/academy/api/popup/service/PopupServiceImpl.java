@@ -104,7 +104,10 @@ public class PopupServiceImpl implements PopupService {
 
         return popupRepository.findById(id)
                 .map(popup -> {
-                    ResponsePopup response = popupMapper.toResponse(popup);
+                    String createdByName = getMemberName(popup.getCreatedBy());
+                    String updatedByName = getMemberName(popup.getUpdatedBy());
+                    
+                    ResponsePopup response = popupMapper.toResponseWithNames(popup, createdByName, updatedByName);
                     log.debug("[PopupService] 팝업 상세 조회 완료. id={}, title={}", id, popup.getTitle());
                     return ResponseData.ok(response);
                 })

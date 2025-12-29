@@ -88,6 +88,45 @@ public class PopupMapper {
     }
 
     /**
+     * 엔티티를 상세 응답 DTO로 변환 (회원 이름 포함).
+     */
+    public ResponsePopup toResponseWithNames(Popup popup, String createdByName, String updatedByName) {
+        log.info("[PopupMapper] toResponseWithNames 호출. popupId={}, type={}", popup.getId(), popup.getType());
+        String imageUrl = null;
+        if (popup.getType() == Popup.PopupType.IMAGE) {
+            log.info("[PopupMapper] IMAGE 타입 팝업 확인. getPopupImageUrl 호출 시작");
+            imageUrl = getPopupImageUrl(popup.getId());
+            log.info("[PopupMapper] getPopupImageUrl 호출 완료. imageUrl={}", imageUrl);
+        }
+        
+        return ResponsePopup.builder()
+                .id(popup.getId())
+                .title(popup.getTitle())
+                .type(popup.getType())
+                .youtubeUrl(popup.getYoutubeUrl())
+                .imageUrl(imageUrl)
+                .isPublished(popup.getIsPublished())
+                .exposureType(popup.getExposureType())
+                .exposureStartAt(popup.getExposureStartAt())
+                .exposureEndAt(popup.getExposureEndAt())
+                .widthPx(popup.getWidthPx())
+                .heightPx(popup.getHeightPx())
+                .positionTopPx(popup.getPositionTopPx())
+                .positionLeftPx(popup.getPositionLeftPx())
+                .pcLinkUrl(popup.getPcLinkUrl())
+                .mobileLinkUrl(popup.getMobileLinkUrl())
+                .dismissForDays(popup.getDismissForDays())
+                .sortOrder(popup.getSortOrder())
+                .createdBy(popup.getCreatedBy())
+                .createdByName(createdByName)
+                .createdAt(popup.getCreatedAt())
+                .updatedBy(popup.getUpdatedBy())
+                .updatedByName(updatedByName)
+                .updatedAt(popup.getUpdatedAt())
+                .build();
+    }
+
+    /**
      * 엔티티를 목록 항목 응답 DTO로 변환.
      */
     public ResponsePopupListItem toListItemResponse(Popup popup) {
