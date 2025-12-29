@@ -52,12 +52,12 @@ public class PopupMapper {
      * 엔티티를 상세 응답 DTO로 변환.
      */
     public ResponsePopup toResponse(Popup popup) {
-        log.debug("[PopupMapper] toResponse 호출. popupId={}, type={}", popup.getId(), popup.getType());
+        log.info("[PopupMapper] toResponse 호출. popupId={}, type={}", popup.getId(), popup.getType());
         String imageUrl = null;
         if (popup.getType() == Popup.PopupType.IMAGE) {
-            log.debug("[PopupMapper] IMAGE 타입 팝업 확인. getPopupImageUrl 호출 시작");
+            log.info("[PopupMapper] IMAGE 타입 팝업 확인. getPopupImageUrl 호출 시작");
             imageUrl = getPopupImageUrl(popup.getId());
-            log.debug("[PopupMapper] getPopupImageUrl 호출 완료. imageUrl={}", imageUrl);
+            log.info("[PopupMapper] getPopupImageUrl 호출 완료. imageUrl={}", imageUrl);
         }
         
         return ResponsePopup.builder()
@@ -172,17 +172,17 @@ public class PopupMapper {
      * @return 이미지 다운로드 URL 또는 null
      */
     private String getPopupImageUrl(Long popupId) {
-        log.debug("[PopupMapper] 팝업 이미지 URL 조회 시작. popupId={}", popupId);
+        log.info("[PopupMapper] 팝업 이미지 URL 조회 시작. popupId={}", popupId);
         
         List<UploadFileLink> links = uploadFileLinkRepository
             .findByOwnerTableAndOwnerIdAndRole("popups", popupId, FileRole.COVER);
         
-        log.debug("[PopupMapper] 파일 링크 조회 결과. popupId={}, 링크 수={}", popupId, links.size());
+        log.info("[PopupMapper] 파일 링크 조회 결과. popupId={}, 링크 수={}", popupId, links.size());
         
         if (!links.isEmpty()) {
             UploadFileLink link = links.get(0);
             String imageUrl = "/api/public/files/download/" + link.getFileId();
-            log.debug("[PopupMapper] 이미지 URL 생성 완료. popupId={}, fileId={}, imageUrl={}", 
+            log.info("[PopupMapper] 이미지 URL 생성 완료. popupId={}, fileId={}, imageUrl={}", 
                      popupId, link.getFileId(), imageUrl);
             return imageUrl;
         } else {
