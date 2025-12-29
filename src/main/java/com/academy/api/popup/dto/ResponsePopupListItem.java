@@ -42,6 +42,12 @@ public class ResponsePopupListItem {
     @Schema(description = "노출 종료일시", example = "2024-12-31 18:00:00")
     private LocalDateTime exposureEndAt;
 
+    @Schema(description = "팝업 너비 (픽셀)", example = "400")
+    private Integer widthPx;
+
+    @Schema(description = "팝업 높이 (픽셀)", example = "300")
+    private Integer heightPx;
+
     @Schema(description = "정렬순서", example = "1000")
     private Integer sortOrder;
 
@@ -77,6 +83,8 @@ public class ResponsePopupListItem {
                 .exposureType(popup.getExposureType())
                 .exposureStartAt(popup.getExposureStartAt())
                 .exposureEndAt(popup.getExposureEndAt())
+                .widthPx(popup.getWidthPx())
+                .heightPx(popup.getHeightPx())
                 .sortOrder(popup.getSortOrder())
                 .createdBy(popup.getCreatedBy())
                 .createdByName(null) // 서비스에서 별도 설정
@@ -99,6 +107,8 @@ public class ResponsePopupListItem {
                 .exposureType(popup.getExposureType())
                 .exposureStartAt(popup.getExposureStartAt())
                 .exposureEndAt(popup.getExposureEndAt())
+                .widthPx(popup.getWidthPx())
+                .heightPx(popup.getHeightPx())
                 .sortOrder(popup.getSortOrder())
                 .createdBy(popup.getCreatedBy())
                 .createdByName(createdByName)
