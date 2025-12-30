@@ -10,12 +10,11 @@ import com.academy.api.inquiry.repository.InquiryLogRepository;
 import com.academy.api.inquiry.repository.InquiryRepository;
 import com.academy.api.member.domain.Member;
 import com.academy.api.member.repository.MemberRepository;
+import com.academy.api.common.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -127,11 +126,11 @@ public class InquiryServiceImpl implements InquiryService {
         checkDuplicateSubmission(request.getPhoneNumber());
 
         // 현재 로그인한 관리자 정보
-        Long currentUserId = getCurrentUserId();
+        Long currentUserId = SecurityUtils.getCurrentUserId();
         String currentUserName = getMemberName(currentUserId);
 
-        // 엔티티 생성
-        Inquiry inquiry = inquiryMapper.toEntity(request);
+        // 엔티티 생성 (관리자 ID로 createdBy 설정)
+        Inquiry inquiry = inquiryMapper.toEntityWithCreatedBy(request, currentUserId);
         inquiry = inquiryRepository.save(inquiry);
 
         // 관리자 생성 이력 추가
@@ -191,7 +190,7 @@ public class InquiryServiceImpl implements InquiryService {
             return ResponseData.error("I403", "이미 처리 완료된 상담신청입니다");
         }
 
-        Long currentUserId = getCurrentUserId();
+        Long currentUserId = SecurityUtils.getCurrentUserId();
 
         // 엔티티 업데이트
         inquiryMapper.updateEntityFromRequest(inquiry, request, currentUserId);
@@ -289,7 +288,7 @@ public class InquiryServiceImpl implements InquiryService {
             return ResponseData.error("I404", "상담신청을 찾을 수 없습니다");
         }
 
-        Long currentUserId = getCurrentUserId();
+        Long currentUserId = SecurityUtils.getCurrentUserId();
 
         // 이력 생성
         InquiryLog inquiryLog = inquiryMapper.toLogEntity(inquiryId, request, inquiry);
@@ -338,7 +337,7 @@ public class InquiryServiceImpl implements InquiryService {
             return Response.error("I400", "유효하지 않은 상담 상태입니다");
         }
 
-        Long currentUserId = getCurrentUserId();
+        Long currentUserId = SecurityUtils.getCurrentUserId();
         inquiry.updateStatus(newStatus, currentUserId);
         inquiryRepository.save(inquiry);
 
@@ -363,7 +362,7 @@ public class InquiryServiceImpl implements InquiryService {
             return Response.error("I404", "상담신청을 찾을 수 없습니다");
         }
 
-        Long currentUserId = getCurrentUserId();
+        Long currentUserId = SecurityUtils.getCurrentUserId();
         inquiry.assignTo(assigneeName, currentUserId);
         inquiryRepository.save(inquiry);
 
@@ -439,20 +438,6 @@ public class InquiryServiceImpl implements InquiryService {
                 .orElse("Unknown");
     }
 
-    /**
-     * 현재 로그인한 사용자 ID 조회.
-     */
-    private Long getCurrentUserId() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated()) {
-            try {
-                return Long.parseLong(auth.getName());
-            } catch (NumberFormatException e) {
-                log.warn("[InquiryService] 사용자 ID 파싱 실패: {}", auth.getName());
-            }
-        }
-        return null;
-    }
 
     /**
      * 검색 타입 안전 변환.

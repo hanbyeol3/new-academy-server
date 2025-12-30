@@ -25,7 +25,7 @@ import java.util.List;
 public class InquiryMapper {
 
     /**
-     * 생성 요청 DTO를 Entity로 변환.
+     * 생성 요청 DTO를 Entity로 변환 (외부 접수용 - createdBy null).
      * 
      * @param request 생성 요청 DTO
      * @return Inquiry Entity
@@ -44,7 +44,32 @@ public class InquiryMapper {
                 .utmMedium(request.getUtmMedium())
                 .utmCampaign(request.getUtmCampaign())
                 .clientIp(convertIpToBytes(request.getClientIp()))
-                .createdBy(null) // 서비스에서 설정
+                .createdBy(null) // 외부 접수 시 null
+                .build();
+    }
+
+    /**
+     * 생성 요청 DTO를 Entity로 변환 (관리자 등록용 - createdBy 설정).
+     * 
+     * @param request 생성 요청 DTO
+     * @param createdBy 등록자 ID (관리자)
+     * @return Inquiry Entity
+     */
+    public Inquiry toEntityWithCreatedBy(RequestInquiryCreate request, Long createdBy) {
+        return Inquiry.builder()
+                .name(request.getName())
+                .phoneNumber(request.getPhoneNumber())
+                .content(request.getContent())
+                .status(request.getStatusEnum())
+                .assigneeName(request.getAssigneeName())
+                .adminMemo(request.getAdminMemo())
+                .inquirySourceType(request.getInquirySourceTypeEnum())
+                .sourceType(request.getSourceType())
+                .utmSource(request.getUtmSource())
+                .utmMedium(request.getUtmMedium())
+                .utmCampaign(request.getUtmCampaign())
+                .clientIp(convertIpToBytes(request.getClientIp()))
+                .createdBy(createdBy) // 관리자 ID 설정
                 .build();
     }
 
