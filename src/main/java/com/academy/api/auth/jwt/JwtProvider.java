@@ -9,12 +9,11 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Date;
 
 /**
  * JWT 토큰 생성 및 검증을 담당하는 유틸리티 클래스.
- * 
+ * ₩
  * Access Token과 Refresh Token의 생성, 파싱, 검증을 수행합니다.
  * HS256 알고리즘을 사용하며 환경변수로부터 시크릿 키를 로드합니다.
  */
@@ -190,5 +189,55 @@ public class JwtProvider {
      */
     public long getAccessTokenExpirationSeconds() {
         return accessTokenExpireMinutes * 60;
+    }
+    
+    /**
+     * QnA 비밀글 접근용 토큰 생성.
+     * 
+     * @param questionId 질문 ID
+     * @param authorName 작성자명
+     * @param expiresInMinutes 만료 시간(분)
+     * @return QnA 접근 토큰
+     */
+    public String createQnaViewToken(Long questionId, String authorName, int expiresInMinutes) {
+        Date now = new Date();
+        Date expiration = new Date(now.getTime() + expiresInMinutes * 60 * 1000);
+        
+        return Jwts.builder()
+                .subject("qna_view_" + questionId)
+                .claim("tokenType", "qna_view")
+                .claim("questionId", questionId)
+                .claim("authorName", authorName)
+                .issuedAt(now)
+                .expiration(expiration)
+                .signWith(secretKey)
+                .compact();
+    }
+    
+    /**
+     * QnA 비밀글 접근용 토큰 검증.
+     * 
+     * @param token QnA 접근 토큰
+     * @param questionId 검증할 질문 ID
+     * @return 토큰이 유효하면 true
+     */
+    public boolean validateQnaViewToken(String token, Long questionId) {
+        try {
+            Claims claims = parseToken(token);
+            
+            // 토큰 타입 확인
+            String tokenType = claims.get("tokenType", String.class);
+            if (!"qna_view".equals(tokenType)) {
+                return false;
+            }
+            
+            // 질문 ID 확인
+            Long tokenQuestionId = claims.get("questionId", Long.class);
+            return questionId.equals(tokenQuestionId);
+            
+        } catch (JwtTokenException e) {
+            log.warn("QnA 토큰 검증 실패: {}", e.getMessage());
+            return false;
+        }
     }
 }

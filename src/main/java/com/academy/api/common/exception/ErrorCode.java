@@ -62,7 +62,17 @@ public enum ErrorCode {
     TEACHER_NAME_ALREADY_EXISTS(HttpStatus.CONFLICT, "TEACHER_NAME_ALREADY_EXISTS", "이미 존재하는 강사명입니다."),
 
     // 파일 관련 에러
-    FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FILE_UPLOAD_FAILED", "파일 업로드에 실패했습니다.");
+    FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FILE_UPLOAD_FAILED", "파일 업로드에 실패했습니다."),
+
+    // QnA 관련 에러
+    QNA_QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND, "QNA_QUESTION_NOT_FOUND", "질문을 찾을 수 없습니다."),
+    QNA_ANSWER_NOT_FOUND(HttpStatus.NOT_FOUND, "QNA_ANSWER_NOT_FOUND", "답변을 찾을 수 없습니다."),
+    QNA_SECRET_ACCESS_DENIED(HttpStatus.FORBIDDEN, "QNA_SECRET_ACCESS_DENIED", "비밀글에 접근할 수 없습니다."),
+    QNA_PASSWORD_MISMATCH(HttpStatus.UNAUTHORIZED, "QNA_PASSWORD_MISMATCH", "비밀번호가 일치하지 않습니다."),
+    QNA_RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "QNA_RATE_LIMIT_EXCEEDED", "너무 많은 시도로 인해 잠시 후에 다시 시도해주세요."),
+    QNA_ANSWERED_QUESTION_MODIFICATION(HttpStatus.BAD_REQUEST, "QNA_ANSWERED_QUESTION_MODIFICATION", "답변이 완료된 질문은 수정할 수 없습니다."),
+    QNA_NOT_SECRET_QUESTION(HttpStatus.BAD_REQUEST, "QNA_NOT_SECRET_QUESTION", "비밀글이 아닙니다."),
+    QNA_INVALID_VIEW_TOKEN(HttpStatus.UNAUTHORIZED, "QNA_INVALID_VIEW_TOKEN", "유효하지 않은 접근 토큰입니다.");
 
     private final HttpStatus httpStatus;
     private final String code;

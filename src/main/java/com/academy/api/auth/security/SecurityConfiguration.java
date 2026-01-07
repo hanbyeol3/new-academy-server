@@ -61,7 +61,7 @@ public class SecurityConfiguration {
 						.requestMatchers("/h2-console/**").permitAll()
 
 						// ✅ 공개 API
-						.requestMatchers("/api/qna-simple/**").permitAll()
+						.requestMatchers("/api/qna/**").permitAll()  // QnA 공개 API
 						.requestMatchers("/api/notices/**").permitAll()
 						.requestMatchers("/api/public/**").permitAll()
 						.requestMatchers("/api/explanations/**").permitAll()
