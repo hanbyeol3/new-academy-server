@@ -104,7 +104,8 @@ public class TeacherRepositoryImpl implements TeacherRepositoryCustom {
         if (keyword == null || keyword.trim().isEmpty()) {
             return null;
         }
-        return teacher.teacherName.containsIgnoreCase(keyword.trim());
+        String likeKeyword = "%" + keyword.trim() + "%";
+        return teacher.teacherName.like(likeKeyword);
     }
 
     /**

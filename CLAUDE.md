@@ -836,7 +836,8 @@ public class TeacherRepositoryImpl implements TeacherRepositoryCustom {
 
         // 키워드 검색 (강사명 부분 일치)
         if (keyword != null && !keyword.trim().isEmpty()) {
-            predicate = and(predicate, teacher.teacherName.containsIgnoreCase(keyword.trim()));
+            String likeKeyword = "%" + keyword.trim() + "%";
+            predicate = and(predicate, teacher.teacherName.like(likeKeyword));
         }
 
         // 카테고리 필터
@@ -988,11 +989,12 @@ Page<Teacher> page = repository.findAll(predicate, pageable);
 ```java
 // ✅ 올바른 방식 - null 체크로 불필요한 조건 제거
 if (keyword != null && !keyword.trim().isEmpty()) {
-    predicate = and(predicate, teacher.teacherName.containsIgnoreCase(keyword.trim()));
+    String likeKeyword = "%" + keyword.trim() + "%";
+    predicate = and(predicate, teacher.teacherName.like(likeKeyword));
 }
 
 // ❌ 잘못된 방식 - 무조건 조건 추가
-predicate = teacher.teacherName.containsIgnoreCase(keyword); // NPE 위험
+predicate = teacher.teacherName.like("%" + keyword + "%"); // NPE 위험
 ```
 
 ### 🚫 피해야 할 패턴
@@ -1006,7 +1008,7 @@ predicate = teacher.teacherName.containsIgnoreCase(keyword); // NPE 위험
 
 #### 주의 사항  
 1. **한글 키워드**: URL 인코딩 이슈로 영문 테스트 권장
-2. **대소문자 구분**: containsIgnoreCase() 사용으로 검색 편의성 향상
+2. **검색 방식**: `like("%" + keyword + "%")` 표준 SQL 방식 사용 (MySQL은 기본적으로 case-insensitive)
 3. **페이징 성능**: 대용량 데이터에서는 offset 대신 cursor 방식 고려
 4. **캐싱 전략**: 자주 조회되는 목록은 Redis 캐싱 검토
 

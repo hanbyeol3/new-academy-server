@@ -101,14 +101,14 @@ public class QnaQuestionRepositoryImpl implements QnaQuestionRepositoryCustom {
             BooleanBuilder keywordPredicate = new BooleanBuilder();
 
             switch (searchType != null ? searchType.toLowerCase() : "all") {
-                case "title" -> keywordPredicate.or(question.title.containsIgnoreCase(trimmedKeyword));
-                case "content" -> keywordPredicate.or(question.content.containsIgnoreCase(trimmedKeyword));
-                case "author_name" -> keywordPredicate.or(question.authorName.containsIgnoreCase(trimmedKeyword));
+                case "title" -> keywordPredicate.or(question.title.like("%" + trimmedKeyword + "%"));
+                case "content" -> keywordPredicate.or(question.content.like("%" + trimmedKeyword + "%"));
+                case "author_name" -> keywordPredicate.or(question.authorName.like("%" + trimmedKeyword + "%"));
                 default -> {
                     // 통합 검색
-                    keywordPredicate.or(question.title.containsIgnoreCase(trimmedKeyword))
-                                   .or(question.content.containsIgnoreCase(trimmedKeyword))
-                                   .or(question.authorName.containsIgnoreCase(trimmedKeyword));
+                    keywordPredicate.or(question.title.like("%" + trimmedKeyword + "%"))
+                                   .or(question.content.like("%" + trimmedKeyword + "%"))
+                                   .or(question.authorName.like("%" + trimmedKeyword + "%"));
                 }
             }
 
@@ -149,16 +149,16 @@ public class QnaQuestionRepositoryImpl implements QnaQuestionRepositoryCustom {
             BooleanBuilder keywordPredicate = new BooleanBuilder();
 
             switch (searchType != null ? searchType.toLowerCase() : "all") {
-                case "title" -> keywordPredicate.or(question.title.containsIgnoreCase(trimmedKeyword));
-                case "content" -> keywordPredicate.or(question.content.containsIgnoreCase(trimmedKeyword));
-                case "author_name" -> keywordPredicate.or(question.authorName.containsIgnoreCase(trimmedKeyword));
-                case "phone_number" -> keywordPredicate.or(question.phoneNumber.containsIgnoreCase(trimmedKeyword));
+                case "title" -> keywordPredicate.or(question.title.like("%" + trimmedKeyword + "%"));
+                case "content" -> keywordPredicate.or(question.content.like("%" + trimmedKeyword + "%"));
+                case "author_name" -> keywordPredicate.or(question.authorName.like("%" + trimmedKeyword + "%"));
+                case "phone_number" -> keywordPredicate.or(question.phoneNumber.like("%" + trimmedKeyword + "%"));
                 default -> {
                     // 통합 검색
-                    keywordPredicate.or(question.title.containsIgnoreCase(trimmedKeyword))
-                                   .or(question.content.containsIgnoreCase(trimmedKeyword))
-                                   .or(question.authorName.containsIgnoreCase(trimmedKeyword))
-                                   .or(question.phoneNumber.containsIgnoreCase(trimmedKeyword));
+                    keywordPredicate.or(question.title.like("%" + trimmedKeyword + "%"))
+                                   .or(question.content.like("%" + trimmedKeyword + "%"))
+                                   .or(question.authorName.like("%" + trimmedKeyword + "%"))
+                                   .or(question.phoneNumber.like("%" + trimmedKeyword + "%"));
                 }
             }
 
