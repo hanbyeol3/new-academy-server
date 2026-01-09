@@ -84,12 +84,4 @@ public interface TeacherService extends CategoryUsageChecker {
      */
     Response updatePublishedStatus(Long id, Boolean isPublished);
 
-    /**
-     * 과목별 강사 조회 (공개용).
-     * 
-     * @param categoryId 과목 카테고리 ID
-     * @param pageable 페이징 정보
-     * @return 해당 과목을 담당하는 공개 강사 목록
-     */
-    ResponseList<ResponseTeacherListItem> getPublishedTeachersBySubject(Long categoryId, Pageable pageable);
 }

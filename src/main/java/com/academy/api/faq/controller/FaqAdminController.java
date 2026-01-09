@@ -31,7 +31,7 @@ import java.util.List;
  * FAQ의 생성, 수정, 삭제 등 관리자 전용 기능을 제공합니다.
  * 모든 API는 ADMIN 권한이 필요합니다.
  */
-@Tag(name = "FAQ (Admin)", description = "FAQ CRUD 및 관리자 전용 기능 API")
+@Tag(name = "FaQ (Admin)", description = "FAQ CRUD 및 관리자 전용 기능 API")
 @SecurityRequirement(name = "bearerAuth")
 @Slf4j
 @RestController
@@ -60,7 +60,7 @@ public class FaqAdminController {
                 
                 주요 기능:
                 - 키워드 검색 (질문, 답변)
-                - 작성자 검색  
+                - 작성자 검색
                 - 카테고리 필터링
                 - 공개/비공개 상태 필터링
                 - 페이징 처리
@@ -276,7 +276,7 @@ public class FaqAdminController {
         description = """
                 FAQ 상세 정보를 조회합니다.
                 
-                Note: FAQ는 목록에서도 답변을 포함하므로 
+                Note: FAQ는 목록에서도 답변을 포함하므로
                 상세 조회가 꼭 필요하지는 않지만, 파일 정보 등
                 추가 데이터가 필요한 경우를 위해 제공합니다.
                 

@@ -114,44 +114,6 @@ public class TeacherPublicController {
     }
 
     /**
-     * 과목별 강사 조회.
-     * 
-     * @param categoryId 과목 카테고리 ID
-     * @param pageable 페이징 정보
-     * @return 해당 과목을 담당하는 강사 목록
-     */
-    @Operation(
-        summary = "과목별 강사 조회",
-        description = """
-                특정 과목을 담당하는 강사 목록을 조회합니다.
-                
-                특징:
-                - 인증 없이 접근 가능
-                - 지정된 과목을 담당하는 공개 강사만 반환
-                - 강사 기본 정보와 모든 담당 과목 정보 포함
-                
-                용도:
-                - 과목별 강사 소개 페이지
-                - 특정 분야 강사 검색
-                - 수강 신청 시 강사 선택 참고
-                
-                정렬:
-                - 생성일시 기준 최신순
-                """
-    )
-    @GetMapping("/subject/{categoryId}")
-    public ResponseList<ResponseTeacherListItem> getTeachersBySubject(
-            @Parameter(description = "과목 카테고리 ID", example = "1") 
-            @PathVariable Long categoryId,
-            @PageableDefault(size = 12, sort = "createdAt", direction = Sort.Direction.DESC) 
-            Pageable pageable) {
-        
-        log.info("[TeacherPublicController] 과목별 강사 조회 요청. 과목ID={}", categoryId);
-        
-        return teacherService.getPublishedTeachersBySubject(categoryId, pageable);
-    }
-
-    /**
      * 강사 검색.
      * 
      * @param keyword 검색 키워드

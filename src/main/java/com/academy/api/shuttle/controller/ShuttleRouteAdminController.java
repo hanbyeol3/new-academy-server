@@ -171,7 +171,7 @@ public class ShuttleRouteAdminController {
         return shuttleRouteService.updateRoute(id, request);
     }
 
-    @PatchMapping("/{id}/toggle-published")
+    @PatchMapping("/{id}/published")
     @Operation(
         summary = "셔틀 노선 공개/비공개 전환",
         description = """

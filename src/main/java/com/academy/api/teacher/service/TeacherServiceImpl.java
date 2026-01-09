@@ -9,7 +9,6 @@ import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
 import com.academy.api.file.service.FileService;
-import com.academy.api.file.domain.UploadFileLink;
 import com.academy.api.file.repository.UploadFileLinkRepository;
 import com.academy.api.teacher.domain.Teacher;
 import com.academy.api.teacher.domain.TeacherSubject;
@@ -57,7 +56,6 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
     private final CategoryRepository categoryRepository;
     private final TeacherMapper teacherMapper;
     private final FileService fileService;
-    private final UploadFileLinkRepository uploadFileLinkRepository;
 
     // ================== CategoryUsageChecker 구현 ==================
     
@@ -336,24 +334,6 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
         log.info("[TeacherService] 강사 공개상태 변경 완료. id={}, status={}", id, statusText);
         
         return Response.ok("0000", "강사 " + statusText + " 상태로 변경되었습니다.");
-    }
-
-    /**
-     * 과목별 강사 조회 (공개용).
-     */
-    @Override
-    public ResponseList<ResponseTeacherListItem> getPublishedTeachersBySubject(Long categoryId, Pageable pageable) {
-        log.info("[TeacherService] 과목별 강사 조회 시작 (공개). categoryId={}, page={}, size={}", 
-                categoryId, pageable.getPageNumber(), pageable.getPageSize());
-        
-        Page<Teacher> teacherPage = teacherRepository.findPublishedBySubjectCategoryIdWithSubjects(categoryId, pageable);
-        
-        ResponseList<ResponseTeacherListItem> result = teacherMapper.toListItemResponseList(teacherPage);
-        
-        log.debug("[TeacherService] 과목별 강사 조회 완료 (공개). categoryId={}, 결과수={}", 
-                categoryId, result.getItems().size());
-        
-        return result;
     }
 
     // ================== 내부 도우미 메서드 ==================

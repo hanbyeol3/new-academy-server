@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
  * 일반 사용자가 접근 가능한 FAQ 조회 기능을 제공합니다.
  * 인증 없이 접근 가능하며, 공개된 FAQ만 조회됩니다.
  */
-@Tag(name = "FAQ (Public)", description = "일반 사용자용 FAQ 조회 API")
+@Tag(name = "FaQ (Public)", description = "일반 사용자용 FAQ 조회 API")
 @Slf4j
 @RestController
 @RequestMapping("/api/faq")

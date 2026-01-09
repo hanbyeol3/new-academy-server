@@ -168,7 +168,7 @@ public class FacilityAdminController {
         return facilityService.updateFacility(id, request);
     }
 
-    @PatchMapping("/{id}/toggle-published")
+    @PatchMapping("/{id}/published")
     @Operation(
         summary = "시설 공개/비공개 전환",
         description = """
