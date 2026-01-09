@@ -13,39 +13,37 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 
 /**
- * 자주 묻는 질문(FAQ) 엔티티.
+ * FAQ 엔티티.
  * 
- * faq 테이블과 매핑되며 FAQ 정보를 관리합니다.
+ * faq 테이블과 매핑되며 자주 묻는 질문과 답변 정보를 관리합니다.
  * 
  * 주요 기능:
- * - FAQ 질문과 답변 관리
+ * - FAQ 생성/수정/삭제
+ * - 공개/비공개 상태 관리
  * - 카테고리별 분류
- * - 정렬 순서 관리
+ * - 첨부파일 연계 (INLINE 이미지만)
  */
 @Entity
 @Table(name = "faq", indexes = {
-    @Index(name = "idx_faq_category_sort", columnList = "category_id, sort_order"),
-    @Index(name = "idx_faq_created", columnList = "created_at")
+    @Index(name = "idx_faq_category_id", columnList = "category_id"),
+    @Index(name = "idx_faq_created_at_desc", columnList = "created_at desc"),
+    @Index(name = "idx_faq_published", columnList = "is_published")
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class)
-public class FAQ {
+public class Faq {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Long id;
 
-    /** 카테고리 */
+    /** 카테고리 연계 */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id", nullable = false, 
+    @JoinColumn(name = "category_id", nullable = false,
                foreignKey = @ForeignKey(name = "fk_faq_category"))
     private Category category;
-
-    /** 정렬 순서 (낮을수록 상단) */
-    @Column(name = "sort_order", nullable = false)
-    private Integer sortOrder = 0;
 
     /** 질문 제목 */
     @Column(name = "title", nullable = false, length = 255)
@@ -56,20 +54,24 @@ public class FAQ {
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    /** 등록자 ID */
+    /** 노출 여부 (1=노출, 0=비노출) */
+    @Column(name = "is_published", nullable = false)
+    private Boolean isPublished = true;
+
+    /** 등록자 사용자 ID */
     @Column(name = "created_by")
     private Long createdBy;
 
-    /** 등록일시 */
+    /** 생성 시각 */
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    /** 수정자 ID */
+    /** 수정자 사용자 ID */
     @Column(name = "updated_by")
     private Long updatedBy;
 
-    /** 수정일시 */
+    /** 수정 시각 */
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
@@ -78,30 +80,32 @@ public class FAQ {
      * FAQ 생성자.
      */
     @Builder
-    private FAQ(Category category, String title, String content, Integer sortOrder, Long createdBy) {
-        this.category = category;
+    private Faq(String title, String content, Boolean isPublished,
+                Category category, Long createdBy) {
         this.title = title;
         this.content = content;
-        this.sortOrder = sortOrder != null ? sortOrder : 0;
+        this.isPublished = isPublished != null ? isPublished : true;
+        this.category = category;
         this.createdBy = createdBy;
     }
 
     /**
      * FAQ 정보 업데이트.
      */
-    public void update(Category category, String title, String content, Integer sortOrder, Long updatedBy) {
-        this.category = category;
+    public void update(String title, String content, Boolean isPublished,
+                      Category category, Long updatedBy) {
         this.title = title;
         this.content = content;
-        this.sortOrder = sortOrder != null ? sortOrder : 0;
+        this.isPublished = isPublished != null ? isPublished : true;
+        this.category = category;
         this.updatedBy = updatedBy;
     }
 
     /**
-     * 정렬 순서 변경.
+     * 공개/비공개 상태 변경.
      */
-    public void changeSortOrder(Integer sortOrder) {
-        this.sortOrder = sortOrder != null ? sortOrder : 0;
+    public void togglePublished() {
+        this.isPublished = !this.isPublished;
     }
 
     /**
@@ -109,5 +113,21 @@ public class FAQ {
      */
     public void changeCategory(Category category) {
         this.category = category;
+    }
+
+    /**
+     * 공개 상태 설정.
+     */
+    public void setPublished(Boolean published) {
+        this.isPublished = published != null ? published : false;
+    }
+
+    /**
+     * FAQ 내용 업데이트.
+     * 
+     * @param content 새로운 답변 내용
+     */
+    public void updateContent(String content) {
+        this.content = content;
     }
 }

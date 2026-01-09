@@ -57,7 +57,11 @@ public enum ErrorCode {
     // 공지사항 관련 에러
     NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTICE_NOT_FOUND", "공지사항을 찾을 수 없습니다."),
 
-    // 강사 관련 에러
+	// Faq 관련 에러
+	FAQ_NOT_FOUND(HttpStatus.NOT_FOUND, "FAQ_NOT_FOUND", "Faq를 찾을 수 없습니다."),
+
+
+	// 강사 관련 에러
     TEACHER_NOT_FOUND(HttpStatus.NOT_FOUND, "TEACHER_NOT_FOUND", "강사를 찾을 수 없습니다."),
     TEACHER_NAME_ALREADY_EXISTS(HttpStatus.CONFLICT, "TEACHER_NAME_ALREADY_EXISTS", "이미 존재하는 강사명입니다."),
 

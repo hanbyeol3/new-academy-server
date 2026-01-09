@@ -138,6 +138,23 @@ public class UploadFileLink {
                 .build();
     }
 
+	/**
+	 * Faq 본문 이미지 연결 생성.
+	 *
+	 * @param fileId 파일 ID
+	 * @param faqId Faq ID
+	 * @return UploadFileLink 인스턴스
+	 */
+	public static UploadFileLink createFaqInlineImage(Long fileId, Long faqId) {
+		return UploadFileLink.builder()
+				.fileId(fileId)
+				.ownerTable("faq")
+				.ownerId(faqId)
+				.role(FileRole.INLINE)
+				.sortOrder(0)
+				.build();
+	}
+
     /**
      * 시설 커버 이미지 연결 생성.
      * 

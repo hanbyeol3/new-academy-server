@@ -68,6 +68,7 @@ public class SecurityConfiguration {
 						.requestMatchers("/api/gallery/**").permitAll()
 						.requestMatchers("/api/academic-schedules/**").permitAll()
 						.requestMatchers("/api/facility/**").permitAll()
+						.requestMatchers("/api/faq/**").permitAll()
 						.requestMatchers("/api/shuttle-routes/**").permitAll()
 						.requestMatchers("/api/teachers/**").permitAll()
 						.requestMatchers("/api/popups/active").permitAll()
