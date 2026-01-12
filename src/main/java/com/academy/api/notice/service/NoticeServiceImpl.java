@@ -14,7 +14,7 @@ import com.academy.api.data.responses.common.ResponseList;
 import com.academy.api.notice.domain.ExposureType;
 import com.academy.api.notice.domain.Notice;
 import com.academy.api.notice.domain.NoticeSearchType;
-import com.academy.api.notice.dto.FileReference;
+import com.academy.api.file.dto.FileReference;
 import com.academy.api.notice.dto.RequestNoticeCreate;
 import com.academy.api.notice.dto.RequestNoticePublishedUpdate;
 import com.academy.api.notice.dto.RequestNoticeUpdate;

@@ -13,7 +13,7 @@ import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
 import com.academy.api.faq.domain.Faq;
 import com.academy.api.faq.domain.FaqSearchType;
-import com.academy.api.notice.dto.FileReference;
+import com.academy.api.file.dto.FileReference;
 import com.academy.api.faq.dto.RequestFaqCreate;
 import com.academy.api.faq.dto.RequestFaqPublishedUpdate;
 import com.academy.api.faq.dto.RequestFaqUpdate;
