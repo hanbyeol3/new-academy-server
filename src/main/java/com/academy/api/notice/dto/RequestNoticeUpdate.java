@@ -1,6 +1,7 @@
 package com.academy.api.notice.dto;
 
 import com.academy.api.notice.domain.ExposureType;
+import com.academy.api.file.dto.FileReference;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Size;

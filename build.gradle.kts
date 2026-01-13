@@ -38,6 +38,10 @@ dependencies {
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.3")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.3")
     
+    // Apache POI (엑셀 파일 생성)
+    implementation("org.apache.poi:poi:5.2.4")
+    implementation("org.apache.poi:poi-ooxml:5.2.4")
+    
     compileOnly("org.projectlombok:lombok")
     
     runtimeOnly("com.h2database:h2")

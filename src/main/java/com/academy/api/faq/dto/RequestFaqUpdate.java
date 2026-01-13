@@ -1,6 +1,6 @@
 package com.academy.api.faq.dto;
 
-import com.academy.api.notice.dto.FileReference;
+import com.academy.api.file.dto.FileReference;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;

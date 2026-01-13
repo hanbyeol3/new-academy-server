@@ -155,6 +155,23 @@ public class UploadFileLink {
 				.build();
 	}
 
+	/**
+	 * 설명회 본문 이미지 연결 생성.
+	 *
+	 * @param fileId 파일 ID
+	 * @param explanationId 설명회 ID
+	 * @return UploadFileLink 인스턴스
+	 */
+	public static UploadFileLink createExplanationInlineImage(Long fileId, Long explanationId) {
+		return UploadFileLink.builder()
+				.fileId(fileId)
+				.ownerTable("explanations")
+				.ownerId(explanationId)
+				.role(FileRole.INLINE)
+				.sortOrder(0)
+				.build();
+	}
+
     /**
      * 시설 커버 이미지 연결 생성.
      * 
