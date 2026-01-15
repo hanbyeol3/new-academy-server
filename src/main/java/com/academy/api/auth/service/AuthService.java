@@ -1,5 +1,7 @@
 package com.academy.api.auth.service;
 
+import com.academy.api.admin.enums.AdminFailReason;
+import com.academy.api.admin.service.AdminHistoryService;
 import com.academy.api.auth.dto.*;
 import com.academy.api.auth.jwt.JwtProvider;
 import com.academy.api.common.exception.BusinessException;
@@ -31,6 +33,7 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
+    private final AdminHistoryService adminHistoryService;
 
     /**
      * 회원 가입.
@@ -87,42 +90,70 @@ public class AuthService {
      */
     @Transactional
     public SignInResponse signIn(SignInRequest request, HttpServletRequest httpRequest) {
-        // 회원 조회
-        Member member = memberRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new BusinessException(ErrorCode.AUTH_INVALID_CREDENTIALS));
+        String username = request.getUsername();
+        String clientIp = getClientIpAddress(httpRequest);
+        String userAgent = httpRequest.getHeader("User-Agent");
+        
+        try {
+            // 회원 조회
+            Member member = memberRepository.findByUsername(username)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.AUTH_INVALID_CREDENTIALS));
 
-        // 계정 상태 확인
-        if (member.getStatus() == MemberStatus.SUSPENDED) {
-            throw new BusinessException(ErrorCode.AUTH_ACCOUNT_SUSPENDED);
+            // 계정 상태 확인
+            if (member.getStatus() == MemberStatus.SUSPENDED) {
+                recordLoginFailure(member.getId(), username, AdminFailReason.ACCOUNT_DISABLED, clientIp, userAgent);
+                throw new BusinessException(ErrorCode.AUTH_ACCOUNT_SUSPENDED);
+            }
+            if (member.getStatus() == MemberStatus.DELETED) {
+                recordLoginFailure(member.getId(), username, AdminFailReason.ACCOUNT_DISABLED, clientIp, userAgent);
+                throw new BusinessException(ErrorCode.AUTH_ACCOUNT_DELETED);
+            }
+            
+            // 관리자 계정 잠금 상태 확인 (admin 계정인 경우)
+            if (isAdminRole(member.getRole()) && member.getLocked() != null && member.getLocked()) {
+                recordLoginFailure(member.getId(), username, AdminFailReason.ACCOUNT_LOCKED, clientIp, userAgent);
+                throw new BusinessException(ErrorCode.AUTH_ACCOUNT_LOCKED);
+            }
+
+            // 비밀번호 검증
+            if (!passwordEncoder.matches(request.getPassword(), member.getPasswordHash())) {
+                recordLoginFailure(member.getId(), username, AdminFailReason.INVALID_PASSWORD, clientIp, userAgent);
+                throw new BusinessException(ErrorCode.AUTH_INVALID_CREDENTIALS);
+            }
+
+            // JWT 토큰 생성
+            String accessToken = jwtProvider.createAccessToken(member);
+            String refreshToken = jwtProvider.createRefreshToken(member);
+
+            // Refresh Token 저장
+            saveRefreshToken(member.getId(), refreshToken, httpRequest);
+
+            // 마지막 로그인 시각 업데이트
+            member.updateLastLoginAt();
+            memberRepository.save(member);
+
+            // 관리자 로그인 성공 이력 기록
+            if (isAdminRole(member.getRole())) {
+                recordLoginSuccess(member.getId(), username, clientIp, userAgent);
+            }
+
+            log.info("로그인 성공: username={}, memberId={}", username, member.getId());
+
+            return SignInResponse.of(
+                    accessToken,
+                    refreshToken,
+                    jwtProvider.getAccessTokenExpirationSeconds(),
+                    member
+            );
+            
+        } catch (BusinessException e) {
+            // 이미 로그인 실패가 기록된 경우가 아니라면 기록
+            if (e.getErrorCode() == ErrorCode.AUTH_INVALID_CREDENTIALS) {
+                // 사용자를 찾을 수 없는 경우
+                recordLoginFailure(null, username, AdminFailReason.USER_NOT_FOUND, clientIp, userAgent);
+            }
+            throw e;
         }
-        if (member.getStatus() == MemberStatus.DELETED) {
-            throw new BusinessException(ErrorCode.AUTH_ACCOUNT_DELETED);
-        }
-
-        // 비밀번호 검증
-        if (!passwordEncoder.matches(request.getPassword(), member.getPasswordHash())) {
-            throw new BusinessException(ErrorCode.AUTH_INVALID_CREDENTIALS);
-        }
-
-        // JWT 토큰 생성
-        String accessToken = jwtProvider.createAccessToken(member);
-        String refreshToken = jwtProvider.createRefreshToken(member);
-
-        // Refresh Token 저장
-        saveRefreshToken(member.getId(), refreshToken, httpRequest);
-
-        // 마지막 로그인 시각 업데이트
-        member.updateLastLoginAt();
-        memberRepository.save(member);
-
-        log.info("로그인 성공: username={}, memberId={}", request.getUsername(), member.getId());
-
-        return SignInResponse.of(
-                accessToken,
-                refreshToken,
-                jwtProvider.getAccessTokenExpirationSeconds(),
-                member
-        );
     }
 
     /**
@@ -291,5 +322,51 @@ public class AuthService {
         }
 
         return request.getRemoteAddr();
+    }
+    
+    /**
+     * 관리자 권한 여부 확인.
+     * 
+     * @param role 사용자 권한
+     * @return 관리자 권한 여부
+     */
+    private boolean isAdminRole(MemberRole role) {
+        return role == MemberRole.ADMIN || role == MemberRole.SUPER_ADMIN;
+    }
+    
+    /**
+     * 관리자 로그인 성공 이력 기록.
+     * 
+     * @param adminId 관리자 ID
+     * @param username 사용자명
+     * @param clientIp 클라이언트 IP
+     * @param userAgent User-Agent
+     */
+    private void recordLoginSuccess(Long adminId, String username, String clientIp, String userAgent) {
+        try {
+            adminHistoryService.recordLoginHistory(adminId, username, true, null, clientIp, userAgent);
+            log.debug("[AuthService] 관리자 로그인 성공 이력 기록 완료: adminId={}", adminId);
+        } catch (Exception e) {
+            log.error("[AuthService] 관리자 로그인 성공 이력 기록 실패: {}", e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 관리자 로그인 실패 이력 기록.
+     * 
+     * @param adminId 관리자 ID (null 가능)
+     * @param username 사용자명
+     * @param failReason 실패 사유
+     * @param clientIp 클라이언트 IP
+     * @param userAgent User-Agent
+     */
+    private void recordLoginFailure(Long adminId, String username, AdminFailReason failReason, 
+                                  String clientIp, String userAgent) {
+        try {
+            adminHistoryService.recordLoginHistory(adminId, username, false, failReason, clientIp, userAgent);
+            log.debug("[AuthService] 관리자 로그인 실패 이력 기록 완료: username={}, reason={}", username, failReason);
+        } catch (Exception e) {
+            log.error("[AuthService] 관리자 로그인 실패 이력 기록 실패: {}", e.getMessage(), e);
+        }
     }
 }

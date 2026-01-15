@@ -480,50 +480,50 @@ POST /api/explanations/reservations/{reservationId}/cancel
 ### ExplanationDivision (구분)
 ```typescript
 enum ExplanationDivision {
-  MIDDLE = "중등부",
-  HIGH = "고등부", 
-  SELF_STUDY_RETAKE = "독학재수"
+    MIDDLE = "중등부",
+    HIGH = "고등부",
+    SELF_STUDY_RETAKE = "독학재수"
 }
 ```
 
 ### ExplanationScheduleStatus (일정 상태)
 ```typescript
 enum ExplanationScheduleStatus {
-  RESERVABLE = "예약가능",
-  CLOSED = "마감"
+    RESERVABLE = "예약가능",
+    CLOSED = "마감"
 }
 ```
 
 ### Gender (성별)
 ```typescript
 enum Gender {
-  M = "남성",
-  F = "여성"
+    M = "남성",
+    F = "여성"
 }
 ```
 
 ### AcademicTrack (계열)
 ```typescript
 enum AcademicTrack {
-  LIBERAL_ARTS = "문과",
-  SCIENCE = "이과",
-  UNDECIDED = "미정"
+    LIBERAL_ARTS = "문과",
+    SCIENCE = "이과",
+    UNDECIDED = "미정"
 }
 ```
 
 ### ReservationStatus (예약 상태)
 ```typescript
 enum ReservationStatus {
-  CONFIRMED = "확정",
-  CANCELED = "취소"
+    CONFIRMED = "확정",
+    CANCELED = "취소"
 }
 ```
 
 ### CanceledBy (취소자)
 ```typescript
 enum CanceledBy {
-  USER = "사용자",
-  ADMIN = "관리자"
+    USER = "사용자",
+    ADMIN = "관리자"
 }
 ```
 
@@ -543,14 +543,14 @@ enum CanceledBy {
 ### 인라인 이미지 응답 구조
 ```json
 "inlineImages": [
-  {
-    "fileId": "124",
-    "fileName": "실제파일명.png",
-    "originalName": "원본파일명.png",
-    "ext": "png",
-    "size": 2048,
-    "url": "/api/files/download/124"
-  }
+{
+"fileId": "124",
+"fileName": "실제파일명.png",
+"originalName": "원본파일명.png",
+"ext": "png",
+"size": 2048,
+"url": "/api/files/download/124"
+}
 ]
 ```
 
@@ -643,66 +643,66 @@ curl -X GET "http://localhost:8081/api/admin/explanations/reservations/export?ex
 ```javascript
 // 설명회 목록 조회 (관리자)
 const fetchExplanationsForAdmin = async (filters = {}) => {
-  const params = new URLSearchParams();
-  if (filters.division) params.append('division', filters.division);
-  if (filters.isPublished !== undefined) params.append('isPublished', filters.isPublished ? '1' : '0');
-  if (filters.q) params.append('q', filters.q);
-  if (filters.page) params.append('page', filters.page);
-  if (filters.size) params.append('size', filters.size);
+    const params = new URLSearchParams();
+    if (filters.division) params.append('division', filters.division);
+    if (filters.isPublished !== undefined) params.append('isPublished', filters.isPublished ? '1' : '0');
+    if (filters.q) params.append('q', filters.q);
+    if (filters.page) params.append('page', filters.page);
+    if (filters.size) params.append('size', filters.size);
 
-  const response = await fetch(`/api/admin/explanations?${params}`, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
+    const response = await fetch(`/api/admin/explanations?${params}`, {
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        }
+    });
+
+    const result = await response.json();
+
+    if (result.result === 'Success') {
+        return {
+            items: result.items,
+            total: result.total,
+            page: result.page,
+            size: result.size
+        };
+    } else {
+        throw new Error(result.error?.message || '조회 실패');
     }
-  });
-  
-  const result = await response.json();
-  
-  if (result.result === 'Success') {
-    return {
-      items: result.items,
-      total: result.total,
-      page: result.page,
-      size: result.size
-    };
-  } else {
-    throw new Error(result.error?.message || '조회 실패');
-  }
 };
 
 // 예약 신청
 const createReservation = async (reservationData) => {
-  try {
-    const response = await fetch('/api/explanations/reservations', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(reservationData)
-    });
-    
-    const result = await response.json();
-    
-    if (result.result === 'Success') {
-      return result.data; // 예약 ID
-    } else {
-      // 구체적인 에러 처리
-      switch (result.error?.code) {
-        case 'SCHEDULE_CAPACITY_EXCEEDED':
-          throw new Error('정원이 초과되었습니다. 다른 회차를 선택해주세요.');
-        case 'DUPLICATE_RESERVATION':
-          throw new Error('이미 해당 회차에 예약이 있습니다.');
-        case 'SCHEDULE_NOT_RESERVABLE':
-          throw new Error('예약할 수 없는 회차입니다.');
-        default:
-          throw new Error(result.error?.message || '예약 신청 실패');
-      }
+    try {
+        const response = await fetch('/api/explanations/reservations', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(reservationData)
+        });
+
+        const result = await response.json();
+
+        if (result.result === 'Success') {
+            return result.data; // 예약 ID
+        } else {
+            // 구체적인 에러 처리
+            switch (result.error?.code) {
+                case 'SCHEDULE_CAPACITY_EXCEEDED':
+                    throw new Error('정원이 초과되었습니다. 다른 회차를 선택해주세요.');
+                case 'DUPLICATE_RESERVATION':
+                    throw new Error('이미 해당 회차에 예약이 있습니다.');
+                case 'SCHEDULE_NOT_RESERVABLE':
+                    throw new Error('예약할 수 없는 회차입니다.');
+                default:
+                    throw new Error(result.error?.message || '예약 신청 실패');
+            }
+        }
+    } catch (error) {
+        console.error('예약 신청 실패:', error);
+        throw error;
     }
-  } catch (error) {
-    console.error('예약 신청 실패:', error);
-    throw error;
-  }
 };
 ```
 

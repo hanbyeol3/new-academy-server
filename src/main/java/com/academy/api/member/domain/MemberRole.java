@@ -10,7 +10,10 @@ public enum MemberRole {
     USER,
     
     /** 관리자 */
-    ADMIN;
+    ADMIN,
+    
+    /** 최고 관리자 */
+    SUPER_ADMIN;
 
     /**
      * Spring Security Role 형식으로 변환.

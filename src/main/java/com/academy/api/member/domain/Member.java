@@ -81,9 +81,29 @@ public class Member {
     @Column(name = "password_changed_at")
     private LocalDateTime passwordChangedAt;
 
+    /** 계정 정지 시각 */
+    @Column(name = "suspended_at")
+    private LocalDateTime suspendedAt;
+
+    /** 계정 잠금 여부 */
+    @Column(name = "locked", nullable = false)
+    private Boolean locked = false;
+
+    /** 관리자 메모 */
+    @Column(name = "memo", length = 500)
+    private String memo;
+
+    /** 생성자 관리자 ID */
+    @Column(name = "created_by")
+    private Long createdBy;
+
+    /** 수정자 관리자 ID */
+    @Column(name = "updated_by")
+    private Long updatedBy;
+
     /** 생성 시각 */
     @CreatedDate
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     /** 수정 시각 */
@@ -148,6 +168,7 @@ public class Member {
      */
     public void suspend() {
         this.status = MemberStatus.SUSPENDED;
+        this.suspendedAt = LocalDateTime.now();
     }
 
     /**
@@ -162,6 +183,72 @@ public class Member {
      */
     public void activate() {
         this.status = MemberStatus.ACTIVE;
+        this.suspendedAt = null;
+    }
+
+    /**
+     * 계정 잠금 처리.
+     */
+    public void lock() {
+        this.locked = true;
+    }
+
+    /**
+     * 계정 잠금 해제 처리.
+     */
+    public void unlock() {
+        this.locked = false;
+    }
+
+    /**
+     * 관리자 메모 업데이트.
+     * 
+     * @param memo 새로운 메모
+     */
+    public void updateMemo(String memo) {
+        this.memo = memo;
+    }
+
+    /**
+     * 관리자 계정 정보 업데이트.
+     * 
+     * @param memberName 이름
+     * @param phoneNumber 전화번호
+     * @param emailAddress 이메일
+     * @param updatedBy 수정자 ID
+     */
+    public void updateAdminInfo(String memberName, String phoneNumber, String emailAddress, Long updatedBy) {
+        this.memberName = memberName;
+        this.phoneNumber = phoneNumber;
+        this.emailAddress = emailAddress;
+        this.updatedBy = updatedBy;
+    }
+
+    /**
+     * 상태 변경 처리.
+     * 
+     * @param status 새로운 상태
+     * @param updatedBy 수정자 ID
+     */
+    public void updateStatus(MemberStatus status, Long updatedBy) {
+        this.status = status;
+        this.updatedBy = updatedBy;
+        if (status == MemberStatus.SUSPENDED) {
+            this.suspendedAt = LocalDateTime.now();
+        } else {
+            this.suspendedAt = null;
+        }
+    }
+
+    /**
+     * 잠금 상태 변경 처리.
+     * 
+     * @param locked 잠금 여부
+     * @param updatedBy 수정자 ID
+     */
+    public void updateLocked(Boolean locked, Long updatedBy) {
+        this.locked = locked;
+        this.updatedBy = updatedBy;
     }
 
     /**
@@ -174,11 +261,29 @@ public class Member {
     }
 
     /**
+     * 계정이 잠겨있는지 확인.
+     * 
+     * @return 잠금 상태이면 true
+     */
+    public boolean isLocked() {
+        return this.locked != null && this.locked;
+    }
+
+    /**
      * 관리자 권한인지 확인.
      * 
      * @return 관리자이면 true
      */
     public boolean isAdmin() {
-        return this.role == MemberRole.ADMIN;
+        return this.role == MemberRole.ADMIN || this.role == MemberRole.SUPER_ADMIN;
+    }
+
+    /**
+     * 최고 관리자 권한인지 확인.
+     * 
+     * @return 최고 관리자이면 true
+     */
+    public boolean isSuperAdmin() {
+        return this.role == MemberRole.SUPER_ADMIN;
     }
 }

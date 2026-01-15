@@ -24,6 +24,7 @@ public enum ErrorCode {
     AUTH_INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "AUTH_INVALID_CREDENTIALS", "아이디 또는 비밀번호가 올바르지 않습니다."),
     AUTH_ACCOUNT_SUSPENDED(HttpStatus.LOCKED, "AUTH_ACCOUNT_SUSPENDED", "정지된 계정입니다. 관리자에게 문의하세요."),
     AUTH_ACCOUNT_DELETED(HttpStatus.LOCKED, "AUTH_ACCOUNT_DELETED", "삭제된 계정입니다."),
+    AUTH_ACCOUNT_LOCKED(HttpStatus.LOCKED, "AUTH_ACCOUNT_LOCKED", "잠금된 계정입니다. 관리자에게 문의하세요."),
     AUTH_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "AUTH_TOKEN_EXPIRED", "토큰이 만료되었습니다."),
     AUTH_INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_INVALID_TOKEN", "유효하지 않은 토큰입니다."),
     AUTH_REFRESH_TOKEN_NOT_FOUND(HttpStatus.UNAUTHORIZED, "AUTH_REFRESH_TOKEN_NOT_FOUND", "Refresh Token을 찾을 수 없습니다."),
