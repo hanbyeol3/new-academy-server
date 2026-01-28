@@ -17,7 +17,7 @@ import java.util.List;
 @Getter
 @Builder
 @Schema(description = "공지사항 응답")
-public class ResponseNotice {
+public class ResponseNoticeDetail {
 
     @Schema(description = "공지사항 ID", example = "1")
     private Long id;
@@ -89,8 +89,8 @@ public class ResponseNotice {
     /**
      * Entity에서 DTO로 변환.
      */
-    public static ResponseNotice from(Notice notice) {
-        return ResponseNotice.builder()
+    public static ResponseNoticeDetail from(Notice notice) {
+        return ResponseNoticeDetail.builder()
                 .id(notice.getId())
                 .title(notice.getTitle())
                 .content(notice.getContent())
@@ -118,8 +118,8 @@ public class ResponseNotice {
     /**
      * Entity에서 DTO로 변환 (회원 이름 포함).
      */
-    public static ResponseNotice fromWithNames(Notice notice, String createdByName, String updatedByName) {
-        return ResponseNotice.builder()
+    public static ResponseNoticeDetail fromWithNames(Notice notice, String createdByName, String updatedByName) {
+        return ResponseNoticeDetail.builder()
                 .id(notice.getId())
                 .title(notice.getTitle())
                 .content(notice.getContent())
@@ -147,9 +147,9 @@ public class ResponseNotice {
     /**
      * Entity 목록을 DTO 목록으로 변환.
      */
-    public static List<ResponseNotice> fromList(List<Notice> notices) {
+    public static List<ResponseNoticeDetail> fromList(List<Notice> notices) {
         return notices.stream()
-                .map(ResponseNotice::from)
+                .map(ResponseNoticeDetail::from)
                 .toList();
     }
 }

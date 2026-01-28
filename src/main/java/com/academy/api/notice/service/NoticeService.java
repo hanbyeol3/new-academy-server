@@ -6,9 +6,9 @@ import com.academy.api.data.responses.common.ResponseList;
 import com.academy.api.notice.dto.RequestNoticeCreate;
 import com.academy.api.notice.dto.RequestNoticePublishedUpdate;
 import com.academy.api.notice.dto.RequestNoticeUpdate;
-import com.academy.api.notice.dto.ResponseNotice;
-import com.academy.api.notice.dto.ResponseNoticeListItem;
-import com.academy.api.notice.dto.ResponseNoticeSimple;
+import com.academy.api.notice.dto.ResponseNoticeDetail;
+import com.academy.api.notice.dto.ResponseNoticeAdminList;
+import com.academy.api.notice.dto.ResponseNoticePublicList;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
@@ -25,8 +25,10 @@ import java.util.List;
  */
 public interface NoticeService {
 
+	// 관리자 ************************************************************************
+
     /**
-     * 관리자용 공지사항 목록 조회 (모든 상태 포함).
+     * [관리자] 공지사항 목록 조회 (모든 상태 포함).
      * 
      * @param keyword 검색 키워드
      * @param searchType 검색 타입 (TITLE, CONTENT, AUTHOR, ALL)
@@ -38,38 +40,15 @@ public interface NoticeService {
      * @param pageable 페이징 정보
      * @return 검색 결과
      */
-    ResponseList<ResponseNoticeListItem> getNoticeListForAdmin(String keyword, String searchType, Long categoryId, Boolean isImportant, Boolean isPublished, String exposureType, String sortBy, Pageable pageable);
+    ResponseList<ResponseNoticeAdminList> getNoticeListForAdmin(String keyword, String searchType, Long categoryId, Boolean isImportant, Boolean isPublished, String exposureType, String sortBy, Pageable pageable);
 
-    /**
-     * 공개용 공지사항 목록 조회 (노출 가능한 것만).
-     * 
-     * @param keyword 검색 키워드
-     * @param searchType 검색 타입 (TITLE, CONTENT, AUTHOR, ALL)
-     * @param categoryId 카테고리 ID (null이면 전체 카테고리)
-     * @param isImportant 중요 공지 여부 (null이면 모든 상태)
-     * @param isPublished 공개 상태 (null이면 모든 상태)
-     * @param exposureType 노출 기간 유형 (null이면 모든 유형)
-     * @param sortBy 정렬 기준 (null이면 기본 정렬)
-     * @param pageable 페이징 정보
-     * @return 검색 결과
-     */
-    ResponseList<ResponseNoticeSimple> getExposableNoticeList(String keyword, String searchType, Long categoryId, Boolean isImportant, Boolean isPublished, String exposureType, String sortBy, Pageable pageable);
-
-    /**
-     * 공지사항 상세 조회.
-     * 
-     * @param id 공지사항 ID
-     * @return 공지사항 상세 정보
-     */
-    ResponseData<ResponseNotice> getNotice(Long id);
-
-    /**
-     * 공지사항 상세 조회 (조회수 증가).
-     * 
-     * @param id 공지사항 ID
-     * @return 공지사항 상세 정보
-     */
-    ResponseData<ResponseNotice> getNoticeWithViewCount(Long id);
+	/**
+	 * [관리자] 공지사항 상세 조회.
+	 *
+	 * @param id 공지사항 ID
+	 * @return 공지사항 상세 정보
+	 */
+	ResponseData<ResponseNoticeDetail> getNoticeForAdmin(Long id);
 
     /**
      * 공지사항 생성.
@@ -86,7 +65,7 @@ public interface NoticeService {
      * @param request 수정 요청 데이터
      * @return 수정 결과 (완전한 공지사항 정보 포함)
      */
-    ResponseData<ResponseNotice> updateNotice(Long id, RequestNoticeUpdate request);
+    ResponseData<ResponseNoticeDetail> updateNotice(Long id, RequestNoticeUpdate request);
 
     /**
      * 공지사항 삭제.
@@ -137,7 +116,7 @@ public interface NoticeService {
      * @param limit 조회할 개수
      * @return 최근 공지사항 목록
      */
-    ResponseList<ResponseNoticeSimple> getRecentNotices(int limit);
+    ResponseList<ResponseNoticePublicList> getRecentNotices(int limit);
 
     /**
      * 카테고리별 공지사항 통계.
@@ -145,4 +124,30 @@ public interface NoticeService {
      * @return 카테고리별 통계 정보
      */
     ResponseData<List<Object[]>> getNoticeStatsByCategory();
+
+	// 공개 ************************************************************************
+
+	/**
+	 * 공개용 공지사항 목록 조회 (노출 가능한 것만).
+	 *
+	 * @param keyword 검색 키워드
+	 * @param searchType 검색 타입 (TITLE, CONTENT, AUTHOR, ALL)
+	 * @param categoryId 카테고리 ID (null이면 전체 카테고리)
+	 * @param isImportant 중요 공지 여부 (null이면 모든 상태)
+	 * @param isPublished 공개 상태 (null이면 모든 상태)
+	 * @param exposureType 노출 기간 유형 (null이면 모든 유형)
+	 * @param sortBy 정렬 기준 (null이면 기본 정렬)
+	 * @param pageable 페이징 정보
+	 * @return 검색 결과
+	 */
+	ResponseList<ResponseNoticePublicList> getNoticeListForPublic(String keyword, String searchType, Long categoryId, Boolean isImportant, Boolean isPublished, String exposureType, String sortBy, Pageable pageable);
+
+
+	/**
+	 * 공지사항 상세 조회 (조회수 증가).
+	 *
+	 * @param id 공지사항 ID
+	 * @return 공지사항 상세 정보
+	 */
+	ResponseData<ResponseNoticeDetail> getNoticeForPublic(Long id);
 }

@@ -37,14 +37,12 @@ public class GalleryPublicController {
                 
                 특징:
                 - 인증 없이 접근 가능
-                - 현재 시점에서 노출 가능한 갤러리만 표시
                 - 비공개 갤러리은 제외
                 
                 검색 옵션:
                 - keyword: 검색 키워드
                 - searchType: 검색 대상 (TITLE, CONTENT, AUTHOR, ALL)
                 - categoryId: 특정 카테고리만
-                - exposureType: 노출 기간 유형 (ALWAYS, PERIOD)
                 - sortBy: 정렬 기준 (CREATED_DESC, CREATED_ASC, VIEW_COUNT_DESC)
                 
                 정렬 옵션:
@@ -60,7 +58,7 @@ public class GalleryPublicController {
             @RequestParam(required = false) String searchType,
             @Parameter(description = "카테고리 ID", example = "1") 
             @RequestParam(required = false) Long categoryId,
-            @Parameter(description = "중요 공지만 조회", example = "true")
+            @Parameter(description = "공개 상태", example = "true")
             @RequestParam(required = false) Boolean isPublished,
             @Parameter(description = "정렬 기준 (CREATED_DESC, CREATED_ASC, VIEW_COUNT_DESC)", example = "CREATED_DESC")
             @RequestParam(required = false) String sortBy,

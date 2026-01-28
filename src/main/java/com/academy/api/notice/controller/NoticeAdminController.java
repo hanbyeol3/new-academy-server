@@ -6,8 +6,8 @@ import com.academy.api.data.responses.common.ResponseList;
 import com.academy.api.notice.dto.RequestNoticeCreate;
 import com.academy.api.notice.dto.RequestNoticePublishedUpdate;
 import com.academy.api.notice.dto.RequestNoticeUpdate;
-import com.academy.api.notice.dto.ResponseNotice;
-import com.academy.api.notice.dto.ResponseNoticeListItem;
+import com.academy.api.notice.dto.ResponseNoticeDetail;
+import com.academy.api.notice.dto.ResponseNoticeAdminList;
 import com.academy.api.notice.service.NoticeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -62,7 +62,7 @@ public class NoticeAdminController {
                 
                 주요 기능:
                 - 키워드 검색 (제목, 내용)
-                - 작성자 검색  
+                - 작성자 검색
                 - 카테고리 필터링
                 - 중요 공지 필터링
                 - 공개/비공개 상태 필터링
@@ -90,7 +90,7 @@ public class NoticeAdminController {
                 """
     )
     @GetMapping
-    public ResponseList<ResponseNoticeListItem> getNoticeList(
+    public ResponseList<ResponseNoticeAdminList> getNoticeList(
             @Parameter(description = "검색 키워드", example = "학사일정") 
             @RequestParam(required = false) String keyword,
             @Parameter(description = "검색 타입 (TITLE, CONTENT, AUTHOR, ALL)", example = "ALL") 
@@ -132,11 +132,11 @@ public class NoticeAdminController {
                 """
     )
     @GetMapping("/{id}")
-    public ResponseData<ResponseNotice> getNotice(
+    public ResponseData<ResponseNoticeDetail> getNoticeForAdmin(
             @Parameter(description = "공지사항 ID", example = "1") @PathVariable Long id) {
         
         log.info("[NoticeAdminController] 공지사항 상세 조회 요청. ID={}", id);
-        return noticeService.getNotice(id);
+        return noticeService.getNoticeForAdmin(id);
     }
 
 	/**
@@ -191,7 +191,7 @@ public class NoticeAdminController {
                 기존 공지사항 정보를 수정합니다.
                 
                 수정 가능 항목:
-                - 제목, 내용 
+                - 제목, 내용
                 - 중요 공지 여부
                 - 게시 여부
                 - 노출 기간 설정 (유형, 시작/종료일시)
@@ -205,7 +205,7 @@ public class NoticeAdminController {
                 """
     )
     @PutMapping("/{id}")
-    public ResponseData<ResponseNotice> updateNotice(
+    public ResponseData<ResponseNoticeDetail> updateNotice(
             @Parameter(description = "공지사항 ID", example = "1") @PathVariable Long id,
             @Parameter(description = "공지사항 수정 요청 데이터")
             @RequestBody @Valid RequestNoticeUpdate request) {

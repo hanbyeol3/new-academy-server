@@ -6,8 +6,8 @@ import com.academy.api.data.responses.common.ResponseList;
 import com.academy.api.notice.domain.Notice;
 import com.academy.api.notice.dto.RequestNoticeCreate;
 import com.academy.api.notice.dto.RequestNoticeUpdate;
-import com.academy.api.notice.dto.ResponseNotice;
-import com.academy.api.notice.dto.ResponseNoticeSimple;
+import com.academy.api.notice.dto.ResponseNoticeDetail;
+import com.academy.api.notice.dto.ResponseNoticePublicList;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
@@ -40,42 +40,42 @@ public class NoticeMapper {
     /**
      * 엔티티를 상세 응답 DTO로 변환.
      */
-    public ResponseNotice toResponse(Notice notice) {
-        return ResponseNotice.from(notice);
+    public ResponseNoticeDetail toResponse(Notice notice) {
+        return ResponseNoticeDetail.from(notice);
     }
 
     /**
      * 엔티티를 간단 응답 DTO로 변환.
      */
-    public ResponseNoticeSimple toSimpleResponse(Notice notice) {
-        return ResponseNoticeSimple.from(notice);
+    public ResponseNoticePublicList toSimpleResponse(Notice notice) {
+        return ResponseNoticePublicList.from(notice);
     }
 
     /**
      * 엔티티 리스트를 상세 응답 DTO 리스트로 변환.
      */
-    public List<ResponseNotice> toResponseList(List<Notice> notices) {
-        return ResponseNotice.fromList(notices);
+    public List<ResponseNoticeDetail> toResponseList(List<Notice> notices) {
+        return ResponseNoticeDetail.fromList(notices);
     }
 
     /**
      * 엔티티 리스트를 간단 응답 DTO 리스트로 변환.
      */
-    public List<ResponseNoticeSimple> toSimpleResponseList(List<Notice> notices) {
-        return ResponseNoticeSimple.fromList(notices);
+    public List<ResponseNoticePublicList> toSimpleResponseList(List<Notice> notices) {
+        return ResponseNoticePublicList.fromList(notices);
     }
 
     /**
      * 엔티티 페이지를 상세 응답 리스트로 변환.
      */
-    public ResponseList<ResponseNotice> toResponseList(Page<Notice> page) {
+    public ResponseList<ResponseNoticeDetail> toResponseList(Page<Notice> page) {
         return ResponseList.from(page.map(this::toResponse));
     }
 
     /**
      * 엔티티 페이지를 간단 응답 리스트로 변환.
      */
-    public ResponseList<ResponseNoticeSimple> toSimpleResponseList(Page<Notice> page) {
+    public ResponseList<ResponseNoticePublicList> toSimpleResponseList(Page<Notice> page) {
         return ResponseList.from(page.map(this::toSimpleResponse));
     }
 

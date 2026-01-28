@@ -18,10 +18,10 @@ import com.academy.api.file.dto.FileReference;
 import com.academy.api.notice.dto.RequestNoticeCreate;
 import com.academy.api.notice.dto.RequestNoticePublishedUpdate;
 import com.academy.api.notice.dto.RequestNoticeUpdate;
-import com.academy.api.notice.dto.ResponseNotice;
-import com.academy.api.notice.dto.ResponseNoticeListItem;
+import com.academy.api.notice.dto.ResponseNoticeDetail;
+import com.academy.api.notice.dto.ResponseNoticeAdminList;
 import com.academy.api.notice.dto.ResponseNoticeNavigation;
-import com.academy.api.notice.dto.ResponseNoticeSimple;
+import com.academy.api.notice.dto.ResponseNoticePublicList;
 import com.academy.api.notice.mapper.NoticeMapper;
 import com.academy.api.notice.repository.NoticeRepository;
 import com.academy.api.file.domain.FileRole;
@@ -76,9 +76,21 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
     private final UploadFileLinkRepository uploadFileLinkRepository;
     private final FileService fileService;
 
-	// 관리자용 공지사항 목록 조회
+	/**
+	 * [관리자] 공지사항 목록 조회 (모든 상태 포함).
+	 *
+	 * @param keyword 검색 키워드
+	 * @param searchType 검색 타입 (TITLE, CONTENT, AUTHOR, ALL)
+	 * @param categoryId 카테고리 ID (null이면 전체 카테고리)
+	 * @param isImportant 중요 공지 여부 (null이면 모든 상태)
+	 * @param isPublished 공개 상태 (null이면 모든 상태)
+	 * @param exposureType 노출 기간 유형 (null이면 모든 유형)
+	 * @param sortBy 정렬 기준 (null이면 기본 정렬)
+	 * @param pageable 페이징 정보
+	 * @return 검색 결과
+	 */
     @Override
-    public ResponseList<ResponseNoticeListItem> getNoticeListForAdmin(String keyword, String searchType, Long categoryId, Boolean isImportant, Boolean isPublished, String exposureType, String sortBy, Pageable pageable) {
+    public ResponseList<ResponseNoticeAdminList> getNoticeListForAdmin(String keyword, String searchType, Long categoryId, Boolean isImportant, Boolean isPublished, String exposureType, String sortBy, Pageable pageable) {
         log.info("[NoticeService] 관리자용 공지사항 목록 조회 시작. keyword={}, searchType={}, categoryId={}, isImportant={}, isPublished={}, exposureType={}, sortBy={}, 페이지={}", 
                 keyword, searchType, categoryId, isImportant, isPublished, exposureType, sortBy, pageable);
 
@@ -111,11 +123,11 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
                 noticePage.getTotalElements(), noticePage.getNumber(), notices.size());
         
         // 회원 이름 포함하여 DTO 변환
-        List<ResponseNoticeListItem> items = notices.stream()
+        List<ResponseNoticeAdminList> items = notices.stream()
                 .map(notice -> {
                     String createdByName = getMemberName(notice.getCreatedBy());
                     String updatedByName = getMemberName(notice.getUpdatedBy());
-                    return ResponseNoticeListItem.fromWithNames(notice, createdByName, updatedByName);
+                    return ResponseNoticeAdminList.fromWithNames(notice, createdByName, updatedByName);
                 })
                 .toList();
         
@@ -127,8 +139,21 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
         );
     }
 
+	/**
+	 * 공개용 공지사항 목록 조회 (노출 가능한 것만).
+	 *
+	 * @param keyword 검색 키워드
+	 * @param searchType 검색 타입 (TITLE, CONTENT, AUTHOR, ALL)
+	 * @param categoryId 카테고리 ID (null이면 전체 카테고리)
+	 * @param isImportant 중요 공지 여부 (null이면 모든 상태)
+	 * @param isPublished 공개 상태 (null이면 모든 상태)
+	 * @param exposureType 노출 기간 유형 (null이면 모든 유형)
+	 * @param sortBy 정렬 기준 (null이면 기본 정렬)
+	 * @param pageable 페이징 정보
+	 * @return 검색 결과
+	 */
     @Override
-    public ResponseList<ResponseNoticeSimple> getExposableNoticeList(String keyword, String searchType, Long categoryId, Boolean isImportant, Boolean isPublished, String exposureType, String sortBy, Pageable pageable) {
+    public ResponseList<ResponseNoticePublicList> getNoticeListForPublic(String keyword, String searchType, Long categoryId, Boolean isImportant, Boolean isPublished, String exposureType, String sortBy, Pageable pageable) {
         log.info("[NoticeService] 공개용 공지사항 목록 조회 시작. keyword={}, searchType={}, categoryId={}, isImportant={}, isPublished={}, exposureType={}, sortBy={}, 페이지={}", 
                 keyword, searchType, categoryId, isImportant, isPublished, exposureType, sortBy, pageable);
 
@@ -170,7 +195,7 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
      * @param id 공지사항 ID
      * @return 공지사항 상세 정보 (파일 목록 포함)
      */
-    public ResponseData<ResponseNotice> getNoticeWithFiles(Long id) {
+    public ResponseData<ResponseNoticeDetail> getNoticeWithFiles(Long id) {
         log.info("[NoticeService] 공지사항 상세 조회 (파일 포함) 시작. ID={}", id);
         
         Notice notice = findNoticeById(id);
@@ -214,10 +239,10 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
         ResponseNoticeNavigation navigation = getNoticeNavigation(id);
         
         // ResponseNotice 생성 (파일 목록 및 회원 이름 포함)
-        ResponseNotice response = ResponseNotice.fromWithNames(notice, createdByName, updatedByName);
+        ResponseNoticeDetail response = ResponseNoticeDetail.fromWithNames(notice, createdByName, updatedByName);
         
         // 파일 정보 및 네비게이션 정보 설정
-        response = ResponseNotice.builder()
+        response = ResponseNoticeDetail.builder()
                 .id(response.getId())
                 .title(response.getTitle())
                 .content(response.getContent())
@@ -245,13 +270,13 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
     }
 
     @Override
-    public ResponseData<ResponseNotice> getNotice(Long id) {
+    public ResponseData<ResponseNoticeDetail> getNoticeForAdmin(Long id) {
         return getNoticeWithFiles(id);
     }
 
     @Override
     @Transactional
-    public ResponseData<ResponseNotice> getNoticeWithViewCount(Long id) {
+    public ResponseData<ResponseNoticeDetail> getNoticeForPublic(Long id) {
         log.info("[NoticeService] 공지사항 상세 조회 (조회수 증가) 시작. ID={}", id);
         
         Notice notice = findNoticeById(id);
@@ -333,7 +358,7 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
      */
     @Override
     @Transactional
-    public ResponseData<ResponseNotice> updateNotice(Long id, RequestNoticeUpdate request) {
+    public ResponseData<ResponseNoticeDetail> updateNotice(Long id, RequestNoticeUpdate request) {
         log.info("🔄 [NoticeService] 공지사항 수정 시작!!! ID={}, " +
                 "신규첨부파일={}개, 신규본문이미지={}개, 삭제첨부파일={}개, 삭제본문이미지={}개", 
                 id,
@@ -406,7 +431,7 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
         log.info("[NoticeService] 공지사항 수정 완료. ID={}, 제목={}", id, notice.getTitle());
         
         // 6. 완전한 공지사항 정보 반환 (파일 정보 포함)
-        ResponseNotice updatedNotice = getNoticeWithFiles(id).getData();
+        ResponseNoticeDetail updatedNotice = getNoticeWithFiles(id).getData();
         
         return ResponseData.ok("0000", "공지사항이 수정되었습니다.", updatedNotice);
     }
@@ -543,11 +568,11 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
     }
 
     @Override
-    public ResponseList<ResponseNoticeSimple> getRecentNotices(int limit) {
+    public ResponseList<ResponseNoticePublicList> getRecentNotices(int limit) {
         log.info("[NoticeService] 최근 공지사항 조회 시작. 개수={}", limit);
         
         List<Notice> notices = noticeRepository.findRecentNotices(limit);
-        List<ResponseNoticeSimple> response = noticeMapper.toSimpleResponseList(notices);
+        List<ResponseNoticePublicList> response = noticeMapper.toSimpleResponseList(notices);
         
         log.debug("[NoticeService] 최근 공지사항 조회 완료. 반환개수={}", response.size());
         

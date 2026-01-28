@@ -16,7 +16,7 @@ import java.util.List;
 @Getter
 @Builder
 @Schema(description = "공지사항 간단 응답 (목록용)")
-public class ResponseNoticeSimple {
+public class ResponseNoticePublicList {
 
     @Schema(description = "공지사항 ID", example = "1")
     private Long id;
@@ -59,8 +59,8 @@ public class ResponseNoticeSimple {
     /**
      * Entity에서 간단 DTO로 변환.
      */
-    public static ResponseNoticeSimple from(Notice notice) {
-        return ResponseNoticeSimple.builder()
+    public static ResponseNoticePublicList from(Notice notice) {
+        return ResponseNoticePublicList.builder()
                 .id(notice.getId())
                 .title(notice.getTitle())
                 .isImportant(notice.getIsImportant())
@@ -79,9 +79,9 @@ public class ResponseNoticeSimple {
     /**
      * Entity 목록을 간단 DTO 목록으로 변환.
      */
-    public static List<ResponseNoticeSimple> fromList(List<Notice> notices) {
+    public static List<ResponseNoticePublicList> fromList(List<Notice> notices) {
         return notices.stream()
-                .map(ResponseNoticeSimple::from)
+                .map(ResponseNoticePublicList::from)
                 .toList();
     }
 }

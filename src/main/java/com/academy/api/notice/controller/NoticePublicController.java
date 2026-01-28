@@ -2,8 +2,8 @@ package com.academy.api.notice.controller;
 
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
-import com.academy.api.notice.dto.ResponseNotice;
-import com.academy.api.notice.dto.ResponseNoticeSimple;
+import com.academy.api.notice.dto.ResponseNoticeDetail;
+import com.academy.api.notice.dto.ResponseNoticePublicList;
 import com.academy.api.notice.service.NoticeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -56,7 +56,7 @@ public class NoticePublicController {
                 """
     )
     @GetMapping
-    public ResponseList<ResponseNoticeSimple> getNoticeList(
+    public ResponseList<ResponseNoticePublicList> getNoticeList(
             @Parameter(description = "검색 키워드", example = "학사일정") 
             @RequestParam(required = false) String keyword,
             @Parameter(description = "검색 타입 (TITLE, CONTENT, AUTHOR, ALL)", example = "ALL") 
@@ -80,7 +80,7 @@ public class NoticePublicController {
         // 공개용은 기본적으로 중요 공지 우선 정렬
         String effectiveSortBy = sortBy != null ? sortBy : "IMPORTANT_FIRST";
         
-        return noticeService.getExposableNoticeList(keyword, searchType, categoryId, isImportant, isPublished, exposureType, effectiveSortBy, pageable);
+        return noticeService.getNoticeListForPublic(keyword, searchType, categoryId, isImportant, isPublished, exposureType, effectiveSortBy, pageable);
     }
 
     @Operation(
@@ -100,13 +100,13 @@ public class NoticePublicController {
                 """
     )
     @GetMapping("/{id}")
-    public ResponseData<ResponseNotice> getNotice(
+    public ResponseData<ResponseNoticeDetail> getNotice(
             @Parameter(description = "공지사항 ID", example = "1") @PathVariable Long id) {
         
         log.info("[NoticePublicController] 공개 공지사항 상세 조회 요청. ID={}", id);
         
         // 공개용은 조회수 자동 증가
-        return noticeService.getNoticeWithViewCount(id);
+        return noticeService.getNoticeForPublic(id);
     }
 
 
