@@ -344,17 +344,41 @@ public LocalContainerEntityManagerFactoryBean localEntityManagerFactory(...) {
 
 **이유**: Spring Boot는 기본적으로 `entityManagerFactory`라는 이름의 빈을 찾는데, 메서드명과 빈 이름이 다를 경우 오류가 발생할 수 있습니다.
 
-#### B. 용도별 특화 Response DTO
+#### B. 용도별 특화 Response DTO (🎯 갤러리 개선 기준)
 ```java
-// 목록 전용 (간소화된 필드)
-public class ResponseDomainListItem { ... }
+// 🎯 표준 Response DTO 네이밍 패턴
 
-// 상세 조회용 (모든 필드)
+// 상세 조회용 (공개/관리자 공통 - 분리 필요시에만)
 public class ResponseDomainDetail { ... }
+public class ResponseDomainPublicDetail { ... }  // 공개용 상세 (필요시)
+public class ResponseDomainAdminDetail { ... }   // 관리자용 상세 (필요시)
 
-// 요약 정보용 (핵심 필드만)
-public class ResponseDomainSummary { ... }
+// 목록 조회용 (역할별 분리)
+public class ResponseDomainPublicList { ... }    // 공개 목록용 (기본 정보만)
+public class ResponseDomainAdminList { ... }     // 관리자 목록용 (생성자/수정자 정보 포함)
+
+// 네비게이션용 (이전글/다음글 등)
+public class ResponseDomainNavigation { ... }   // 특수 기능용
+
+// 기타 특수 용도
+public class ResponseDomainSummary { ... }      // 요약 정보용
 ```
+
+#### 🔥 갤러리 도메인 적용 예시 (표준 모범 사례)
+```java
+ResponseGalleryDetail         // 상세 조회용 (공개/관리자 공통)
+ResponseGalleryPublicDetail   // 공개용 상세 (분리 필요시)
+ResponseGalleryAdminDetail    // 관리자용 상세 (분리 필요시)
+ResponseGalleryPublicList     // 공개 목록용 (기본 정보만)
+ResponseGalleryAdminList      // 관리자 목록용 (관리 정보 포함)
+ResponseGalleryNavigation     // 이전글/다음글 네비게이션
+```
+
+#### 📋 Response DTO 네이밍 원칙
+1. **Detail vs List 구분**: 상세 조회는 `Detail`, 목록 조회는 `List`
+2. **Public vs Admin 구분**: 접근 권한에 따른 정보 범위 차이
+3. **기능별 분리**: Navigation, Summary 등 특수 기능은 별도 DTO
+4. **공통 사용 우선**: Detail은 가급적 공통 사용, 필요시에만 분리
 
 ### 🔍 Response DTO 검증 기준
 

@@ -83,8 +83,8 @@ Content-Type: application/json
 **요청 본문**
 ```json
 {
-  "division": "MIDDLE",
-  "title": "중등부 수학 설명회",
+  "division": "HIGH",
+  "title": "고등부 수학 설명회",
   "content": "설명회 내용입니다.<br><img src=\"/api/public/files/temp/임시파일명.png\" alt=\"이미지\">",
   "isPublished": true,
   "initialSchedule": {

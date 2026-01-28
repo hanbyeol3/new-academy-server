@@ -139,6 +139,40 @@ public class UploadFileLink {
     }
 
 	/**
+	 * 갤러리 커버 이미지 연결 생성.
+	 *
+	 * @param fileId 파일 ID
+	 * @param galleryId 갤러리 ID
+	 * @return UploadFileLink 인스턴스
+	 */
+	public static UploadFileLink createGalleryCover(Long fileId, Long galleryId) {
+		return UploadFileLink.builder()
+				.fileId(fileId)
+				.ownerTable("gallery")
+				.ownerId(galleryId)
+				.role(FileRole.COVER)
+				.sortOrder(0)
+				.build();
+	}
+
+	/**
+	 * 갤러리 본문 이미지 연결 생성.
+	 *
+	 * @param fileId 파일 ID
+	 * @param galleryId 갤러리 ID
+	 * @return UploadFileLink 인스턴스
+	 */
+	public static UploadFileLink createGalleryInlineImage(Long fileId, Long galleryId) {
+		return UploadFileLink.builder()
+				.fileId(fileId)
+				.ownerTable("gallery")
+				.ownerId(galleryId)
+				.role(FileRole.INLINE)
+				.sortOrder(0)
+				.build();
+	}
+
+	/**
 	 * Faq 본문 이미지 연결 생성.
 	 *
 	 * @param fileId 파일 ID

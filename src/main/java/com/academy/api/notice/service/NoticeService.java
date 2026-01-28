@@ -26,21 +26,6 @@ import java.util.List;
 public interface NoticeService {
 
     /**
-     * 공지사항 목록 조회 (검색 + 페이징).
-     * 
-     * @param keyword 검색 키워드
-     * @param searchType 검색 타입 (TITLE, CONTENT, AUTHOR, ALL)
-     * @param categoryId 카테고리 ID (null이면 전체 카테고리)
-     * @param isImportant 중요 공지 여부 (null이면 모든 상태)
-     * @param isPublished 공개 상태 (null이면 모든 상태)
-     * @param exposureType 노출 기간 유형 (null이면 모든 유형)
-     * @param sortBy 정렬 기준 (null이면 기본 정렬)
-     * @param pageable 페이징 정보
-     * @return 검색 결과
-     */
-    ResponseList<ResponseNoticeSimple> getNoticeList(String keyword, String searchType, Long categoryId, Boolean isImportant, Boolean isPublished, String exposureType, String sortBy, Pageable pageable);
-
-    /**
      * 관리자용 공지사항 목록 조회 (모든 상태 포함).
      * 
      * @param keyword 검색 키워드

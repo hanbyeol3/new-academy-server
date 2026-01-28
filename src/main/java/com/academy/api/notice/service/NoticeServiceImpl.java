@@ -32,7 +32,6 @@ import com.academy.api.file.service.FileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,7 +39,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * 공지사항 서비스 구현체.
@@ -78,41 +76,7 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
     private final UploadFileLinkRepository uploadFileLinkRepository;
     private final FileService fileService;
 
-
-    @Override
-    public ResponseList<ResponseNoticeSimple> getNoticeList(String keyword, String searchType, Long categoryId, Boolean isImportant, Boolean isPublished, String exposureType, String sortBy, Pageable pageable) {
-        log.info("[NoticeService] 공지사항 목록 조회 시작. keyword={}, searchType={}, categoryId={}, isImportant={}, isPublished={}, exposureType={}, sortBy={}, 페이지={}", 
-                keyword, searchType, categoryId, isImportant, isPublished, exposureType, sortBy, pageable);
-
-        // searchType enum 변환
-        NoticeSearchType effectiveSearchType = null;
-        if (searchType != null) {
-            try {
-                effectiveSearchType = NoticeSearchType.valueOf(searchType.toUpperCase());
-            } catch (IllegalArgumentException e) {
-                log.warn("[NoticeService] 유효하지 않은 searchType, 기본값 적용. searchType={}", searchType);
-                effectiveSearchType = NoticeSearchType.ALL;
-            }
-        }
-        
-        // exposureType enum 변환
-        ExposureType effectiveExposureType = null;
-        if (exposureType != null) {
-            try {
-                effectiveExposureType = ExposureType.valueOf(exposureType.toUpperCase());
-            } catch (IllegalArgumentException e) {
-                log.warn("[NoticeService] 유효하지 않은 exposureType 무시. exposureType={}", exposureType);
-            }
-        }
-        
-        Page<Notice> noticePage = noticeRepository.searchNotices(keyword, effectiveSearchType, categoryId, isImportant, isPublished, effectiveExposureType, sortBy != null ? sortBy : "CREATED_DESC", pageable);
-        
-        log.debug("[NoticeService] 공지사항 검색 결과. 전체={}건, 현재페이지={}, 실제반환={}건", 
-                noticePage.getTotalElements(), noticePage.getNumber(), noticePage.getContent().size());
-        
-        return noticeMapper.toSimpleResponseList(noticePage);
-    }
-
+	// 관리자용 공지사항 목록 조회
     @Override
     public ResponseList<ResponseNoticeListItem> getNoticeListForAdmin(String keyword, String searchType, Long categoryId, Boolean isImportant, Boolean isPublished, String exposureType, String sortBy, Pageable pageable) {
         log.info("[NoticeService] 관리자용 공지사항 목록 조회 시작. keyword={}, searchType={}, categoryId={}, isImportant={}, isPublished={}, exposureType={}, sortBy={}, 페이지={}", 
