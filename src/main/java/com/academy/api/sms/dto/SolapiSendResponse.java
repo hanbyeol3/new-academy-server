@@ -8,62 +8,138 @@ import lombok.Setter;
 import java.util.List;
 
 /**
- * SOLAPI 메시지 발송 응답 DTO.
+ * SOLAPI v4 send-many API 응답 DTO.
  * 
- * SOLAPI REST API 응답을 매핑하는 객체입니다.
+ * SOLAPI v4 API는 그룹 생성 응답을 줍니다. 개별 메시지 정보는 별도 조회가 필요합니다.
  */
 @Getter
 @Setter
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class SolapiSendResponse {
 
-    @JsonProperty("messageId")
-    private String messageId;
+    @JsonProperty("_id")
+    private String groupId;
 
-    @JsonProperty("to")
-    private String to;
-
-    @JsonProperty("from")
-    private String from;
-
-    @JsonProperty("text")
-    private String text;
-
-    @JsonProperty("type")
-    private String type;
-
-    @JsonProperty("statusMessage")
-    private String statusMessage;
-
-    @JsonProperty("country")
-    private String country;
-
-    @JsonProperty("messageCount")
-    private Integer messageCount;
-
-    @JsonProperty("price")
-    private SolapiPrice price;
-
-    @JsonProperty("accountId")
-    private String accountId;
+    @JsonProperty("count")
+    private CountInfo count;
 
     @JsonProperty("log")
     private List<SolapiLog> log;
 
-    @JsonProperty("statusCode")
-    private String statusCode;
+    @JsonProperty("status")
+    private String status;
 
-    @JsonProperty("errorCode")
-    private String errorCode;
+    @JsonProperty("balance")
+    private BalanceInfo balance;
 
-    @JsonProperty("errorMessage")
-    private String errorMessage;
+    @JsonProperty("accountId")
+    private String accountId;
 
-    @JsonProperty("resultCode")
-    private String resultCode;
+    @JsonProperty("dateCreated")
+    private String dateCreated;
 
-    @JsonProperty("resultMessage")
-    private String resultMessage;
+    @JsonProperty("dateSent")
+    private String dateSent;
+
+    /**
+     * 그룹 ID를 messageId로 반환 (이전 버전 호환성).
+     */
+    public String getMessageId() {
+        return groupId;
+    }
+
+    /**
+     * 이전 버전 호환성을 위한 더미 메서드들.
+     * SOLAPI v4에서는 개별 메시지 정보가 그룹 응답에 포함되지 않음.
+     */
+    public String getTo() { return null; }
+    public String getFrom() { return null; }
+    public String getText() { return null; }
+    public String getType() { return null; }
+    
+    /**
+     * 그룹 상태를 statusCode로 반환 (이전 버전 호환성).
+     */
+    public String getStatusCode() {
+        if ("SENDING".equals(status) || "COMPLETE".equals(status)) {
+            return "0"; // 성공
+        }
+        return "1"; // 실패
+    }
+
+    /**
+     * 그룹 발송 결과 메시지 반환.
+     */
+    public String getResultMessage() {
+        return status != null ? status : "UNKNOWN";
+    }
+
+    /**
+     * 가격 정보 반환 (balance에서 추출).
+     */
+    public SolapiPrice getPrice() {
+        if (balance != null && balance.getSum() != null) {
+            SolapiPrice price = new SolapiPrice();
+            price.setTotalAmount(balance.getSum());
+            return price;
+        }
+        return null;
+    }
+
+    /**
+     * 발송 통계 정보.
+     */
+    @Getter
+    @Setter
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class CountInfo {
+        
+        @JsonProperty("total")
+        private Integer total;
+
+        @JsonProperty("sentTotal")
+        private Integer sentTotal;
+
+        @JsonProperty("sentSuccess")
+        private Integer sentSuccess;
+
+        @JsonProperty("sentFailed")
+        private Integer sentFailed;
+
+        @JsonProperty("sentPending")
+        private Integer sentPending;
+
+        @JsonProperty("registeredSuccess")
+        private Integer registeredSuccess;
+
+        @JsonProperty("registeredFailed")
+        private Integer registeredFailed;
+    }
+
+    /**
+     * 요금 정보.
+     */
+    @Getter
+    @Setter
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class BalanceInfo {
+        
+        @JsonProperty("requested")
+        private Integer requested;
+
+        @JsonProperty("replacement")
+        private Integer replacement;
+
+        @JsonProperty("additional")
+        private Integer additional;
+
+        @JsonProperty("refund")
+        private Integer refund;
+
+        @JsonProperty("sum")
+        private Integer sum;
+    }
+
 
     /**
      * SOLAPI 로그 정보.

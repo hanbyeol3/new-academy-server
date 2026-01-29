@@ -70,27 +70,43 @@ public class SolapiClient {
             log.info("  - API Key: {}***", solapiConfig.getApiKey().substring(0, 8));
             log.info("  - Headers: {}", headers.toSingleValueMap());
 
+            // 🔍 Raw 응답을 먼저 String으로 받아서 확인
+            ResponseEntity<String> rawResponse = restTemplate.exchange(
+                    fullUrl, HttpMethod.POST, entity, String.class);
+            
+            log.info("[SolapiClient] 🔍 SOLAPI Raw 응답 JSON: {}", rawResponse.getBody());
+            
+            // 다시 실제 DTO로 파싱
             ResponseEntity<SolapiSendResponse> response = restTemplate.exchange(
                     fullUrl, HttpMethod.POST, entity, SolapiSendResponse.class);
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 SolapiSendResponse responseBody = response.getBody();
                 
-                // 🎯 솔라피 응답에서 에러 확인
+                // 🎯 솔라피 v4 응답 구조에 맞게 상태 체크
                 log.info("[SolapiClient] 솔라피 응답 상세:");
-                log.info("  - statusCode: {}", responseBody.getStatusCode());
-                log.info("  - errorCode: {}", responseBody.getErrorCode());
-                log.info("  - errorMessage: {}", responseBody.getErrorMessage());
-                log.info("  - resultCode: {}", responseBody.getResultCode());
-                log.info("  - resultMessage: {}", responseBody.getResultMessage());
-                log.info("  - messageId: {}", responseBody.getMessageId());
+                log.info("  - groupId: {}", responseBody.getGroupId());
+                log.info("  - status: {}", responseBody.getStatus());
+                log.info("  - count.total: {}", responseBody.getCount() != null ? responseBody.getCount().getTotal() : 0);
+                log.info("  - count.registeredSuccess: {}", responseBody.getCount() != null ? responseBody.getCount().getRegisteredSuccess() : 0);
+                log.info("  - count.registeredFailed: {}", responseBody.getCount() != null ? responseBody.getCount().getRegisteredFailed() : 0);
+                log.info("  - balance.sum: {}", responseBody.getBalance() != null ? responseBody.getBalance().getSum() : 0);
                 
-                // 솔라피 에러 코드 체크 (1031 등)
-                if (responseBody.getStatusCode() != null && !"0".equals(responseBody.getStatusCode())) {
-                    String errorInfo = String.format("솔라피 에러 - 상태코드: %s, 메시지: %s", 
-                                                   responseBody.getStatusCode(), responseBody.getResultMessage());
-                    log.error("[SolapiClient] {}", errorInfo);
-                    throw new SolapiException(errorInfo);
+                // SOLAPI v4는 HTTP 200으로 성공 응답하고, 그룹이 생성되면 성공
+                if (responseBody.getGroupId() != null) {
+                    // 등록 실패가 있는지 체크
+                    if (responseBody.getCount() != null && 
+                        responseBody.getCount().getRegisteredFailed() != null && 
+                        responseBody.getCount().getRegisteredFailed() > 0) {
+                        
+                        String errorInfo = String.format("메시지 등록 실패 - 실패 수: %d", 
+                                                       responseBody.getCount().getRegisteredFailed());
+                        log.error("[SolapiClient] {}", errorInfo);
+                        throw new SolapiException(errorInfo);
+                    }
+                } else {
+                    log.error("[SolapiClient] groupId가 null - 그룹 생성 실패");
+                    throw new SolapiException("그룹 생성에 실패했습니다");
                 }
                 
                 log.info("[SolapiClient] SMS 발송 성공. messageId={}", responseBody.getMessageId());
@@ -99,6 +115,29 @@ public class SolapiClient {
                 throw new SolapiException("SMS 발송 실패: " + response.getStatusCode());
             }
 
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            // HTTP 에러 응답 (4xx, 5xx)에서 에러 정보 추출
+            String responseBody = e.getResponseBodyAsString();
+            log.error("[SolapiClient] SOLAPI HTTP 에러 응답: {}", responseBody);
+            
+            try {
+                // SOLAPI 에러 응답 JSON 파싱 시도
+                if (responseBody.contains("errorCode") && responseBody.contains("errorMessage")) {
+                    // {"errorCode":"MessagesNotFound","errorMessage":"해당 그룹에 발송 가능한 메시지가 존재하지 않습니다. 메시지 목록 및 상태를 확인하세요."}
+                    String errorCode = extractJsonValue(responseBody, "errorCode");
+                    String errorMessage = extractJsonValue(responseBody, "errorMessage");
+                    String detailedError = String.format("SOLAPI 에러 - 코드: %s, 메시지: %s", errorCode, errorMessage);
+                    log.error("[SolapiClient] {}", detailedError);
+                    throw new SolapiException(detailedError, e);
+                } else {
+                    throw new SolapiException("SOLAPI API 호출 실패: " + e.getStatusText(), e);
+                }
+            } catch (Exception parseEx) {
+                // JSON 파싱 실패시 기본 에러 메시지
+                log.warn("[SolapiClient] 에러 응답 파싱 실패: {}", parseEx.getMessage());
+                throw new SolapiException("SOLAPI API 호출 실패: " + e.getStatusText(), e);
+            }
+            
         } catch (RestClientException e) {
             log.error("[SolapiClient] SMS 발송 중 REST 예외 발생: {}", e.getMessage(), e);
             throw new SolapiException("SMS 발송 중 통신 오류가 발생했습니다", e);
@@ -179,7 +218,29 @@ public class SolapiClient {
         log.info("[SolapiClient] 🔍 JSON 생성: to={}, from={}, type={}", 
                 request.getTo(), request.getFrom(), request.getType());
         
-        return String.format("""
+        String jsonMessage;
+        if ("LMS".equals(request.getType()) && request.getSubject() != null) {
+            // LMS인 경우 subject 포함
+            jsonMessage = String.format("""
+                {
+                  "messages": [
+                    {
+                      "to": "%s",
+                      "from": "%s",
+                      "text": "%s",
+                      "type": "%s",
+                      "subject": "%s"
+                    }
+                  ]
+                }""", 
+                request.getTo(), 
+                request.getFrom(), 
+                request.getText().replace("\"", "\\\"").replace("\n", "\\n"), 
+                request.getType(),
+                request.getSubject().replace("\"", "\\\""));
+        } else {
+            // SMS인 경우 subject 없음
+            jsonMessage = String.format("""
                 {
                   "messages": [
                     {
@@ -194,6 +255,10 @@ public class SolapiClient {
                 request.getFrom(), 
                 request.getText().replace("\"", "\\\"").replace("\n", "\\n"), 
                 request.getType());
+        }
+        
+        log.info("[SolapiClient] 🔍 생성된 JSON: {}", jsonMessage);
+        return jsonMessage;
     }
 
     /**
@@ -213,6 +278,25 @@ public class SolapiClient {
             hexString.append(hex);
         }
         return hexString.toString();
+    }
+
+    /**
+     * 간단한 JSON 값 추출 헬퍼 (정규식 사용).
+     * 복잡한 JSON 파싱 대신 간단한 키-값 추출용
+     */
+    private String extractJsonValue(String json, String key) {
+        try {
+            String pattern = "\"" + key + "\"\\s*:\\s*\"([^\"]+)\"";
+            java.util.regex.Pattern regex = java.util.regex.Pattern.compile(pattern);
+            java.util.regex.Matcher matcher = regex.matcher(json);
+            if (matcher.find()) {
+                return matcher.group(1);
+            }
+            return null;
+        } catch (Exception e) {
+            log.warn("[SolapiClient] JSON 값 추출 실패. key={}, json={}", key, json);
+            return null;
+        }
     }
 
     /**
