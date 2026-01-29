@@ -1,10 +1,12 @@
 package com.academy.api.sms.controller;
 
+import com.academy.api.config.SolapiConfig;
 import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.sms.dto.RequestSmsMessage;
 import com.academy.api.sms.dto.ResponseSmsMessage;
 import com.academy.api.sms.service.SmsService;
+import com.academy.api.sms.service.SmsServiceImpl;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -32,7 +34,8 @@ import org.springframework.web.bind.annotation.*;
 public class SmsAdminController {
 
     private final SmsService smsService;
-    private final com.academy.api.config.SolapiConfig solapiConfig;
+    private final SmsServiceImpl smsServiceImpl;
+    private final SolapiConfig solapiConfig;
 
     /**
      * SMS 메시지 발송.
@@ -229,5 +232,148 @@ public class SmsAdminController {
         log.info("[SmsAdminController] 관리자 알림 SMS 발송 요청. 메시지 길이={}", message.length());
         
         return smsService.sendAdminNotification(message);
+    }
+
+    // =================== 🧪 목적 코드 기반 테스트 엔드포인트 ===================
+
+    /**
+     * 🧪 목적 코드 기반 SMS 발송 테스트.
+     */
+    @Operation(
+        summary = "🧪 목적 코드 기반 SMS 발송 테스트",
+        description = """
+                새로 구현한 목적 코드 기반 메시징 시스템을 테스트합니다.
+                
+                테스트 가능한 목적 코드:
+                - INQUIRY_CONFIRMATION: 상담 신청 확인
+                - EXPLANATION_CONFIRMATION: 설명회 예약 확인  
+                - QNA_ANSWER_NOTIFICATION: QnA 답변 알림
+                - ADMIN_NOTIFICATION: 관리자 알림
+                
+                동작 방식:
+                1. 데이터베이스에서 목적 코드에 맞는 템플릿 조회
+                2. 변수 치환 및 채널 자동 선택 (SMS/LMS)
+                3. 메시지 로그 저장 및 SOLAPI 발송
+                4. 성공/실패 상태 자동 추적
+                
+                장점:
+                - 템플릿 수정은 DB에서만 하면 됨
+                - 코드 변경 없이 새 목적 코드 추가 가능
+                - 모든 발송 이력이 자동으로 로그에 저장됨
+                """
+    )
+    @PostMapping("/test/purpose-code")
+    public ResponseData<ResponseSmsMessage> testPurposeCodeMessage(
+            @Parameter(description = "목적 코드", example = "INQUIRY_CONFIRMATION")
+            @RequestParam String purposeCode,
+            @Parameter(description = "수신자 전화번호", example = "01076665012")
+            @RequestParam String toPhone,
+            @Parameter(description = "수신자명 (선택)", example = "김테스트")
+            @RequestParam(required = false) String toName,
+            @Parameter(description = "변수1 - name", example = "김학생")
+            @RequestParam(required = false) String name,
+            @Parameter(description = "변수2 - scheduleDate", example = "2024-01-15 14:00")
+            @RequestParam(required = false) String scheduleDate,
+            @Parameter(description = "변수3 - questionTitle", example = "입학 관련 문의")
+            @RequestParam(required = false) String questionTitle,
+            @Parameter(description = "변수4 - message (관리자 알림용)", example = "새로운 상담 신청이 접수되었습니다.")
+            @RequestParam(required = false) String message) {
+
+        log.info("[SmsAdminController] 🧪 목적 코드 기반 SMS 테스트. purposeCode={}, toPhone={}", 
+                purposeCode, toPhone);
+
+        try {
+            // 변수 맵 생성
+            java.util.Map<String, Object> variables = new java.util.HashMap<>();
+            if (name != null) variables.put("name", name);
+            if (scheduleDate != null) variables.put("scheduleDate", scheduleDate);
+            if (questionTitle != null) variables.put("questionTitle", questionTitle);
+            if (message != null) variables.put("message", message);
+
+            return smsServiceImpl.sendMessageByPurposeCode(purposeCode, toPhone, toName, variables);
+            
+        } catch (Exception e) {
+            log.error("[SmsAdminController] 🧪 목적 코드 기반 SMS 테스트 실패: {}", e.getMessage(), e);
+            return ResponseData.error("TEST_ERROR", "테스트 실패: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 🧪 상담 신청 확인 - 목적 코드 기반 테스트.
+     */
+    @Operation(
+        summary = "🧪 상담 신청 확인 SMS (목적 코드 기반)",
+        description = """
+                목적 코드 INQUIRY_CONFIRMATION을 사용한 상담 신청 확인 SMS 발송 테스트
+                
+                기존 enum 템플릿 vs 새로운 DB 템플릿:
+                - 기존: 하드코딩된 템플릿, 수정시 코드 변경 필요
+                - 신규: DB 설정 템플릿, 실시간 템플릿 변경 가능
+                
+                테스트 확인사항:
+                1. message_logs 테이블에 로그 저장 확인
+                2. message_purposes 테이블에서 템플릿 조회 확인
+                3. SMS/LMS 자동 선택 확인
+                4. 변수 치환 정상 동작 확인
+                """
+    )
+    @PostMapping("/test/inquiry-confirmation-db")
+    public Response testInquiryConfirmationByPurposeCode(
+            @Parameter(description = "수신자 전화번호", example = "01076665012")
+            @RequestParam String phoneNumber,
+            @Parameter(description = "신청자 이름", example = "김학생")
+            @RequestParam String name) {
+
+        log.info("[SmsAdminController] 🧪 상담 신청 확인 SMS 테스트 (DB). 수신자={}, 이름={}", 
+                phoneNumber, name);
+        
+        return smsServiceImpl.sendInquiryConfirmationByPurposeCode(phoneNumber, name);
+    }
+
+    /**
+     * 🧪 설명회 예약 확인 - 목적 코드 기반 테스트.
+     */
+    @PostMapping("/test/explanation-confirmation-db")
+    public Response testExplanationConfirmationByPurposeCode(
+            @Parameter(description = "수신자 전화번호", example = "01076665012")
+            @RequestParam String phoneNumber,
+            @Parameter(description = "예약자 이름", example = "김학생")
+            @RequestParam String name,
+            @Parameter(description = "설명회 일정", example = "2024-01-15 14:00")
+            @RequestParam String scheduleDate) {
+
+        log.info("[SmsAdminController] 🧪 설명회 예약 확인 SMS 테스트 (DB). 수신자={}, 이름={}, 일정={}", 
+                phoneNumber, name, scheduleDate);
+        
+        return smsServiceImpl.sendExplanationConfirmationByPurposeCode(phoneNumber, name, scheduleDate);
+    }
+
+    /**
+     * 🧪 QnA 답변 알림 - 목적 코드 기반 테스트.
+     */
+    @PostMapping("/test/qna-answer-notification-db")
+    public Response testQnaAnswerNotificationByPurposeCode(
+            @Parameter(description = "수신자 전화번호", example = "01076665012")
+            @RequestParam String phoneNumber,
+            @Parameter(description = "질문 제목", example = "입학 관련 문의")
+            @RequestParam String questionTitle) {
+
+        log.info("[SmsAdminController] 🧪 QnA 답변 알림 SMS 테스트 (DB). 수신자={}, 질문제목={}", 
+                phoneNumber, questionTitle);
+        
+        return smsServiceImpl.sendQnaAnswerNotificationByPurposeCode(phoneNumber, questionTitle);
+    }
+
+    /**
+     * 🧪 관리자 알림 - 목적 코드 기반 테스트.
+     */
+    @PostMapping("/test/admin-notification-db")
+    public Response testAdminNotificationByPurposeCode(
+            @Parameter(description = "알림 메시지", example = "새로운 상담 신청이 접수되었습니다.")
+            @RequestParam String message) {
+
+        log.info("[SmsAdminController] 🧪 관리자 알림 SMS 테스트 (DB). 메시지 길이={}", message.length());
+        
+        return smsServiceImpl.sendAdminNotificationByPurposeCode(message);
     }
 }

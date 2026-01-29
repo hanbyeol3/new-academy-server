@@ -1,6 +1,9 @@
 package com.academy.api.sms.template;
 
 import com.academy.api.config.SolapiConfig;
+import com.academy.api.sms.domain.MessageLog;
+import com.academy.api.sms.domain.MessagePurpose;
+import com.academy.api.sms.repository.MessagePurposeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -9,6 +12,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * SMS 템플릿 처리기.
@@ -22,12 +26,13 @@ import java.util.Map;
 public class SmsTemplateProcessor {
 
     private final SolapiConfig solapiConfig;
+    private final MessagePurposeRepository messagePurposeRepository;
     
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     /**
-     * 템플릿 메시지 생성.
+     * 템플릿 메시지 생성 (기존 enum 템플릿).
      * 
      * @param template SMS 템플릿
      * @param variables 템플릿 변수 Map
@@ -51,6 +56,8 @@ public class SmsTemplateProcessor {
                     .type(messageType.getCode())
                     .length(processedMessage.length())
                     .template(template)
+                    .purposeCode(template.name()) // enum 이름을 purpose code로 사용
+                    .purpose(null) // enum 기반에서는 null
                     .variables(variables)
                     .build();
             
@@ -63,6 +70,103 @@ public class SmsTemplateProcessor {
             log.error("[SmsTemplateProcessor] 템플릿 처리 실패: {}", e.getMessage(), e);
             throw new SmsTemplateException("템플릿 처리에 실패했습니다: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * 목적 코드 기반 템플릿 메시지 생성.
+     * 데이터베이스에서 목적 코드에 맞는 템플릿을 조회하여 처리합니다.
+     * 
+     * @param purposeCode 목적 코드
+     * @param variables 템플릿 변수 Map
+     * @return 치환된 메시지
+     */
+    public ProcessedMessage processTemplateByPurposeCode(String purposeCode, Map<String, Object> variables) {
+        log.info("[SmsTemplateProcessor] 목적 코드 기반 템플릿 처리 시작. purposeCode={}", purposeCode);
+        
+        try {
+            // 목적 코드로 MessagePurpose 조회
+            Optional<MessagePurpose> purposeOptional = messagePurposeRepository.findByCodeAndIsActiveTrue(purposeCode);
+            
+            if (purposeOptional.isEmpty()) {
+                log.warn("[SmsTemplateProcessor] 활성화된 목적 코드를 찾을 수 없음: {}", purposeCode);
+                throw new SmsTemplateException("존재하지 않거나 비활성화된 목적 코드입니다: " + purposeCode);
+            }
+            
+            MessagePurpose purpose = purposeOptional.get();
+            log.debug("[SmsTemplateProcessor] 목적 코드 조회 성공. name={}, defaultChannel={}", 
+                     purpose.getName(), purpose.getDefaultChannel());
+            
+            // 기본 변수 추가
+            variables = addDefaultVariables(variables);
+            
+            // 기본 채널에 따라 템플릿 선택
+            MessageLog.Channel selectedChannel = determineOptimalChannel(purpose, variables);
+            String templateContent = purpose.getTemplateByChannel(selectedChannel);
+            
+            if (templateContent == null || templateContent.trim().isEmpty()) {
+                log.warn("[SmsTemplateProcessor] 선택된 채널에 대한 템플릿이 없음. purposeCode={}, channel={}", 
+                        purposeCode, selectedChannel);
+                throw new SmsTemplateException("해당 채널에 대한 템플릿이 설정되지 않았습니다: " + selectedChannel);
+            }
+            
+            // 템플릿 치환
+            String processedMessage = replaceVariables(templateContent, variables);
+            
+            // 메시지 타입 결정
+            String messageType = selectedChannel.name();
+            
+            ProcessedMessage result = ProcessedMessage.builder()
+                    .message(processedMessage)
+                    .type(messageType)
+                    .length(processedMessage.length())
+                    .template(null) // DB 기반에서는 null
+                    .purposeCode(purposeCode)
+                    .purpose(purpose)
+                    .variables(variables)
+                    .build();
+            
+            log.info("[SmsTemplateProcessor] 목적 코드 기반 템플릿 처리 완료. purposeCode={}, 길이={}, 타입={}", 
+                     purposeCode, result.getLength(), result.getType());
+            
+            return result;
+            
+        } catch (SmsTemplateException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("[SmsTemplateProcessor] 목적 코드 기반 템플릿 처리 실패: {}", e.getMessage(), e);
+            throw new SmsTemplateException("목적 코드 기반 템플릿 처리에 실패했습니다: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 최적 채널 결정.
+     * MessagePurpose 설정과 메시지 길이를 고려하여 최적의 채널을 선택합니다.
+     */
+    private MessageLog.Channel determineOptimalChannel(MessagePurpose purpose, Map<String, Object> variables) {
+        MessagePurpose.DefaultChannel defaultChannel = purpose.getDefaultChannel();
+        
+        // 기본 채널이 SMS인 경우, LMS 템플릿도 있으면 길이에 따라 자동 선택
+        if (defaultChannel == MessagePurpose.DefaultChannel.SMS && purpose.getLmsTemplate() != null) {
+            // SMS 템플릿으로 임시 메시지 생성하여 길이 확인
+            String smsTemplate = purpose.getSmsTemplate();
+            if (smsTemplate != null) {
+                String tempMessage = replaceVariables(smsTemplate, variables);
+                int eucKrBytes = getEucKrByteLength(tempMessage);
+                
+                if (eucKrBytes > 90) {
+                    log.debug("[SmsTemplateProcessor] SMS 길이 초과로 LMS로 변경. bytes={}", eucKrBytes);
+                    return MessageLog.Channel.LMS;
+                }
+            }
+            return MessageLog.Channel.SMS;
+        }
+        
+        // 기본 채널에 따라 매핑
+        return switch (defaultChannel) {
+            case SMS -> MessageLog.Channel.SMS;
+            case LMS -> MessageLog.Channel.LMS;
+            case KAKAO_AT -> MessageLog.Channel.KAKAO_AT;
+        };
     }
 
     /**
@@ -185,14 +289,19 @@ public class SmsTemplateProcessor {
         private final String type;
         private final int length;
         private final SmsTemplate template;
+        private final String purposeCode;
+        private final MessagePurpose purpose;
         private final Map<String, Object> variables;
         
         private ProcessedMessage(String message, String type, int length, 
-                               SmsTemplate template, Map<String, Object> variables) {
+                               SmsTemplate template, String purposeCode, MessagePurpose purpose, 
+                               Map<String, Object> variables) {
             this.message = message;
             this.type = type;
             this.length = length;
             this.template = template;
+            this.purposeCode = purposeCode;
+            this.purpose = purpose;
             this.variables = variables;
         }
         
@@ -205,6 +314,8 @@ public class SmsTemplateProcessor {
         public String getType() { return type; }
         public int getLength() { return length; }
         public SmsTemplate getTemplate() { return template; }
+        public String getPurposeCode() { return purposeCode; }
+        public MessagePurpose getPurpose() { return purpose; }
         public Map<String, Object> getVariables() { return variables; }
         
         // Builder
@@ -213,6 +324,8 @@ public class SmsTemplateProcessor {
             private String type;
             private int length;
             private SmsTemplate template;
+            private String purposeCode;
+            private MessagePurpose purpose;
             private Map<String, Object> variables;
             
             public ProcessedMessageBuilder message(String message) {
@@ -235,13 +348,23 @@ public class SmsTemplateProcessor {
                 return this;
             }
             
+            public ProcessedMessageBuilder purposeCode(String purposeCode) {
+                this.purposeCode = purposeCode;
+                return this;
+            }
+            
+            public ProcessedMessageBuilder purpose(MessagePurpose purpose) {
+                this.purpose = purpose;
+                return this;
+            }
+            
             public ProcessedMessageBuilder variables(Map<String, Object> variables) {
                 this.variables = variables;
                 return this;
             }
             
             public ProcessedMessage build() {
-                return new ProcessedMessage(message, type, length, template, variables);
+                return new ProcessedMessage(message, type, length, template, purposeCode, purpose, variables);
             }
         }
     }
