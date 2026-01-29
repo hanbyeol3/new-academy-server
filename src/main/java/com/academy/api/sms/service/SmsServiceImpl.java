@@ -119,18 +119,39 @@ public class SmsServiceImpl implements SmsService {
         } catch (SolapiClient.SolapiException e) {
             log.error("[SmsService] SMS 발송 실패: {}", e.getMessage(), e);
             
-            // 발송 실패 로그 업데이트
+            // 발송 실패 로그 업데이트 (상세 정보 포함)
             if (messageLog != null) {
-                messageLogService.markMessageAsFailed(messageLog.getId(), "SOLAPI_ERROR", e.getMessage());
+                String errorResponseJson = extractErrorResponseFromException(e);
+                Integer characterCount = calculateCharacterCount(request.getText());
+                Integer byteCount = calculateByteCount(request.getText());
+                
+                messageLogService.markMessageAsFailedWithDetails(
+                    messageLog.getId(), 
+                    "SOLAPI_ERROR", 
+                    buildDetailedErrorMessage(e), 
+                    errorResponseJson,
+                    characterCount,
+                    byteCount
+                );
             }
             
             return ResponseData.error("SMS001", "SMS 발송에 실패했습니다");
         } catch (Exception e) {
             log.error("[SmsService] SMS 발송 중 예상치 못한 오류: {}", e.getMessage(), e);
             
-            // 시스템 에러 로그 업데이트
+            // 시스템 에러 로그 업데이트 (상세 정보 포함)
             if (messageLog != null) {
-                messageLogService.markMessageAsFailed(messageLog.getId(), "SYSTEM_ERROR", e.getMessage());
+                Integer characterCount = calculateCharacterCount(request.getText());
+                Integer byteCount = calculateByteCount(request.getText());
+                
+                messageLogService.markMessageAsFailedWithDetails(
+                    messageLog.getId(), 
+                    "SYSTEM_ERROR", 
+                    "시스템 오류: " + e.getMessage(), 
+                    null,  // 시스템 에러는 응답 JSON 없음
+                    characterCount,
+                    byteCount
+                );
             }
             
             return ResponseData.error("SMS002", "SMS 발송 중 시스템 오류가 발생했습니다");
@@ -366,11 +387,11 @@ public class SmsServiceImpl implements SmsService {
 
         MessageLog messageLog = null;
         String requestJson = null;
+        SmsTemplateProcessor.ProcessedMessage processedMessage = null;
 
         try {
             // 목적 코드 기반 템플릿 처리
-            SmsTemplateProcessor.ProcessedMessage processedMessage = 
-                    templateProcessor.processTemplateByPurposeCode(purposeCode, variables);
+            processedMessage = templateProcessor.processTemplateByPurposeCode(purposeCode, variables);
 
             // 발신자 번호 설정
             String from = solapiConfig.getSenderNumber();
@@ -431,9 +452,21 @@ public class SmsServiceImpl implements SmsService {
         } catch (SolapiClient.SolapiException e) {
             log.error("[SmsService] 목적 코드 기반 SMS 발송 실패: {}", e.getMessage(), e);
             
-            // 발송 실패 로그 업데이트
+            // 발송 실패 로그 업데이트 (상세 정보 포함)
             if (messageLog != null) {
-                messageLogService.markMessageAsFailed(messageLog.getId(), "SOLAPI_ERROR", e.getMessage());
+                String errorResponseJson = extractErrorResponseFromException(e);
+                String messageText = (processedMessage != null) ? processedMessage.getMessage() : null;
+                Integer characterCount = calculateCharacterCount(messageText);
+                Integer byteCount = calculateByteCount(messageText);
+                
+                messageLogService.markMessageAsFailedWithDetails(
+                    messageLog.getId(), 
+                    "SOLAPI_ERROR", 
+                    buildDetailedErrorMessage(e), 
+                    errorResponseJson,
+                    characterCount,
+                    byteCount
+                );
             }
             
             return ResponseData.error("SMS001", "SMS 발송에 실패했습니다");
@@ -443,9 +476,20 @@ public class SmsServiceImpl implements SmsService {
         } catch (Exception e) {
             log.error("[SmsService] 목적 코드 기반 SMS 발송 중 예상치 못한 오류: {}", e.getMessage(), e);
             
-            // 시스템 에러 로그 업데이트
+            // 시스템 에러 로그 업데이트 (상세 정보 포함)
             if (messageLog != null) {
-                messageLogService.markMessageAsFailed(messageLog.getId(), "SYSTEM_ERROR", e.getMessage());
+                String messageText = (processedMessage != null) ? processedMessage.getMessage() : null;
+                Integer characterCount = calculateCharacterCount(messageText);
+                Integer byteCount = calculateByteCount(messageText);
+                
+                messageLogService.markMessageAsFailedWithDetails(
+                    messageLog.getId(), 
+                    "SYSTEM_ERROR", 
+                    "시스템 오류: " + e.getMessage(), 
+                    null,  // 시스템 에러는 응답 JSON 없음
+                    characterCount,
+                    byteCount
+                );
             }
             
             return ResponseData.error("SMS002", "SMS 발송 중 시스템 오류가 발생했습니다");
@@ -562,6 +606,85 @@ public class SmsServiceImpl implements SmsService {
         } catch (Exception e) {
             log.error("[SmsService] 목적 코드 기반 관리자 알림 SMS 처리 실패: {}", e.getMessage(), e);
             return Response.error("SMS003", "SMS 처리 중 오류가 발생했습니다");
+        }
+    }
+
+    // =================== 🔧 헬퍼 메서드 ===================
+
+    /**
+     * SOLAPI 예외에서 응답 JSON 추출.
+     */
+    private String extractErrorResponseFromException(SolapiClient.SolapiException e) {
+        if (e.getCause() instanceof org.springframework.web.client.HttpClientErrorException) {
+            org.springframework.web.client.HttpClientErrorException httpError = 
+                (org.springframework.web.client.HttpClientErrorException) e.getCause();
+            String responseBody = httpError.getResponseBodyAsString();
+            
+            // JSON 응답인지 확인
+            if (responseBody != null && responseBody.trim().startsWith("{")) {
+                return responseBody;
+            }
+        }
+        
+        // 예외 메시지에서 JSON 구조가 있는지 확인
+        String message = e.getMessage();
+        if (message != null && message.contains("{") && message.contains("}")) {
+            // 예외 메시지에서 JSON 부분 추출 시도
+            int jsonStart = message.indexOf("{");
+            int jsonEnd = message.lastIndexOf("}");
+            if (jsonStart >= 0 && jsonEnd > jsonStart) {
+                return message.substring(jsonStart, jsonEnd + 1);
+            }
+        }
+        
+        // 추출 실패시 null 반환
+        return null;
+    }
+
+    /**
+     * 상세한 에러 메시지 생성.
+     */
+    private String buildDetailedErrorMessage(SolapiClient.SolapiException e) {
+        String baseMessage = e.getMessage();
+        
+        // 이미 상세한 메시지인 경우 그대로 반환
+        if (baseMessage.contains("SOLAPI 에러 - 코드:") || 
+            baseMessage.contains("errorCode") || 
+            baseMessage.contains("errorMessage")) {
+            return baseMessage;
+        }
+        
+        // 기본 메시지에 추가 정보 포함
+        if (e.getCause() instanceof org.springframework.web.client.HttpClientErrorException) {
+            org.springframework.web.client.HttpClientErrorException httpError = 
+                (org.springframework.web.client.HttpClientErrorException) e.getCause();
+            return String.format("SOLAPI API 호출 실패 - HTTP %d: %s", 
+                    httpError.getStatusCode().value(), baseMessage);
+        }
+        
+        return "SOLAPI 발송 실패: " + baseMessage;
+    }
+
+    /**
+     * 메시지 글자 수 계산.
+     */
+    private Integer calculateCharacterCount(String message) {
+        if (message == null) return 0;
+        return message.length();
+    }
+
+    /**
+     * EUC-KR 바이트 수 계산.
+     */
+    private Integer calculateByteCount(String message) {
+        if (message == null) return 0;
+        
+        try {
+            // EUC-KR 인코딩으로 바이트 수 계산
+            return message.getBytes("EUC-KR").length;
+        } catch (java.io.UnsupportedEncodingException e) {
+            log.warn("[SmsService] EUC-KR 인코딩 실패, UTF-8 바이트 수로 대체: {}", e.getMessage());
+            return message.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
         }
     }
 }

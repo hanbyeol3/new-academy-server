@@ -204,6 +204,26 @@ public class MessageLogServiceImpl implements MessageLogService {
 
     @Override
     @Transactional
+    public void markMessageAsFailedWithDetails(Long id, String errorCode, String errorMessage, 
+                                             String responseJson, Integer characterCount, Integer byteCount) {
+        log.info("[MessageLogService] 메시지 발송 실패 처리 (상세). id={}, errorCode={}, errorMessage={}", 
+                id, errorCode, errorMessage);
+        
+        Optional<MessageLog> optionalLog = messageLogRepository.findById(id);
+        if (optionalLog.isEmpty()) {
+            log.warn("[MessageLogService] 발송 실패 처리할 메시지 로그를 찾을 수 없음. id={}", id);
+            return;
+        }
+        
+        MessageLog messageLog = optionalLog.get();
+        messageLog.markAsFailedWithDetails(errorCode, errorMessage, responseJson, characterCount, byteCount);
+        messageLogRepository.save(messageLog);
+        
+        log.debug("[MessageLogService] 메시지 발송 실패 처리 (상세) 완료. id={}", id);
+    }
+
+    @Override
+    @Transactional
     public void updateProviderInfo(Long id, String providerMessageId, Integer cost, String responseJson) {
         log.info("[MessageLogService] 업체 응답 정보 업데이트. id={}, providerMessageId={}, cost={}", 
                 id, providerMessageId, cost);

@@ -141,13 +141,11 @@ public class MessageLog {
     private LocalDateTime scheduledAt;
 
     /** 요청 JSON */
-    @Lob
-    @Column(name = "request_json", columnDefinition = "JSON")
+    @Column(name = "request_json", columnDefinition = "TEXT")
     private String requestJson;
 
     /** 응답 JSON */
-    @Lob
-    @Column(name = "response_json", columnDefinition = "JSON")
+    @Column(name = "response_json", columnDefinition = "TEXT")
     private String responseJson;
 
     /** 생성 시각 */
@@ -223,6 +221,20 @@ public class MessageLog {
         this.status = Status.FAILED;
         this.errorCode = errorCode;
         this.errorMessage = errorMessage;
+        this.sentAt = LocalDateTime.now();
+    }
+
+    /**
+     * 발송 실패 처리 (상세 정보 포함).
+     */
+    public void markAsFailedWithDetails(String errorCode, String errorMessage, String responseJson, 
+                                       Integer characterCount, Integer byteCount) {
+        this.status = Status.FAILED;
+        this.errorCode = errorCode;
+        this.errorMessage = errorMessage;
+        this.responseJson = responseJson;
+        this.characterCount = characterCount;
+        this.byteCount = byteCount;
         this.sentAt = LocalDateTime.now();
     }
 

@@ -135,6 +135,19 @@ public interface MessageLogService {
     void markMessageAsFailed(Long id, String errorCode, String errorMessage);
 
     /**
+     * 메시지 발송 실패 처리 (상세 정보 포함).
+     * 
+     * @param id 메시지 로그 ID
+     * @param errorCode 에러 코드
+     * @param errorMessage 에러 메시지
+     * @param responseJson 실패 응답 JSON
+     * @param characterCount 메시지 문자 수
+     * @param byteCount 메시지 바이트 수
+     */
+    void markMessageAsFailedWithDetails(Long id, String errorCode, String errorMessage, 
+                                       String responseJson, Integer characterCount, Integer byteCount);
+
+    /**
      * 업체 응답 정보 업데이트.
      * 
      * @param id 메시지 로그 ID

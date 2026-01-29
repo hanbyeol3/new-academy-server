@@ -1,6 +1,7 @@
 package com.academy.api.gallery.dto;
 
 import com.academy.api.gallery.domain.Gallery;
+import com.academy.api.file.dto.ResponseFileInfo;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -32,11 +33,8 @@ public class ResponseGalleryAdminList {
     @Schema(description = "조회수", example = "150")
     private Long viewCount;
 
-    @Schema(description = "커버 이미지 URL", example = "/api/public/files/download/123")
-    private String coverImageUrl;
-
-    @Schema(description = "커버 이미지 파일명", example = "cover_image.jpg")  
-    private String coverImageName;
+    @Schema(description = "커버 이미지 정보")
+    private ResponseFileInfo coverImage;
 
     @Schema(description = "등록자 사용자 ID", example = "1")
     private Long createdBy;
@@ -68,8 +66,7 @@ public class ResponseGalleryAdminList {
                 .isPublished(gallery.getIsPublished())
                 .categoryName(gallery.getCategory() != null ? gallery.getCategory().getName() : null)
                 .viewCount(gallery.getViewCount())
-                .coverImageUrl(null) // 서비스에서 별도 설정
-                .coverImageName(null) // 서비스에서 별도 설정
+                .coverImage(null) // 서비스에서 별도 설정
                 .createdBy(gallery.getCreatedBy())
                 .createdByName(null) // 서비스에서 별도 설정
                 .createdAt(gallery.getCreatedAt())
@@ -80,17 +77,16 @@ public class ResponseGalleryAdminList {
     }
 
     /**
-     * Entity에서 DTO로 변환 (회원 이름 포함).
+     * Entity에서 DTO로 변환 (회원 이름 및 커버 이미지 포함).
      */
-    public static ResponseGalleryAdminList fromWithNames(Gallery gallery, String createdByName, String updatedByName) {
+    public static ResponseGalleryAdminList fromWithNames(Gallery gallery, String createdByName, String updatedByName, ResponseFileInfo coverImage) {
         return ResponseGalleryAdminList.builder()
                 .id(gallery.getId())
                 .title(gallery.getTitle())
                 .isPublished(gallery.getIsPublished())
                 .categoryName(gallery.getCategory() != null ? gallery.getCategory().getName() : null)
                 .viewCount(gallery.getViewCount())
-                .coverImageUrl(null) // 서비스에서 별도 설정
-                .coverImageName(null) // 서비스에서 별도 설정
+                .coverImage(coverImage)
                 .createdBy(gallery.getCreatedBy())
                 .createdByName(createdByName)
                 .createdAt(gallery.getCreatedAt())
@@ -98,6 +94,13 @@ public class ResponseGalleryAdminList {
                 .updatedByName(updatedByName)
                 .updatedAt(gallery.getUpdatedAt())
                 .build();
+    }
+
+    /**
+     * Entity에서 DTO로 변환 (회원 이름 포함, 하위호환용).
+     */
+    public static ResponseGalleryAdminList fromWithNames(Gallery gallery, String createdByName, String updatedByName) {
+        return fromWithNames(gallery, createdByName, updatedByName, null);
     }
 
     /**

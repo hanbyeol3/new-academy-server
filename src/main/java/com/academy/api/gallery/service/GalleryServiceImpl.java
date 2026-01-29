@@ -108,12 +108,16 @@ public class GalleryServiceImpl implements GalleryService, CategoryUsageChecker 
         log.debug("[GalleryService] 관리자 갤러리 검색 결과. 전체={}건, 현재페이지={}, 실제반환={}건",
                 galleryPage.getTotalElements(), galleryPage.getNumber(), galleries.size());
         
-        // 회원 이름 포함하여 DTO 변환
+        // 회원 이름 및 커버 이미지 정보 포함하여 DTO 변환
         List<ResponseGalleryAdminList> items = galleries.stream()
                 .map(gallery -> {
                     String createdByName = getMemberName(gallery.getCreatedBy());
                     String updatedByName = getMemberName(gallery.getUpdatedBy());
-                    return ResponseGalleryAdminList.fromWithNames(gallery, createdByName, updatedByName);
+                    
+                    // 커버 이미지 정보 조회
+                    ResponseFileInfo coverImage = getCoverImage(gallery.getId());
+                    
+                    return ResponseGalleryAdminList.fromWithNames(gallery, createdByName, updatedByName, coverImage);
                 })
                 .toList();
         
@@ -551,10 +555,14 @@ public class GalleryServiceImpl implements GalleryService, CategoryUsageChecker 
      * @return ResponseFileInfo 인스턴스
      */
     private ResponseFileInfo mapToResponseFileInfo(Object[] row) {
+        String originalName = (String) row[2];
+        log.debug("[GalleryService] mapToResponseFileInfo - fileId={}, fileName={}, originalName={}, ext={}, size={}, url={}", 
+                  row[0], row[1], originalName, row[3], row[4], row[5]);
+        
         return ResponseFileInfo.builder()
                 .fileId(String.valueOf(row[0]))  // Long을 String으로 변환
                 .fileName((String) row[1])
-                .originalName((String) row[2])   // 원본 파일명 추가
+                .originalName(originalName)   // 원본 파일명 추가
                 .ext((String) row[3])
                 .size((Long) row[4])
                 .url((String) row[5])
