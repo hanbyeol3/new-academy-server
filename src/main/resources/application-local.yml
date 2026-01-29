@@ -26,3 +26,10 @@ spring:
           unique_constraint_schema_update_strategy: skip
         globally_quoted_identifiers: false
         auto_quote_keyword: false
+
+# SOLAPI SMS 서비스 설정
+solapi:
+  api-key: NCSZPDWFHWOLSR5F
+  api-secret: ZPZMXWYZ2NEZ2GND4FORCVCZP3X7UEW6
+  sender-number: "01053725012"
+  base-url: https://api.solapi.com

@@ -64,7 +64,7 @@ public class QnaQuestion {
     private String content;
 
     /** 비밀글 여부 (0=공개, 1=비밀) */
-    @Column(name = "secret", nullable = false)
+    @Column(name = "is_secret", nullable = false)
     private Boolean secret = false;
 
     /** 조회수 */
