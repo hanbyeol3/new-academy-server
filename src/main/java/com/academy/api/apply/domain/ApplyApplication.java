@@ -114,6 +114,19 @@ public class ApplyApplication {
     @Column(name = "parent_opinion", columnDefinition = "TEXT")
     private String parentOpinion;
 
+    /** 지도 상담 시 보호자 의견 */
+    @Lob
+    @Column(name = "map_parent_opinion", columnDefinition = "TEXT")
+    private String mapParentOpinion;
+
+    /** 희망 대학 */
+    @Column(name = "desired_university", length = 150)
+    private String desiredUniversity;
+
+    /** 희망 학과 */
+    @Column(name = "desired_department", length = 150)
+    private String desiredDepartment;
+
     /** 보호자1 성명 */
     @Column(name = "guardian1_name", nullable = false, length = 100)
     private String guardian1Name;
@@ -185,6 +198,9 @@ public class ApplyApplication {
      * @param latitude 위도
      * @param longitude 경도
      * @param parentOpinion 보호자 의견
+     * @param mapParentOpinion 지도 상담 시 보호자 의견
+     * @param desiredUniversity 희망 대학
+     * @param desiredDepartment 희망 학과
      * @param guardian1Name 보호자1 성명
      * @param guardian1Phone 보호자1 휴대폰
      * @param guardian1Relation 보호자1 관계
@@ -200,7 +216,8 @@ public class ApplyApplication {
                            Gender gender, LocalDate birthDate, String studentPhone, String schoolName,
                            String schoolGrade, StudentGradeLevel studentGradeLevel, String email,
                            String postalCode, String address, String addressDetail, BigDecimal latitude,
-                           BigDecimal longitude, String parentOpinion, String guardian1Name,
+                           BigDecimal longitude, String parentOpinion, String mapParentOpinion,
+                           String desiredUniversity, String desiredDepartment, String guardian1Name,
                            String guardian1Phone, String guardian1Relation, String guardian2Name,
                            String guardian2Phone, String guardian2relation, String assigneeName,
                            Long createdBy, Long updatedBy) {
@@ -220,6 +237,9 @@ public class ApplyApplication {
         this.latitude = latitude;
         this.longitude = longitude;
         this.parentOpinion = parentOpinion;
+        this.mapParentOpinion = mapParentOpinion;
+        this.desiredUniversity = desiredUniversity;
+        this.desiredDepartment = desiredDepartment;
         this.guardian1Name = guardian1Name;
         this.guardian1Phone = guardian1Phone;
         this.guardian1Relation = guardian1Relation;
@@ -238,6 +258,7 @@ public class ApplyApplication {
                       String schoolName, String schoolGrade, StudentGradeLevel studentGradeLevel,
                       String email, String postalCode, String address, String addressDetail,
                       BigDecimal latitude, BigDecimal longitude, String parentOpinion,
+                      String mapParentOpinion, String desiredUniversity, String desiredDepartment,
                       String guardian1Name, String guardian1Phone, String guardian1Relation,
                       String guardian2Name, String guardian2Phone, String guardian2relation,
                       Long updatedBy) {
@@ -255,6 +276,9 @@ public class ApplyApplication {
         this.latitude = latitude;
         this.longitude = longitude;
         this.parentOpinion = parentOpinion;
+        this.mapParentOpinion = mapParentOpinion;
+        this.desiredUniversity = desiredUniversity;
+        this.desiredDepartment = desiredDepartment;
         this.guardian1Name = guardian1Name;
         this.guardian1Phone = guardian1Phone;
         this.guardian1Relation = guardian1Relation;
@@ -306,5 +330,33 @@ public class ApplyApplication {
      */
     public boolean hasSecondGuardian() {
         return this.guardian2Name != null && !this.guardian2Name.trim().isEmpty();
+    }
+
+    /**
+     * 지도 상담 의견 존재 여부 확인.
+     */
+    public boolean hasMapParentOpinion() {
+        return this.mapParentOpinion != null && !this.mapParentOpinion.trim().isEmpty();
+    }
+
+    /**
+     * 희망 대학 정보 존재 여부 확인.
+     */
+    public boolean hasDesiredUniversity() {
+        return this.desiredUniversity != null && !this.desiredUniversity.trim().isEmpty();
+    }
+
+    /**
+     * 희망 학과 정보 존재 여부 확인.
+     */
+    public boolean hasDesiredDepartment() {
+        return this.desiredDepartment != null && !this.desiredDepartment.trim().isEmpty();
+    }
+
+    /**
+     * 희망 진로 정보 완전성 확인 (대학 + 학과).
+     */
+    public boolean hasCompleteDesiredPath() {
+        return hasDesiredUniversity() && hasDesiredDepartment();
     }
 }

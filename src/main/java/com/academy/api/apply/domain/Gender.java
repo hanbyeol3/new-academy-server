@@ -20,4 +20,11 @@ public enum Gender {
     UNKNOWN("불명");
     
     private final String description;
+    
+    /**
+     * 화면 표시용 이름 반환.
+     */
+    public String getDisplayName() {
+        return this.description;
+    }
 }

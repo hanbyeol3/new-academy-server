@@ -29,4 +29,11 @@ public enum StudentGradeLevel {
     H3("고3");
     
     private final String description;
+    
+    /**
+     * 화면 표시용 이름 반환.
+     */
+    public String getDisplayName() {
+        return this.description;
+    }
 }

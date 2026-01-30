@@ -23,4 +23,11 @@ public enum ApplicationStatus {
     CANCELED("접수취소");
     
     private final String description;
+    
+    /**
+     * 화면 표시용 이름 반환.
+     */
+    public String getDisplayName() {
+        return this.description;
+    }
 }

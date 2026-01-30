@@ -33,3 +33,9 @@ solapi:
   api-secret: ZPZMXWYZ2NEZ2GND4FORCVCZP3X7UEW6
   sender-number: "01053725012"
   base-url: https://api.solapi.com
+
+# JWT 설정 (로컬 환경용)
+jwt:
+  secret: mySecretKeyForJWT2024!@#$%^&*()1234567890
+  access-expire-minutes: 15
+  refresh-expire-days: 14

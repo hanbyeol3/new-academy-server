@@ -42,6 +42,10 @@ dependencies {
     implementation("org.apache.poi:poi:5.2.4")
     implementation("org.apache.poi:poi-ooxml:5.2.4")
     
+    // iText PDF (PDF 파일 생성)
+    implementation("com.itextpdf:itext-core:8.0.2")
+    implementation("com.itextpdf:font-asian:8.0.2")
+    
     compileOnly("org.projectlombok:lombok")
     
     runtimeOnly("com.h2database:h2")
