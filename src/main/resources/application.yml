@@ -5,7 +5,7 @@ spring:
   application:
     name: new-academy-api-server
   profiles:
-    active: prod
+    active: local
   
   jpa:
     defer-datasource-initialization: true
