@@ -20,7 +20,7 @@ import java.util.List;
 @Schema(description = "원서접수 상세 응답")
 public class ResponseApplyApplicationDetail {
 
-    @Schema(description = "원서접수 ID", example = "1")
+    @Schema(description = "원서접수 ID", example = "12")
     private Long id;
 
     @Schema(description = "원서접수 상태", example = "REGISTERED")
