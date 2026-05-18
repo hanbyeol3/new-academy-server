@@ -65,8 +65,6 @@ public class NoticePublicController {
             @RequestParam(required = false) Long categoryId,
             @Parameter(description = "중요 공지만 조회", example = "true") 
             @RequestParam(required = false) Boolean isImportant,
-            @Parameter(description = "공개 상태", example = "true") 
-            @RequestParam(required = false) Boolean isPublished,
             @Parameter(description = "노출 기간 유형 (ALWAYS, PERIOD)", example = "ALWAYS") 
             @RequestParam(required = false) String exposureType,
             @Parameter(description = "정렬 기준 (CREATED_DESC, CREATED_ASC, IMPORTANT_FIRST, VIEW_COUNT_DESC)", example = "IMPORTANT_FIRST") 
@@ -80,7 +78,7 @@ public class NoticePublicController {
         // 공개용은 기본적으로 중요 공지 우선 정렬
         String effectiveSortBy = sortBy != null ? sortBy : "IMPORTANT_FIRST";
         
-        return noticeService.getNoticeListForPublic(keyword, searchType, categoryId, isImportant, isPublished, exposureType, effectiveSortBy, pageable);
+        return noticeService.getNoticeListForPublic(keyword, searchType, categoryId, isImportant, null, exposureType, effectiveSortBy, pageable);
     }
 
     @Operation(

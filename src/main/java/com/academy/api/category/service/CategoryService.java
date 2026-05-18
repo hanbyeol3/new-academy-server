@@ -3,6 +3,7 @@ package com.academy.api.category.service;
 import com.academy.api.category.dto.RequestCategoryCreate;
 import com.academy.api.category.dto.RequestCategoryUpdate;
 import com.academy.api.category.dto.ResponseCategory;
+import com.academy.api.category.dto.ResponseCategoryPublic;
 import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
@@ -59,4 +60,21 @@ public interface CategoryService {
      * @return 삭제 결과
      */
     Response deleteCategory(Long id);
+
+    // ===================== 공개 API 메서드 =====================
+
+    /**
+     * 카테고리 목록 조회 (공개용).
+     * 
+     * @return 공개용 카테고리 목록
+     */
+    ResponseList<ResponseCategoryPublic> getCategoryListForPublic();
+
+    /**
+     * 카테고리 그룹별 카테고리 목록 조회 (공개용).
+     * 
+     * @param categoryGroupId 카테고리 그룹 ID
+     * @return 공개용 카테고리 목록
+     */
+    ResponseList<ResponseCategoryPublic> getCategoriesByGroupIdForPublic(Long categoryGroupId);
 }

@@ -63,6 +63,7 @@ public class SecurityConfiguration {
 						// ✅ 공개 API
 						.requestMatchers("/api/qna/**").permitAll()  // QnA 공개 API
 						.requestMatchers("/api/notices/**").permitAll()
+						.requestMatchers("/api/categories/**").permitAll()  // 카테고리 공개 API
 						.requestMatchers("/api/public/**").permitAll()
 						.requestMatchers("/api/explanations/**").permitAll()
 						.requestMatchers("/api/gallery/**").permitAll()

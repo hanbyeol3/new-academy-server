@@ -37,6 +37,12 @@ public class CategoryAdminController {
 
     // ===================== 카테고리 그룹 API =====================
 
+	/*
+	   1-1. GET /api/admin/categories/groups
+		  - 목적: 모든 카테고리 그룹 목록 조회
+		  - 용도: 관리자가 전체 그룹을 한눈에 보기
+		  - 예시: "공지사항", "FAQ", "과목" 등
+	*/
     @Operation(
         summary = "카테고리 그룹 목록 조회",
         description = "등록된 모든 카테고리 그룹 목록을 조회합니다."

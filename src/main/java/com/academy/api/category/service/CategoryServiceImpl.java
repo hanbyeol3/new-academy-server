@@ -5,6 +5,7 @@ import com.academy.api.category.domain.CategoryGroup;
 import com.academy.api.category.dto.RequestCategoryCreate;
 import com.academy.api.category.dto.RequestCategoryUpdate;
 import com.academy.api.category.dto.ResponseCategory;
+import com.academy.api.category.dto.ResponseCategoryPublic;
 import com.academy.api.category.mapper.CategoryMapper;
 import com.academy.api.category.repository.CategoryGroupRepository;
 import com.academy.api.category.repository.CategoryRepository;
@@ -197,6 +198,38 @@ public class CategoryServiceImpl implements CategoryService {
         log.info("[CategoryService] 카테고리 삭제 완료. ID={}", id);
         
         return Response.ok("0000", "카테고리가 삭제되었습니다.");
+    }
+
+    // ===================== 공개 API 메서드 =====================
+
+    @Override
+    public ResponseList<ResponseCategoryPublic> getCategoryListForPublic() {
+        log.info("[CategoryService] 공개용 전체 카테고리 목록 조회 시작");
+        
+        List<Category> categories = categoryRepository.findAllWithCategoryGroupOrderBySortOrder();
+        
+        log.debug("[CategoryService] 공개용 카테고리 조회 완료. 총 {}개", categories.size());
+        
+        List<ResponseCategoryPublic> response = ResponseCategoryPublic.fromList(categories);
+        return ResponseList.ok(response, response.size(), 0, response.size());
+    }
+
+    @Override
+    public ResponseList<ResponseCategoryPublic> getCategoriesByGroupIdForPublic(Long categoryGroupId) {
+        log.info("[CategoryService] 공개용 카테고리 그룹별 목록 조회 시작. groupId={}", categoryGroupId);
+        
+        // 카테고리 그룹 존재 여부 확인
+        if (!categoryGroupRepository.existsById(categoryGroupId)) {
+            throw new BusinessException(ErrorCode.CATEGORY_GROUP_NOT_FOUND);
+        }
+        
+        List<Category> categories = categoryRepository.findByCategoryGroupIdOrderBySortOrder(categoryGroupId);
+        
+        log.debug("[CategoryService] 공개용 카테고리 그룹별 조회 완료. groupId={}, 카테고리수={}", 
+                categoryGroupId, categories.size());
+        
+        List<ResponseCategoryPublic> response = ResponseCategoryPublic.fromList(categories);
+        return ResponseList.ok(response, response.size(), 0, response.size());
     }
     
     /**
