@@ -52,6 +52,7 @@ public class AcademyInfoMapper {
                 .youtubeUrl(entity.getYoutubeUrl())
                 .blogUrl(entity.getBlogUrl())
                 .instagramUrl(entity.getInstagramUrl())
+                .instructorYoutubeUrl(entity.getInstructorYoutubeUrl())
                 .createdBy(entity.getCreatedBy())
                 .createdAt(entity.getCreatedAt())
                 .updatedBy(entity.getUpdatedBy())
@@ -96,6 +97,7 @@ public class AcademyInfoMapper {
                 .youtubeUrl(request.getYoutubeUrl())
                 .blogUrl(request.getBlogUrl())
                 .instagramUrl(request.getInstagramUrl())
+                .instructorYoutubeUrl(request.getInstructorYoutubeUrl())
                 .createdBy(SecurityUtils.getCurrentUserId())
                 .build();
     }
@@ -166,6 +168,7 @@ public class AcademyInfoMapper {
                 request.getYoutubeUrl(),
                 request.getBlogUrl(),
                 request.getInstagramUrl(),
+                request.getInstructorYoutubeUrl(),
                 currentUserId
         );
 
@@ -208,6 +211,7 @@ public class AcademyInfoMapper {
                 .youtubeUrl("")
                 .blogUrl("")
                 .instagramUrl("")
+                .instructorYoutubeUrl("")
                 .createdBy(SecurityUtils.getCurrentUserId())
                 .build();
     }

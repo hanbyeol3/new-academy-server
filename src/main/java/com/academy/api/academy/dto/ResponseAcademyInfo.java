@@ -93,6 +93,9 @@ public class ResponseAcademyInfo {
     @Schema(description = "인스타그램 URL", example = "https://instagram.com/academy")
     private String instagramUrl;
 
+	@Schema(description = "강사진 유튜브 URL", example = "https://instructorYoutube.com/academy")
+	private String instructorYoutubeUrl;
+
     @Schema(description = "등록자 ID", example = "1")
     private Long createdBy;
 

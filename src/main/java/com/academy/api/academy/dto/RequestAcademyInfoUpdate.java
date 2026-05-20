@@ -121,4 +121,8 @@ public class RequestAcademyInfoUpdate {
     @Size(max = 255, message = "인스타그램 URL은 255자 이하여야 합니다")
     @Schema(description = "인스타그램 URL", example = "https://instagram.com/academy")
     private String instagramUrl;
+
+	@Size(max = 255, message = "강사진 유튜브 URL은 255자 이하여야 합니다")
+	@Schema(description = "강사진 유튜브 URL", example = "https://instructorYoutube.com/academy")
+	private String instructorYoutubeUrl;
 }

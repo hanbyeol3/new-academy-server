@@ -135,7 +135,12 @@ public class AcademyInfo {
     @Column(name = "instagram_url", length = 255)
     private String instagramUrl;
 
-    /** 등록자 ID */
+	/** 강사진 유튜브 URL */
+	@Column(name = "instructor_youtube_url", length = 255)
+	private String instructorYoutubeUrl;
+
+
+	/** 등록자 ID */
     @Column(name = "created_by")
     private Long createdBy;
 
@@ -162,7 +167,7 @@ public class AcademyInfo {
                        String fax, String email, String postalCode, String address, String addressDetail,
                        BigDecimal latitude, BigDecimal longitude, String weekdayHours, String weekendHours,
                        String siteTitle, String siteDesc, String siteKeywords, String ogImagePath,
-                       String kakaoUrl, String youtubeUrl, String blogUrl, String instagramUrl, Long createdBy) {
+                       String kakaoUrl, String youtubeUrl, String blogUrl, String instagramUrl, String instructorYoutubeUrl, Long createdBy) {
         this.academyName = academyName;
         this.campusName = campusName;
         this.domainUrl = domainUrl;
@@ -188,6 +193,7 @@ public class AcademyInfo {
         this.youtubeUrl = youtubeUrl;
         this.blogUrl = blogUrl;
         this.instagramUrl = instagramUrl;
+        this.instructorYoutubeUrl = instructorYoutubeUrl;
         this.createdBy = createdBy;
     }
 
@@ -254,12 +260,13 @@ public class AcademyInfo {
     /**
      * SNS 링크 정보 업데이트.
      */
-    public void updateSocialLinks(String kakaoUrl, String youtubeUrl, String blogUrl, 
-                                 String instagramUrl, Long updatedBy) {
+    public void updateSocialLinks(String kakaoUrl, String youtubeUrl, String blogUrl,
+                                 String instagramUrl, String instructorYoutubeUrl, Long updatedBy) {
         this.kakaoUrl = kakaoUrl;
         this.youtubeUrl = youtubeUrl;
         this.blogUrl = blogUrl;
         this.instagramUrl = instagramUrl;
+        this.instructorYoutubeUrl = instructorYoutubeUrl;
         this.updatedBy = updatedBy;
     }
 
