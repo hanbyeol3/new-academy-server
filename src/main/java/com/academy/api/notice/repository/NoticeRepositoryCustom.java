@@ -94,4 +94,20 @@ public interface NoticeRepositoryCustom {
      * @return 다음 공지사항 (없으면 null)
      */
     Notice findNextNotice(Long currentId);
+
+    /**
+     * 이전 공개 공지사항 조회 (공개된 것만).
+     * 
+     * @param currentId 현재 공지사항 ID
+     * @return 이전 공개 공지사항 (없으면 null)
+     */
+    Notice findPreviousPublicNotice(Long currentId);
+
+    /**
+     * 다음 공개 공지사항 조회 (공개된 것만).
+     * 
+     * @param currentId 현재 공지사항 ID
+     * @return 다음 공개 공지사항 (없으면 null)
+     */
+    Notice findNextPublicNotice(Long currentId);
 }

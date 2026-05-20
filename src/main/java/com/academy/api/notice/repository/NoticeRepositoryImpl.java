@@ -266,4 +266,88 @@ public class NoticeRepositoryImpl implements NoticeRepositoryCustom {
                 .orderBy(notice.createdAt.desc(), notice.id.desc())
                 .fetchFirst();
     }
+
+    /**
+     * 이전 공개 공지사항 조회 (공개된 것만).
+     * createdAt > current.createdAt OR (createdAt = current.createdAt AND id > current.id)
+     * AND isPublished = true AND exposureType 조건 만족
+     */
+    @Override
+    public Notice findPreviousPublicNotice(Long currentId) {
+        // 현재 공지사항 조회
+        Notice current = queryFactory
+                .selectFrom(notice)
+                .where(notice.id.eq(currentId))
+                .fetchOne();
+                
+        if (current == null) {
+            return null;
+        }
+        
+        LocalDateTime now = LocalDateTime.now();
+        
+        return queryFactory
+                .selectFrom(notice)
+                .where(
+                    // 이전 글 조건 (더 최신 글)
+                    notice.createdAt.gt(current.getCreatedAt())
+                    .or(
+                        notice.createdAt.eq(current.getCreatedAt())
+                        .and(notice.id.gt(currentId))
+                    ),
+                    // 공개 상태 조건
+                    notice.isPublished.eq(true),
+                    // 노출 가능 조건
+                    notice.exposureType.eq(ExposureType.ALWAYS)
+                        .or(
+                            notice.exposureType.eq(ExposureType.PERIOD)
+                                .and(notice.exposureStartAt.loe(now))
+                                .and(notice.exposureEndAt.goe(now))
+                        )
+                )
+                .orderBy(notice.createdAt.asc(), notice.id.asc())
+                .fetchFirst();
+    }
+
+    /**
+     * 다음 공개 공지사항 조회 (공개된 것만).
+     * createdAt < current.createdAt OR (createdAt = current.createdAt AND id < current.id)
+     * AND isPublished = true AND exposureType 조건 만족
+     */
+    @Override
+    public Notice findNextPublicNotice(Long currentId) {
+        // 현재 공지사항 조회
+        Notice current = queryFactory
+                .selectFrom(notice)
+                .where(notice.id.eq(currentId))
+                .fetchOne();
+                
+        if (current == null) {
+            return null;
+        }
+        
+        LocalDateTime now = LocalDateTime.now();
+        
+        return queryFactory
+                .selectFrom(notice)
+                .where(
+                    // 다음 글 조건 (더 오래된 글)
+                    notice.createdAt.lt(current.getCreatedAt())
+                    .or(
+                        notice.createdAt.eq(current.getCreatedAt())
+                        .and(notice.id.lt(currentId))
+                    ),
+                    // 공개 상태 조건
+                    notice.isPublished.eq(true),
+                    // 노출 가능 조건
+                    notice.exposureType.eq(ExposureType.ALWAYS)
+                        .or(
+                            notice.exposureType.eq(ExposureType.PERIOD)
+                                .and(notice.exposureStartAt.loe(now))
+                                .and(notice.exposureEndAt.goe(now))
+                        )
+                )
+                .orderBy(notice.createdAt.desc(), notice.id.desc())
+                .fetchFirst();
+    }
 }

@@ -187,7 +187,7 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
     }
 
     /**
-     * 공지사항 상세 조회 (파일 목록 포함).
+     * 공지사항 상세 조회 (파일 목록 포함) - 관리자용 기본.
      * 
      * JOIN을 활용하여 첨부파일과 본문이미지 목록을 함께 조회합니다.
      * 파일 역할별로 분리하여 제공합니다.
@@ -196,7 +196,18 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
      * @return 공지사항 상세 정보 (파일 목록 포함)
      */
     public ResponseData<ResponseNoticeDetail> getNoticeWithFiles(Long id) {
-        log.info("[NoticeService] 공지사항 상세 조회 (파일 포함) 시작. ID={}", id);
+        return getNoticeWithFiles(id, false);
+    }
+    
+    /**
+     * 공지사항 상세 조회 (파일 목록 포함) - 공개/관리자 구분.
+     * 
+     * @param id 공지사항 ID
+     * @param isPublicApi 공개 API 호출 여부
+     * @return 공지사항 상세 정보 (파일 목록 포함)
+     */
+    public ResponseData<ResponseNoticeDetail> getNoticeWithFiles(Long id, boolean isPublicApi) {
+        log.info("[NoticeService] 공지사항 상세 조회 (파일 포함) 시작. ID={}, isPublic={}", id, isPublicApi);
         
         Notice notice = findNoticeById(id);
         
@@ -235,8 +246,9 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
         String createdByName = getMemberName(notice.getCreatedBy());
         String updatedByName = getMemberName(notice.getUpdatedBy());
         
-        // 이전글/다음글 조회
-        ResponseNoticeNavigation navigation = getNoticeNavigation(id);
+        // 이전글/다음글 조회 - 공개 API와 관리자 API 구분
+        ResponseNoticeNavigation navigation = isPublicApi ? 
+                getPublicNoticeNavigation(id) : getNoticeNavigation(id);
         
         // ResponseNotice 생성 (파일 목록 및 회원 이름 포함)
         ResponseNoticeDetail response = ResponseNoticeDetail.fromWithNames(notice, createdByName, updatedByName);
@@ -289,8 +301,8 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
         log.debug("[NoticeService] 조회수 증가 완료. ID={}, 이전조회수={}, 현재조회수={}", 
                 id, beforeViewCount, notice.getViewCount());
         
-        // 파일 정보를 포함한 상세 조회
-        return getNoticeWithFiles(id);
+        // 파일 정보를 포함한 상세 조회 - 공개용 네비게이션 사용
+        return getNoticeWithFiles(id, true);
     }
 
 
@@ -627,10 +639,13 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
     /**
      * 이전글/다음글 네비게이션 정보 조회 도우미 메서드.
      */
+    /**
+     * 관리자용 네비게이션 정보 조회 (모든 공지사항 대상).
+     */
     private ResponseNoticeNavigation getNoticeNavigation(Long currentId) {
-        log.debug("[NoticeService] 네비게이션 정보 조회 시작. currentId={}", currentId);
+        log.debug("[NoticeService] 관리자용 네비게이션 정보 조회 시작. currentId={}", currentId);
         
-        // 이전글 조회
+        // 이전글 조회 (모든 공지사항)
         Notice previousNotice = noticeRepository.findPreviousNotice(currentId);
         ResponseNoticeNavigation.NavigationItem previous = null;
         if (previousNotice != null) {
@@ -643,7 +658,7 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
                     previousNotice.getId(), previousNotice.getTitle());
         }
         
-        // 다음글 조회
+        // 다음글 조회 (모든 공지사항)
         Notice nextNotice = noticeRepository.findNextNotice(currentId);
         ResponseNoticeNavigation.NavigationItem next = null;
         if (nextNotice != null) {
@@ -657,7 +672,46 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
         }
         
         ResponseNoticeNavigation navigation = ResponseNoticeNavigation.of(previous, next);
-        log.debug("[NoticeService] 네비게이션 정보 조회 완료. hasPrevious={}, hasNext={}", 
+        log.debug("[NoticeService] 관리자용 네비게이션 정보 조회 완료. hasPrevious={}, hasNext={}", 
+                previous != null, next != null);
+        
+        return navigation;
+    }
+    
+    /**
+     * 공개용 네비게이션 정보 조회 (공개된 공지사항만 대상).
+     */
+    private ResponseNoticeNavigation getPublicNoticeNavigation(Long currentId) {
+        log.debug("[NoticeService] 공개용 네비게이션 정보 조회 시작. currentId={}", currentId);
+        
+        // 이전글 조회 (공개된 것만)
+        Notice previousNotice = noticeRepository.findPreviousPublicNotice(currentId);
+        ResponseNoticeNavigation.NavigationItem previous = null;
+        if (previousNotice != null) {
+            previous = ResponseNoticeNavigation.NavigationItem.builder()
+                    .id(previousNotice.getId())
+                    .title(previousNotice.getTitle())
+                    .createdAt(previousNotice.getCreatedAt())
+                    .build();
+            log.debug("[NoticeService] 공개 이전글 조회 완료. previousId={}, title={}", 
+                    previousNotice.getId(), previousNotice.getTitle());
+        }
+        
+        // 다음글 조회 (공개된 것만)
+        Notice nextNotice = noticeRepository.findNextPublicNotice(currentId);
+        ResponseNoticeNavigation.NavigationItem next = null;
+        if (nextNotice != null) {
+            next = ResponseNoticeNavigation.NavigationItem.builder()
+                    .id(nextNotice.getId())
+                    .title(nextNotice.getTitle())
+                    .createdAt(nextNotice.getCreatedAt())
+                    .build();
+            log.debug("[NoticeService] 공개 다음글 조회 완료. nextId={}, title={}", 
+                    nextNotice.getId(), nextNotice.getTitle());
+        }
+        
+        ResponseNoticeNavigation navigation = ResponseNoticeNavigation.of(previous, next);
+        log.debug("[NoticeService] 공개용 네비게이션 정보 조회 완료. hasPrevious={}, hasNext={}", 
                 previous != null, next != null);
         
         return navigation;
