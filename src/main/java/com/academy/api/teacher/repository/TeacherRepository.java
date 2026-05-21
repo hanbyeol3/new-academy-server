@@ -239,6 +239,70 @@ public interface TeacherRepository extends JpaRepository<Teacher, Long>, Teacher
             @Param("isPublished") Boolean isPublished, 
             Pageable pageable);
     /**
+     * 공개된 강사 중 특정 과목을 담당하는 강사 목록 조회.
+     * 
+     * @param categoryId 과목 카테고리 ID
+     * @param pageable 페이징 정보
+     * @return 공개된 강사 중 해당 과목을 담당하는 강사 목록
+     */
+    @Query(value = """
+        SELECT DISTINCT t 
+        FROM Teacher t 
+        LEFT JOIN FETCH t.subjects ts 
+        LEFT JOIN FETCH ts.category c
+        LEFT JOIN FETCH c.categoryGroup
+        WHERE t.isPublished = true
+        AND EXISTS (
+            SELECT 1 FROM TeacherSubject ts2 
+            WHERE ts2.teacher.id = t.id 
+            AND ts2.category.id = :categoryId
+        )
+        """,
+        countQuery = """
+        SELECT COUNT(DISTINCT t) 
+        FROM Teacher t 
+        JOIN t.subjects ts 
+        WHERE t.isPublished = true
+        AND ts.category.id = :categoryId
+        """)
+    Page<Teacher> findPublishedByCategory(@Param("categoryId") Long categoryId, Pageable pageable);
+
+    /**
+     * 공개된 강사 중 특정 과목을 담당하면서 강사명으로 검색.
+     * 
+     * @param categoryId 과목 카테고리 ID
+     * @param teacherName 검색할 강사명
+     * @param pageable 페이징 정보
+     * @return 검색 조건에 맞는 공개된 강사 목록
+     */
+    @Query(value = """
+        SELECT DISTINCT t 
+        FROM Teacher t 
+        LEFT JOIN FETCH t.subjects ts 
+        LEFT JOIN FETCH ts.category c
+        LEFT JOIN FETCH c.categoryGroup
+        WHERE t.isPublished = true
+        AND t.teacherName LIKE %:teacherName%
+        AND EXISTS (
+            SELECT 1 FROM TeacherSubject ts2 
+            WHERE ts2.teacher.id = t.id 
+            AND ts2.category.id = :categoryId
+        )
+        """,
+        countQuery = """
+        SELECT COUNT(DISTINCT t) 
+        FROM Teacher t 
+        JOIN t.subjects ts 
+        WHERE t.isPublished = true
+        AND t.teacherName LIKE %:teacherName%
+        AND ts.category.id = :categoryId
+        """)
+    Page<Teacher> findPublishedByCategoryAndKeyword(
+            @Param("categoryId") Long categoryId,
+            @Param("teacherName") String teacherName,
+            Pageable pageable);
+
+    /**
      * 강사명 중복 검사.
      * 
      * @param teacherName 검사할 강사명

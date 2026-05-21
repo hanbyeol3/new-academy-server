@@ -2,9 +2,11 @@ package com.academy.api.academy.service;
 
 import com.academy.api.academy.domain.AcademyInfo;
 import com.academy.api.academy.dto.RequestAcademyInfoUpdate;
+import com.academy.api.academy.dto.RequestInstructorVideoUpdate;
 import com.academy.api.academy.dto.ResponseAcademyInfo;
 import com.academy.api.academy.mapper.AcademyInfoMapper;
 import com.academy.api.academy.repository.AcademyInfoRepository;
+import com.academy.api.common.util.SecurityUtils;
 import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
 import lombok.RequiredArgsConstructor;
@@ -102,6 +104,52 @@ public class AcademyInfoServiceImpl implements AcademyInfoService {
         } catch (Exception e) {
             log.error("[AcademyInfoService] 학원 정보 수정 중 예상치 못한 오류: {}", e.getMessage(), e);
             return Response.error("E500", "학원 정보 수정 중 오류가 발생했습니다");
+        }
+    }
+
+    /**
+     * 강사진 유튜브 URL 수정.
+     * 
+     * @param request 강사진 유튜브 URL 수정 요청 데이터
+     * @return 수정 결과
+     */
+    @Override
+    @Transactional
+    public Response updateInstructorVideo(RequestInstructorVideoUpdate request) {
+        log.info("[AcademyInfoService] 강사진 유튜브 URL 수정 시작. url={}", 
+                request.getInstructorYoutubeUrl());
+
+        try {
+            // 기존 학원 정보 조회 (없으면 기본값 생성)
+            AcademyInfo academyInfo = academyInfoRepository.findFirstRow()
+                    .orElseGet(() -> {
+                        log.debug("[AcademyInfoService] 학원 정보가 존재하지 않아 기본값으로 생성 후 수정");
+                        return createDefaultAcademyInfo();
+                    });
+
+            Long currentUserId = SecurityUtils.getCurrentUserId();
+
+            // SNS 링크만 업데이트 (다른 링크들은 기존값 유지)
+            academyInfo.updateSocialLinks(
+                    academyInfo.getKakaoUrl(),
+                    academyInfo.getYoutubeUrl(),
+                    academyInfo.getBlogUrl(),
+                    academyInfo.getInstagramUrl(),
+                    request.getInstructorYoutubeUrl(),
+                    currentUserId
+            );
+
+            // 저장
+            AcademyInfo savedAcademyInfo = academyInfoRepository.save(academyInfo);
+
+            log.debug("[AcademyInfoService] 강사진 유튜브 URL 수정 완료. id={}", 
+                    savedAcademyInfo.getId());
+
+            return Response.ok("0000", "강사진 유튜브 URL이 수정되었습니다");
+
+        } catch (Exception e) {
+            log.error("[AcademyInfoService] 강사진 유튜브 URL 수정 중 예상치 못한 오류: {}", e.getMessage(), e);
+            return Response.error("E500", "강사진 유튜브 URL 수정 중 오류가 발생했습니다");
         }
     }
 

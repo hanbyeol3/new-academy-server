@@ -56,13 +56,25 @@ public class ResponseTeacherListItem {
     @Schema(description = "담당 과목 정보")
     public static class SubjectInfo {
         
-        @Schema(description = "과목 카테고리 ID", example = "1")
+        @Schema(description = "과목 ID", example = "1")
+        private Long id;
+        
+        @Schema(description = "과목 카테고리 ID", example = "12")
         private Long categoryId;
         
-        @Schema(description = "과목명", example = "수학")
+        @Schema(description = "과목명", example = "고등수학")
         private String categoryName;
         
-        @Schema(description = "과목 설명", example = "중학교 수학 과정")
-        private String categoryDescription;
+        @Schema(description = "과목 슬러그", example = "high-math")
+        private String categorySlug;
+        
+        @Schema(description = "과목 그룹 ID", example = "3")
+        private Long categoryGroupId;
+        
+        @Schema(description = "과목 그룹명", example = "수학")
+        private String categoryGroupName;
+        
+        @Schema(description = "표시 순서", example = "1")
+        private Integer displayOrder;
     }
 }

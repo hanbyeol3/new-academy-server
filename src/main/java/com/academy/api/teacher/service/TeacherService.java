@@ -37,10 +37,11 @@ public interface TeacherService extends CategoryUsageChecker {
      * 공개 강사 목록 조회 (공개용).
      * 
      * @param keyword 검색 키워드 (강사명)
+     * @param categoryId 과목 카테고리 ID (null이면 전체 과목)
      * @param pageable 페이징 정보
      * @return 공개된 강사 목록
      */
-    ResponseList<ResponseTeacherListItem> getPublishedTeacherList(String keyword, Pageable pageable);
+    ResponseList<ResponseTeacherListItem> getPublishedTeacherList(String keyword, Long categoryId, Pageable pageable);
 
     /**
      * 강사 상세 조회.

@@ -113,17 +113,35 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
      * 공개 강사 목록 조회 (공개용).
      */
     @Override
-    public ResponseList<ResponseTeacherListItem> getPublishedTeacherList(String keyword, Pageable pageable) {
-        log.info("[TeacherService] 공개 강사 목록 조회 시작. keyword={}, page={}, size={}", 
-                keyword, pageable.getPageNumber(), pageable.getPageSize());
+    public ResponseList<ResponseTeacherListItem> getPublishedTeacherList(String keyword, Long categoryId, Pageable pageable) {
+        log.info("[TeacherService] 공개 강사 목록 조회 시작. keyword={}, categoryId={}, page={}, size={}", 
+                keyword, categoryId, pageable.getPageNumber(), pageable.getPageSize());
 
         Page<Teacher> teacherPage;
-        if (keyword != null && !keyword.trim().isEmpty()) {
-            teacherPage = teacherRepository.findPublishedByTeacherNameContainingWithSubjects(keyword.trim(), pageable);
-            log.debug("[TeacherService] 공개 강사 키워드 검색 완료. keyword={}, 검색결과수={}", keyword, teacherPage.getTotalElements());
+        
+        // keyword와 categoryId 조합에 따른 분기 처리
+        if (categoryId != null) {
+            if (keyword != null && !keyword.trim().isEmpty()) {
+                // 키워드 + 카테고리 검색
+                teacherPage = teacherRepository.findPublishedByCategoryAndKeyword(categoryId, keyword.trim(), pageable);
+                log.debug("[TeacherService] 공개 강사 카테고리+키워드 검색 완료. categoryId={}, keyword={}, 검색결과수={}", 
+                        categoryId, keyword, teacherPage.getTotalElements());
+            } else {
+                // 카테고리만 검색
+                teacherPage = teacherRepository.findPublishedByCategory(categoryId, pageable);
+                log.debug("[TeacherService] 공개 강사 카테고리 검색 완료. categoryId={}, 검색결과수={}", 
+                        categoryId, teacherPage.getTotalElements());
+            }
         } else {
-            teacherPage = teacherRepository.findPublishedWithSubjects(pageable);
-            log.debug("[TeacherService] 공개 강사 전체 목록 조회 완료. 총강사수={}", teacherPage.getTotalElements());
+            if (keyword != null && !keyword.trim().isEmpty()) {
+                // 키워드만 검색
+                teacherPage = teacherRepository.findPublishedByTeacherNameContainingWithSubjects(keyword.trim(), pageable);
+                log.debug("[TeacherService] 공개 강사 키워드 검색 완료. keyword={}, 검색결과수={}", keyword, teacherPage.getTotalElements());
+            } else {
+                // 전체 조회
+                teacherPage = teacherRepository.findPublishedWithSubjects(pageable);
+                log.debug("[TeacherService] 공개 강사 전체 목록 조회 완료. 총강사수={}", teacherPage.getTotalElements());
+            }
         }
 
         ResponseList<ResponseTeacherListItem> result = teacherMapper.toListItemResponseList(teacherPage);

@@ -91,11 +91,18 @@ public class TeacherMapper {
      */
     public ResponseTeacherListItem toListItemResponse(Teacher teacher) {
         List<ResponseTeacherListItem.SubjectInfo> subjects = teacher.getSubjects().stream()
-                .map(ts -> ResponseTeacherListItem.SubjectInfo.builder()
-                        .categoryId(ts.getCategory().getId())
-                        .categoryName(ts.getCategory().getName())
-                        .categoryDescription(ts.getCategory().getDescription())
-                        .build())
+                .map(ts -> {
+                    Category category = ts.getCategory();
+                    return ResponseTeacherListItem.SubjectInfo.builder()
+                            .id(ts.getId())
+                            .categoryId(category.getId())
+                            .categoryName(category.getName())
+                            .categorySlug(category.getSlug())
+                            .categoryGroupId(category.getCategoryGroup().getId())
+                            .categoryGroupName(category.getCategoryGroup().getName())
+                            .displayOrder(category.getSortOrder())
+                            .build();
+                })
                 .collect(Collectors.toList());
 
         return ResponseTeacherListItem.builder()

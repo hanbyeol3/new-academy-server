@@ -34,6 +34,7 @@ public class TeacherPublicController {
      * 공개 강사 목록 조회.
      * 
      * @param keyword 검색 키워드 (강사명)
+     * @param categoryId 과목 카테고리 ID
      * @param pageable 페이징 정보
      * @return 공개된 강사 목록
      */
@@ -46,10 +47,12 @@ public class TeacherPublicController {
                 - 인증 없이 접근 가능
                 - 공개 상태(isPublished=true)인 강사만 표시
                 - 강사명으로 검색 가능
-                - 강사 기본 정보와 담당 과목 정보 포함
+                - 특정 과목별 필터링 가능
+                - 강사 기본 정보와 담당 과목 상세 정보 포함
                 
                 검색 기능:
                 - keyword: 강사명 부분 일치 검색
+                - categoryId: 특정 과목 담당 강사만 필터링
                 
                 정렬:
                 - 생성일시 기준 최신순 (기본값)
@@ -57,21 +60,35 @@ public class TeacherPublicController {
                 반환 정보:
                 - 강사 기본 정보 (ID, 이름, 경력, 한 줄 소개)
                 - 강사 이미지
-                - 담당 과목 목록
+                - 담당 과목 상세 목록:
+                  - categoryId: 과목 ID
+                  - categoryName: 과목명
+                  - categorySlug: 과목 슬러그
+                  - categoryGroupId: 과목 그룹 ID
+                  - categoryGroupName: 과목 그룹명
+                  - displayOrder: 표시 순서
                 - 공개 여부
                 - 등록/수정 일시
+                
+                사용 예시:
+                - GET /api/teachers - 전체 공개 강사 목록
+                - GET /api/teachers?keyword=김 - 이름에 '김'이 포함된 강사
+                - GET /api/teachers?categoryId=12 - 고등수학을 가르치는 강사
+                - GET /api/teachers?keyword=김&categoryId=12 - 복합 조건
                 """
     )
     @GetMapping
     public ResponseList<ResponseTeacherListItem> getPublishedTeacherList(
             @Parameter(description = "강사명 검색 키워드 (부분 일치)", example = "김교수") 
             @RequestParam(required = false) String keyword,
+            @Parameter(description = "과목 카테고리 ID (특정 과목 담당 강사만 조회)", example = "12") 
+            @RequestParam(required = false) Long categoryId,
             @PageableDefault(size = 12, sort = "createdAt", direction = Sort.Direction.DESC) 
             Pageable pageable) {
         
-        log.info("[TeacherPublicController] 공개 강사 목록 조회 요청. keyword={}", keyword);
+        log.info("[TeacherPublicController] 공개 강사 목록 조회 요청. keyword={}, categoryId={}", keyword, categoryId);
         
-        return teacherService.getPublishedTeacherList(keyword, pageable);
+        return teacherService.getPublishedTeacherList(keyword, categoryId, pageable);
     }
 
     /**
@@ -117,6 +134,7 @@ public class TeacherPublicController {
      * 강사 검색.
      * 
      * @param keyword 검색 키워드
+     * @param categoryId 과목 카테고리 ID
      * @param pageable 페이징 정보
      * @return 검색된 강사 목록
      */
@@ -127,28 +145,33 @@ public class TeacherPublicController {
                 
                 검색 대상:
                 - 강사명 (부분 일치)
+                - 과목별 필터링 가능
                 
                 특징:
                 - 대소문자 구분 없음
                 - 부분 일치 검색
                 - 공개 상태인 강사만 검색
                 - 생성일시 기준 최신순 정렬
+                - 과목 상세 정보 포함
                 
                 용도:
                 - 강사 검색 페이지
                 - 통합 검색 결과
                 - 강사명 자동완성
+                - 과목별 강사 검색
                 """
     )
     @GetMapping("/search")
     public ResponseList<ResponseTeacherListItem> searchTeachers(
             @Parameter(description = "검색 키워드 (강사명)", example = "김") 
             @RequestParam String keyword,
+            @Parameter(description = "과목 카테고리 ID (선택)", example = "12") 
+            @RequestParam(required = false) Long categoryId,
             @PageableDefault(size = 12, sort = "createdAt", direction = Sort.Direction.DESC) 
             Pageable pageable) {
         
-        log.info("[TeacherPublicController] 강사 검색 요청. 키워드={}", keyword);
+        log.info("[TeacherPublicController] 강사 검색 요청. 키워드={}, categoryId={}", keyword, categoryId);
         
-        return teacherService.getPublishedTeacherList(keyword, pageable);
+        return teacherService.getPublishedTeacherList(keyword, categoryId, pageable);
     }
 }

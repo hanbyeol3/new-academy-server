@@ -1,6 +1,7 @@
 package com.academy.api.academy.controller;
 
 import com.academy.api.academy.dto.RequestAcademyInfoUpdate;
+import com.academy.api.academy.dto.RequestInstructorVideoUpdate;
 import com.academy.api.academy.dto.ResponseAcademyInfo;
 import com.academy.api.academy.service.AcademyInfoService;
 import com.academy.api.data.responses.common.Response;
@@ -82,5 +83,39 @@ public class AcademyInfoAdminController {
                 request.getAcademyName());
         
         return academyInfoService.updateAcademyInfo(request);
+    }
+
+    @PutMapping("/instructor-video")
+    @Operation(
+        summary = "강사진 유튜브 URL 수정",
+        description = """
+                강사진 소개 유튜브 URL을 수정합니다.
+                
+                특징:
+                - 강사진 소개 영상 URL만 개별 수정
+                - 다른 학원 정보에는 영향 없음
+                - 관리자 권한 필요
+                
+                입력 사항:
+                - instructorYoutubeUrl: 유튜브 URL (255자 이하)
+                
+                사용 예시:
+                - https://www.youtube.com/watch?v=example
+                - https://youtu.be/example
+                - 빈 문자열로 설정 시 URL 제거
+                
+                주의사항:
+                - 수정 시각과 수정자 정보가 자동으로 업데이트됩니다
+                - 데이터가 없을 경우 새로 생성 후 수정됩니다
+                """
+    )
+    public Response updateInstructorVideo(
+            @Parameter(description = "강사진 유튜브 URL 수정 요청") 
+            @RequestBody @Valid RequestInstructorVideoUpdate request) {
+        
+        log.info("강사진 유튜브 URL 수정 요청. url={}", 
+                request.getInstructorYoutubeUrl());
+        
+        return academyInfoService.updateInstructorVideo(request);
     }
 }
