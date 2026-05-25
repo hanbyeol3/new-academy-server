@@ -11,6 +11,7 @@ import com.academy.api.data.responses.common.ResponseList;
 import com.academy.api.file.service.FileService;
 import com.academy.api.file.repository.UploadFileLinkRepository;
 import com.academy.api.teacher.domain.Teacher;
+import com.academy.api.teacher.domain.TeacherCareer;
 import com.academy.api.teacher.domain.TeacherSubject;
 import com.academy.api.teacher.dto.RequestTeacherCreate;
 import com.academy.api.teacher.dto.RequestTeacherUpdate;
@@ -18,6 +19,7 @@ import com.academy.api.teacher.dto.ResponseTeacher;
 import com.academy.api.teacher.dto.ResponseTeacherListItem;
 import com.academy.api.teacher.mapper.TeacherMapper;
 import com.academy.api.teacher.repository.TeacherRepository;
+import com.academy.api.teacher.repository.TeacherCareerRepository;
 import com.academy.api.teacher.repository.TeacherSubjectRepository;
 import com.academy.api.common.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -53,6 +55,7 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
 
     private final TeacherRepository teacherRepository;
     private final TeacherSubjectRepository teacherSubjectRepository;
+    private final TeacherCareerRepository teacherCareerRepository;
     private final CategoryRepository categoryRepository;
     private final TeacherMapper teacherMapper;
     private final FileService fileService;
@@ -209,11 +212,12 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
                 String imagePath = "formal/" + formalFileId;
                 savedTeacher.update(
                     savedTeacher.getTeacherName(),
-                    savedTeacher.getCareer(),
+                    savedTeacher.getRoleName(),
                     imagePath, // 이미지 경로 설정
                     savedTeacher.getIntroText(),
                     savedTeacher.getMemo(),
                     savedTeacher.getIsPublished(),
+                    savedTeacher.getIsComingSoon(),
                     savedTeacher.getUpdatedBy()
                 );
                 log.debug("[TeacherService] 이미지 경로 설정 완료. imagePath={}, teacherId={}", 
@@ -227,6 +231,12 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
         if (request.getSubjectCategoryIds() != null && !request.getSubjectCategoryIds().isEmpty()) {
             createTeacherSubjects(savedTeacher, request.getSubjectCategoryIds());
             log.debug("[TeacherService] 과목 연결 완료. 과목수={}", request.getSubjectCategoryIds().size());
+        }
+
+        // 5. 경력 정보 처리
+        if (request.getCareers() != null && !request.getCareers().isEmpty()) {
+            createTeacherCareers(savedTeacher, request.getCareers());
+            log.debug("[TeacherService] 경력 정보 저장 완료. 경력수={}", request.getCareers().size());
         }
 
         log.info("[TeacherService] 강사 생성 완료. id={}, teacherName={}", 
@@ -262,11 +272,12 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
         // 3. 기본 정보 업데이트 (이미지 경로 포함)
         teacher.update(
                 getValueOrDefault(request.getTeacherName(), teacher.getTeacherName()),
-                getValueOrDefault(request.getCareer(), teacher.getCareer()),
+                getValueOrDefault(request.getRoleName(), teacher.getRoleName()),
                 newImagePath, // 처리된 이미지 경로
                 getValueOrDefault(request.getIntroText(), teacher.getIntroText()),
                 getValueOrDefault(request.getMemo(), teacher.getMemo()),
                 getValueOrDefault(request.getIsPublished(), teacher.getIsPublished()),
+                getValueOrDefault(request.getIsComingSoon(), teacher.getIsComingSoon()),
                 SecurityUtils.getCurrentUserId()
         );
         log.debug("[TeacherService] 기본 정보 업데이트 완료");
@@ -275,6 +286,12 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
         if (request.getSubjectCategoryIds() != null) {
             updateTeacherSubjects(teacher, request.getSubjectCategoryIds());
             log.debug("[TeacherService] 과목 관계 업데이트 완료. 과목수={}", request.getSubjectCategoryIds().size());
+        }
+
+        // 5. 경력 정보 업데이트
+        if (request.getCareers() != null) {
+            updateTeacherCareers(teacher, request.getCareers());
+            log.debug("[TeacherService] 경력 정보 업데이트 완료. 경력수={}", request.getCareers().size());
         }
 
         Teacher updatedTeacher = teacherRepository.findByIdWithSubjects(id)
@@ -340,12 +357,13 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
 
         teacher.update(
                 teacher.getTeacherName(),
-                teacher.getCareer(),
+                teacher.getRoleName(),
                 teacher.getImagePath(),
                 teacher.getIntroText(),
                 teacher.getMemo(),
                 isPublished,
-                teacher.getUpdatedBy()
+                teacher.getIsComingSoon(),
+                SecurityUtils.getCurrentUserId()
         );
 
         String statusText = isPublished ? "공개" : "비공개";
@@ -466,5 +484,44 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
                sortType.equals("CREATED_ASC") || 
                sortType.equals("NAME_ASC") || 
                sortType.equals("NAME_DESC");
+    }
+
+    /**
+     * 강사 경력 생성.
+     * 
+     * @param teacher 강사 엔티티
+     * @param careerItems 경력 항목 리스트
+     */
+    private void createTeacherCareers(Teacher teacher, List<com.academy.api.teacher.dto.CareerItem> careerItems) {
+        int sortOrder = 0;
+        for (com.academy.api.teacher.dto.CareerItem item : careerItems) {
+            if (item.getText() != null && !item.getText().trim().isEmpty()) {
+                TeacherCareer career = TeacherCareer.builder()
+                        .teacher(teacher)
+                        .careerText(item.getText())
+                        .isHighlight(item.getHighlight() != null ? item.getHighlight() : false)
+                        .sortOrder(item.getSortOrder() != null ? item.getSortOrder() : sortOrder++)
+                        .build();
+                
+                teacherCareerRepository.save(career);
+                log.debug("[TeacherService] 경력 항목 저장. text={}, highlight={}, sortOrder={}", 
+                        item.getText(), item.getHighlight(), career.getSortOrder());
+            }
+        }
+    }
+
+    /**
+     * 강사 경력 업데이트 (삭제 후 재생성).
+     * 
+     * @param teacher 강사 엔티티
+     * @param careerItems 경력 항목 리스트
+     */
+    private void updateTeacherCareers(Teacher teacher, List<com.academy.api.teacher.dto.CareerItem> careerItems) {
+        // 기존 경력 모두 삭제
+        teacherCareerRepository.deleteByTeacherId(teacher.getId());
+        log.debug("[TeacherService] 기존 경력 삭제 완료. teacherId={}", teacher.getId());
+        
+        // 새 경력 생성
+        createTeacherCareers(teacher, careerItems);
     }
 }

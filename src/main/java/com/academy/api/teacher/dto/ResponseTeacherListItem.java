@@ -25,8 +25,14 @@ public class ResponseTeacherListItem {
     @Schema(description = "강사명", example = "김교수")
     private String teacherName;
 
-    @Schema(description = "약력/경력 소개", example = "<p>서울대학교 수학과 졸업<br/>삼성전자 연구원 5년 경력</p>")
-    private String career;
+    @Schema(description = "역할명", example = "원장")
+    private String role;
+
+    @Schema(description = "Coming Soon 여부", example = "false")
+    private Boolean comingSoon;
+
+    @Schema(description = "경력 목록")
+    private List<CareerItem> careers;
 
     @Schema(description = "강사 이미지 정보")
     private UploadFileDto image;

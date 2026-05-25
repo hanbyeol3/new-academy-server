@@ -4,7 +4,9 @@ import com.academy.api.category.domain.Category;
 import com.academy.api.common.util.SecurityUtils;
 import com.academy.api.data.responses.common.ResponseList;
 import com.academy.api.teacher.domain.Teacher;
+import com.academy.api.teacher.domain.TeacherCareer;
 import com.academy.api.teacher.domain.TeacherSubject;
+import com.academy.api.teacher.dto.CareerItem;
 import com.academy.api.teacher.dto.RequestTeacherCreate;
 import com.academy.api.teacher.dto.RequestTeacherUpdate;
 import com.academy.api.teacher.dto.ResponseTeacher;
@@ -44,10 +46,11 @@ public class TeacherMapper {
     public Teacher toEntity(RequestTeacherCreate request) {
         return Teacher.builder()
                 .teacherName(request.getTeacherName())
-                .career(request.getCareer())
+                .roleName(request.getRoleName())
                 .introText(request.getIntroText())
                 .memo(request.getMemo())
                 .isPublished(request.getIsPublished() != null ? request.getIsPublished() : true)
+                .isComingSoon(request.getIsComingSoon() != null ? request.getIsComingSoon() : false)
                 .createdBy(SecurityUtils.getCurrentUserId())
                 .build();
     }
@@ -67,10 +70,21 @@ public class TeacherMapper {
                         .build())
                 .collect(Collectors.toList());
 
+        List<CareerItem> careers = teacher.getCareers().stream()
+                .map(career -> CareerItem.builder()
+                        .id(career.getId())
+                        .text(career.getCareerText())
+                        .highlight(career.getIsHighlight())
+                        .sortOrder(career.getSortOrder())
+                        .build())
+                .collect(Collectors.toList());
+
         return ResponseTeacher.builder()
                 .id(teacher.getId())
                 .teacherName(teacher.getTeacherName())
-                .career(teacher.getCareer())
+                .role(teacher.getRoleName())
+                .comingSoon(teacher.getIsComingSoon())
+                .careers(careers)
                 .image(getImageFromPath(teacher.getImagePath()))
                 .introText(teacher.getIntroText())
                 .memo(teacher.getMemo())
@@ -105,10 +119,21 @@ public class TeacherMapper {
                 })
                 .collect(Collectors.toList());
 
+        List<CareerItem> careers = teacher.getCareers().stream()
+                .map(career -> CareerItem.builder()
+                        .id(career.getId())
+                        .text(career.getCareerText())
+                        .highlight(career.getIsHighlight())
+                        .sortOrder(career.getSortOrder())
+                        .build())
+                .collect(Collectors.toList());
+
         return ResponseTeacherListItem.builder()
                 .id(teacher.getId())
                 .teacherName(teacher.getTeacherName())
-                .career(teacher.getCareer())
+                .role(teacher.getRoleName())
+                .comingSoon(teacher.getIsComingSoon())
+                .careers(careers)
                 .image(getImageFromPath(teacher.getImagePath()))
                 .introText(teacher.getIntroText())
                 .isPublished(teacher.getIsPublished())
@@ -171,11 +196,12 @@ public class TeacherMapper {
     public void updateEntity(Teacher teacher, RequestTeacherUpdate request) {
         teacher.update(
                 getValueOrDefault(request.getTeacherName(), teacher.getTeacherName()),
-                getValueOrDefault(request.getCareer(), teacher.getCareer()),
+                getValueOrDefault(request.getRoleName(), teacher.getRoleName()),
                 teacher.getImagePath(), // 이미지는 별도 처리 (파일 서비스에서)
                 getValueOrDefault(request.getIntroText(), teacher.getIntroText()),
                 getValueOrDefault(request.getMemo(), teacher.getMemo()),
                 getValueOrDefault(request.getIsPublished(), teacher.getIsPublished()),
+                getValueOrDefault(request.getIsComingSoon(), teacher.getIsComingSoon()),
                 SecurityUtils.getCurrentUserId() // 수정자 ID
         );
     }

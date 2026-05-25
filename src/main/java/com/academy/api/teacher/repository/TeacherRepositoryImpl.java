@@ -1,6 +1,7 @@
 package com.academy.api.teacher.repository;
 
 import com.academy.api.teacher.domain.QTeacher;
+import com.academy.api.teacher.domain.QTeacherCareer;
 import com.academy.api.teacher.domain.QTeacherSubject;
 import com.academy.api.teacher.domain.Teacher;
 import com.academy.api.category.domain.QCategory;
@@ -31,6 +32,7 @@ public class TeacherRepositoryImpl implements TeacherRepositoryCustom {
 
     private static final QTeacher teacher = QTeacher.teacher;
     private static final QTeacherSubject teacherSubject = QTeacherSubject.teacherSubject;
+    private static final QTeacherCareer teacherCareer = QTeacherCareer.teacherCareer;
     private static final QCategory category = QCategory.category;
 
     @Override
@@ -40,7 +42,7 @@ public class TeacherRepositoryImpl implements TeacherRepositoryCustom {
 
         BooleanExpression predicate = createSearchPredicate(keyword, categoryId, isPublished);
 
-        // 메인 쿼리 (fetch join 사용)
+        // 메인 쿼리 (fetch join 사용 - careers는 제외)
         JPAQuery<Teacher> query = queryFactory
                 .selectFrom(teacher)
                 .distinct()

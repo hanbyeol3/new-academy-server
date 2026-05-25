@@ -22,9 +22,17 @@ public class RequestTeacherUpdate {
             example = "김교수")
     private String teacherName;
 
-    @Schema(description = "약력/경력 소개", 
-            example = "<p>서울대학교 수학과 졸업<br/>삼성전자 연구원 5년 경력</p>")
-    private String career;
+    @Size(max = 50, message = "역할명은 50자 이하여야 합니다")
+    @Schema(description = "역할명", 
+            example = "원장")
+    private String roleName;
+
+    @Schema(description = "Coming Soon 여부 (예정된 강사)", 
+            example = "false")
+    private Boolean isComingSoon;
+
+    @Schema(description = "경력 목록")
+    private List<CareerItem> careers;
 
     @Schema(description = "강사 이미지 임시파일 ID", 
             example = "550e8400-e29b-41d4-a716-446655440000")

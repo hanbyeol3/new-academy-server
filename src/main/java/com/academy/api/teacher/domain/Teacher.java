@@ -5,6 +5,7 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.BatchSize;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -34,10 +35,9 @@ public class Teacher {
     @Column(name = "teacher_name", nullable = false, length = 120)
     private String teacherName;
 
-    /** 약력 / 경력 소개 */
-    @Lob
-    @Column(name = "career", columnDefinition = "TEXT")
-    private String career;
+    /** 역할명 (원장, 대표강사, 교무부장 등) */
+    @Column(name = "role_name", length = 50)
+    private String roleName;
 
     /** 대표 이미지 경로 */
     @Column(name = "image_path", length = 500)
@@ -46,6 +46,10 @@ public class Teacher {
     /** 한 줄 소개문 */
     @Column(name = "intro_text", length = 255)
     private String introText;
+
+    /** Coming Soon 여부 (1=예정, 0=정상) */
+    @Column(name = "is_coming_soon", nullable = false)
+    private Boolean isComingSoon = false;
 
     /** 노출 여부 */
     @Column(name = "is_published", nullable = false)
@@ -78,26 +82,34 @@ public class Teacher {
     @OneToMany(mappedBy = "teacher", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TeacherSubject> subjects = new ArrayList<>();
 
+    /** 강사 경력 목록 */
+    @OneToMany(mappedBy = "teacher", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("sortOrder ASC")
+    @BatchSize(size = 10)
+    private List<TeacherCareer> careers = new ArrayList<>();
+
     @Builder
-    private Teacher(String teacherName, String career, String imagePath, String introText,
-                   String memo, Boolean isPublished, Long createdBy) {
+    private Teacher(String teacherName, String roleName, String imagePath, String introText,
+                   String memo, Boolean isPublished, Boolean isComingSoon, Long createdBy) {
         this.teacherName = teacherName;
-        this.career = career;
+        this.roleName = roleName;
         this.imagePath = imagePath;
         this.introText = introText;
         this.memo = memo;
         this.isPublished = isPublished != null ? isPublished : true;
+        this.isComingSoon = isComingSoon != null ? isComingSoon : false;
         this.createdBy = createdBy;
     }
 
-    public void update(String teacherName, String career, String imagePath, String introText,
-                      String memo, Boolean isPublished, Long updatedBy) {
+    public void update(String teacherName, String roleName, String imagePath, String introText,
+                      String memo, Boolean isPublished, Boolean isComingSoon, Long updatedBy) {
         this.teacherName = teacherName;
-        this.career = career;
+        this.roleName = roleName;
         this.imagePath = imagePath;
         this.introText = introText;
         this.memo = memo;
         this.isPublished = isPublished != null ? isPublished : true;
+        this.isComingSoon = isComingSoon != null ? isComingSoon : false;
         this.updatedBy = updatedBy;
     }
 }
