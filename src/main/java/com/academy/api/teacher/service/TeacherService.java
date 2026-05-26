@@ -7,6 +7,7 @@ import com.academy.api.data.responses.common.ResponseList;
 import com.academy.api.teacher.dto.RequestTeacherCreate;
 import com.academy.api.teacher.dto.RequestTeacherUpdate;
 import com.academy.api.teacher.dto.ResponseTeacher;
+import com.academy.api.teacher.dto.ResponseTeacherByCategory;
 import com.academy.api.teacher.dto.ResponseTeacherListItem;
 import org.springframework.data.domain.Pageable;
 
@@ -84,5 +85,13 @@ public interface TeacherService extends CategoryUsageChecker {
      * @return 상태 변경 결과
      */
     Response updatePublishedStatus(Long id, Boolean isPublished);
+
+    /**
+     * 카테고리별 강사 목록 조회 (공개용).
+     * 과목 그룹(ID=4)의 모든 카테고리별로 공개된 강사 목록을 그룹화하여 반환.
+     * 
+     * @return 카테고리별 강사 목록
+     */
+    ResponseData<java.util.List<ResponseTeacherByCategory>> getTeachersByCategory();
 
 }

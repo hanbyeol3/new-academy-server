@@ -3,8 +3,10 @@ package com.academy.api.teacher.controller;
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
 import com.academy.api.teacher.dto.ResponseTeacher;
+import com.academy.api.teacher.dto.ResponseTeacherByCategory;
 import com.academy.api.teacher.dto.ResponseTeacherListItem;
 import com.academy.api.teacher.service.TeacherService;
+import java.util.List;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -173,5 +175,66 @@ public class TeacherPublicController {
         log.info("[TeacherPublicController] 강사 검색 요청. 키워드={}, categoryId={}", keyword, categoryId);
         
         return teacherService.getPublishedTeacherList(keyword, categoryId, pageable);
+    }
+
+    /**
+     * 카테고리별 강사 목록 조회.
+     * 
+     * @return 카테고리별로 그룹화된 강사 목록
+     */
+    @Operation(
+        summary = "카테고리별 강사 목록 조회",
+        description = """
+                과목 카테고리별로 그룹화된 강사 목록을 조회합니다.
+                
+                특징:
+                - 과목 그룹(categoryGroup ID=4)의 모든 카테고리 포함
+                - 각 카테고리별로 해당 과목을 담당하는 강사 목록 표시
+                - 강사가 없는 카테고리도 빈 배열로 포함
+                - 한 강사가 여러 과목을 담당하는 경우 중복 표시
+                - Coming Soon 상태의 강사도 포함
+                
+                정렬 순서:
+                - 카테고리: sortOrder 기준 정렬
+                - 강사: createdAt 오름차순 (등록 순)
+                
+                반환 구조:
+                - 카테고리 정보 (ID, slug, 이름, 설명)
+                - 카테고리별 강사 목록:
+                  - 강사 기본 정보 (ID, 이름, 역할)
+                  - Coming Soon 상태
+                  - 강사 이미지
+                  - 경력 목록 (정렬 순서대로)
+                
+                용도:
+                - 메인 페이지 과목별 강사 표시
+                - 강사 소개 페이지의 과목별 그룹화
+                - 과목별 강사 현황 파악
+                
+                예시 응답:
+                [{
+                  "categoryId": 12,
+                  "slug": "high-math",
+                  "name": "고등수학",
+                  "description": "고등학교 수학 전 과정",
+                  "teachers": [
+                    {
+                      "id": 1,
+                      "name": "김교수",
+                      "roleName": "대표강사",
+                      "comingSoon": false,
+                      "image": {...},
+                      "careers": [...]
+                    }
+                  ]
+                }]
+                """
+    )
+    @GetMapping("/by-category")
+    public ResponseData<List<ResponseTeacherByCategory>> getTeachersByCategory() {
+        
+        log.info("[TeacherPublicController] 카테고리별 강사 목록 조회 요청");
+        
+        return teacherService.getTeachersByCategory();
     }
 }

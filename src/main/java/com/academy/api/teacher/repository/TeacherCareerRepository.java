@@ -2,6 +2,9 @@ package com.academy.api.teacher.repository;
 
 import com.academy.api.teacher.domain.TeacherCareer;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -25,5 +28,7 @@ public interface TeacherCareerRepository extends JpaRepository<TeacherCareer, Lo
      * 
      * @param teacherId 강사 ID
      */
-    void deleteByTeacherId(Long teacherId);
+    @Modifying
+    @Query("DELETE FROM TeacherCareer tc WHERE tc.teacher.id = :teacherId")
+    void deleteByTeacherId(@Param("teacherId") Long teacherId);
 }

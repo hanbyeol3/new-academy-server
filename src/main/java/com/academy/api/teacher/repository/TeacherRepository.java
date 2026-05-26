@@ -318,4 +318,21 @@ public interface TeacherRepository extends JpaRepository<Teacher, Long>, Teacher
      * @return 존재 여부
      */
     boolean existsByTeacherNameAndIdNot(String teacherName, Long id);
+
+    /**
+     * 모든 공개된 강사 조회 (과목 정보 포함).
+     * 카테고리별 강사 목록 API에서 사용.
+     * 
+     * @return 공개된 모든 강사 목록
+     */
+    @Query("""
+        SELECT DISTINCT t 
+        FROM Teacher t 
+        LEFT JOIN FETCH t.subjects ts 
+        LEFT JOIN FETCH ts.category c
+        LEFT JOIN FETCH c.categoryGroup
+        WHERE t.isPublished = true
+        ORDER BY t.createdAt ASC
+        """)
+    List<Teacher> findAllPublishedWithSubjectsOrderByCreatedAt();
 }

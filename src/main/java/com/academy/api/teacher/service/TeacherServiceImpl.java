@@ -16,6 +16,7 @@ import com.academy.api.teacher.domain.TeacherSubject;
 import com.academy.api.teacher.dto.RequestTeacherCreate;
 import com.academy.api.teacher.dto.RequestTeacherUpdate;
 import com.academy.api.teacher.dto.ResponseTeacher;
+import com.academy.api.teacher.dto.ResponseTeacherByCategory;
 import com.academy.api.teacher.dto.ResponseTeacherListItem;
 import com.academy.api.teacher.mapper.TeacherMapper;
 import com.academy.api.teacher.repository.TeacherRepository;
@@ -29,7 +30,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -517,11 +521,75 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
      * @param careerItems 경력 항목 리스트
      */
     private void updateTeacherCareers(Teacher teacher, List<com.academy.api.teacher.dto.CareerItem> careerItems) {
-        // 기존 경력 모두 삭제
-        teacherCareerRepository.deleteByTeacherId(teacher.getId());
+        // 1. 기존 경력을 엔티티 컬렉션에서 모두 제거 (orphanRemoval이 자동으로 DELETE 실행)
+        teacher.getCareers().clear();
+        
+        // 2. flush를 통해 DELETE 쿼리 즉시 실행
+        teacherRepository.flush();
         log.debug("[TeacherService] 기존 경력 삭제 완료. teacherId={}", teacher.getId());
         
-        // 새 경력 생성
-        createTeacherCareers(teacher, careerItems);
+        // 3. 새 경력 추가
+        if (careerItems != null && !careerItems.isEmpty()) {
+            for (int i = 0; i < careerItems.size(); i++) {
+                com.academy.api.teacher.dto.CareerItem item = careerItems.get(i);
+                
+                TeacherCareer career = TeacherCareer.builder()
+                        .teacher(teacher)
+                        .careerText(item.getText())
+                        .isHighlight(item.getHighlight() != null ? item.getHighlight() : false)
+                        .sortOrder(item.getSortOrder() != null ? item.getSortOrder() : i)
+                        .build();
+                
+                teacher.getCareers().add(career);
+            }
+            log.debug("[TeacherService] 새 경력 {} 개 추가 완료", careerItems.size());
+        }
+    }
+
+    /**
+     * 카테고리별 강사 목록 조회 (공개용).
+     * 과목 그룹(ID=4)의 모든 카테고리별로 공개된 강사 목록을 그룹화하여 반환.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public ResponseData<List<ResponseTeacherByCategory>> getTeachersByCategory() {
+        log.info("[TeacherService] 카테고리별 강사 목록 조회 시작");
+        
+        // 1. 과목 카테고리 그룹(ID=4)의 모든 카테고리 조회 (sortOrder 순)
+        Long subjectGroupId = 4L; // 과목 그룹 ID
+        List<Category> categories = categoryRepository.findByCategoryGroupIdOrderBySortOrder(subjectGroupId);
+        log.debug("[TeacherService] 과목 카테고리 조회 완료. 카테고리 수={}", categories.size());
+        
+        // 2. 공개된 모든 강사 조회 (과목 정보 포함, createdAt 순)
+        List<Teacher> publishedTeachers = teacherRepository.findAllPublishedWithSubjectsOrderByCreatedAt();
+        log.debug("[TeacherService] 공개 강사 조회 완료. 강사 수={}", publishedTeachers.size());
+        
+        // 3. 카테고리별로 강사 그룹화 (메모리에서 처리)
+        Map<Long, List<Teacher>> teachersByCategoryId = new HashMap<>();
+        for (Teacher teacher : publishedTeachers) {
+            // 각 강사가 담당하는 과목들을 순회
+            for (TeacherSubject subject : teacher.getSubjects()) {
+                Long categoryId = subject.getCategory().getId();
+                teachersByCategoryId.computeIfAbsent(categoryId, k -> new ArrayList<>()).add(teacher);
+            }
+        }
+        
+        // 4. ResponseTeacherByCategory 리스트 생성
+        List<ResponseTeacherByCategory> responseList = new ArrayList<>();
+        for (Category category : categories) {
+            List<Teacher> categoryTeachers = teachersByCategoryId.getOrDefault(category.getId(), new ArrayList<>());
+            
+            // Mapper를 통해 DTO 변환
+            ResponseTeacherByCategory categoryResponse = teacherMapper.toCategoryResponse(category, categoryTeachers);
+            responseList.add(categoryResponse);
+            
+            log.debug("[TeacherService] 카테고리별 매핑 완료. category={}, 강사수={}", 
+                    category.getName(), categoryTeachers.size());
+        }
+        
+        log.info("[TeacherService] 카테고리별 강사 목록 조회 완료. 카테고리 수={}, 총 강사 수={}", 
+                categories.size(), publishedTeachers.size());
+        
+        return ResponseData.ok("0000", "카테고리별 강사 목록 조회 성공", responseList);
     }
 }

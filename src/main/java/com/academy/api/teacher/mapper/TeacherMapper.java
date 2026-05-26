@@ -10,7 +10,9 @@ import com.academy.api.teacher.dto.CareerItem;
 import com.academy.api.teacher.dto.RequestTeacherCreate;
 import com.academy.api.teacher.dto.RequestTeacherUpdate;
 import com.academy.api.teacher.dto.ResponseTeacher;
+import com.academy.api.teacher.dto.ResponseTeacherByCategory;
 import com.academy.api.teacher.dto.ResponseTeacherListItem;
+import com.academy.api.teacher.dto.TeacherSimple;
 import com.academy.api.file.domain.FileRole;
 import com.academy.api.file.domain.UploadFileLink;
 import com.academy.api.file.repository.UploadFileLinkRepository;
@@ -231,6 +233,53 @@ public class TeacherMapper {
         return newValue != null ? newValue : defaultValue;
     }
 
+    /**
+     * 강사를 간소화된 DTO로 변환.
+     * 
+     * @param teacher Teacher 엔티티
+     * @return 간소화된 강사 정보 DTO
+     */
+    public TeacherSimple toTeacherSimple(Teacher teacher) {
+        List<CareerItem> careers = teacher.getCareers().stream()
+                .map(career -> CareerItem.builder()
+                        .id(career.getId())
+                        .text(career.getCareerText())
+                        .highlight(career.getIsHighlight())
+                        .sortOrder(career.getSortOrder())
+                        .build())
+                .collect(Collectors.toList());
+        
+        return TeacherSimple.builder()
+                .id(teacher.getId())
+                .name(teacher.getTeacherName())
+                .roleName(teacher.getRoleName())
+                .comingSoon(teacher.getIsComingSoon())
+                .image(getImageFromPath(teacher.getImagePath()))
+                .careers(careers)
+                .build();
+    }
+    
+    /**
+     * 카테고리와 강사 목록을 ResponseTeacherByCategory로 변환.
+     * 
+     * @param category 카테고리 엔티티
+     * @param teachers 해당 카테고리의 강사 목록
+     * @return 카테고리별 강사 응답 DTO
+     */
+    public ResponseTeacherByCategory toCategoryResponse(Category category, List<Teacher> teachers) {
+        List<TeacherSimple> teacherSimpleList = teachers.stream()
+                .map(this::toTeacherSimple)
+                .collect(Collectors.toList());
+        
+        return ResponseTeacherByCategory.builder()
+                .categoryId(category.getId())
+                .slug(category.getSlug())
+                .name(category.getName())
+                .description(category.getDescription())
+                .teachers(teacherSimpleList)
+                .build();
+    }
+    
     /**
      * 강사의 이미지 파일 조회 (imagePath 기반).
      * 
