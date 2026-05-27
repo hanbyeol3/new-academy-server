@@ -44,8 +44,11 @@ public class ResponseTeacher {
     @Schema(description = "공개 여부", example = "true")
     private Boolean isPublished;
 
-    @Schema(description = "담당 과목 목록")
-    private List<SubjectInfo> subjects;
+    @Schema(description = "담당 과목")
+    private CategoryInfo category;
+    
+    @Schema(description = "과목 내 순서", example = "0")
+    private Integer sortOrder;
 
     @Schema(description = "등록자 사용자 ID", example = "1")
     private Long createdBy;
@@ -67,15 +70,18 @@ public class ResponseTeacher {
     @Getter
     @Builder
     @Schema(description = "담당 과목 정보")
-    public static class SubjectInfo {
+    public static class CategoryInfo {
         
-        @Schema(description = "과목 카테고리 ID", example = "1")
+        @Schema(description = "과목 카테고리 ID", example = "12")
         private Long categoryId;
         
         @Schema(description = "과목명", example = "수학")
         private String categoryName;
         
-        @Schema(description = "과목 설명", example = "중학교 수학 과정")
+        @Schema(description = "과목 슬러그", example = "math")
+        private String categorySlug;
+        
+        @Schema(description = "과목 설명", example = "중고등 수학 과정")
         private String categoryDescription;
     }
 }

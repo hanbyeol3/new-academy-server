@@ -4,6 +4,7 @@ import com.academy.api.teacher.domain.QTeacher;
 import com.academy.api.teacher.domain.QTeacherCareer;
 import com.academy.api.teacher.domain.QTeacherSubject;
 import com.academy.api.teacher.domain.Teacher;
+import com.academy.api.teacher.domain.TeacherSubject;
 import com.academy.api.category.domain.QCategory;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.BooleanExpression;
@@ -16,7 +17,11 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 강사 Repository QueryDSL 구현체.
@@ -40,6 +45,11 @@ public class TeacherRepositoryImpl implements TeacherRepositoryCustom {
         log.debug("[TeacherRepositoryImpl] QueryDSL 강사 검색 시작. keyword={}, categoryId={}, isPublished={}, sortType={}", 
                 keyword, categoryId, isPublished, sortType);
 
+        // ORDER_ASC/ORDER_DESC이고 categoryId가 있는 경우, sortOrder 기준 정렬을 위한 특별 처리
+        if (categoryId != null && ("ORDER_ASC".equals(sortType) || "ORDER_DESC".equals(sortType))) {
+            return searchTeachersByCategoryWithSortOrder(keyword, categoryId, isPublished, sortType, pageable);
+        }
+
         BooleanExpression predicate = createSearchPredicate(keyword, categoryId, isPublished);
 
         // 메인 쿼리 (fetch join 사용 - careers는 제외)
@@ -53,7 +63,7 @@ public class TeacherRepositoryImpl implements TeacherRepositoryCustom {
                 .limit(pageable.getPageSize());
 
         // 정렬 적용
-        OrderSpecifier<?>[] orderSpecifiers = createOrderSpecifiers(sortType);
+        OrderSpecifier<?>[] orderSpecifiers = createOrderSpecifiers(sortType, categoryId);
         if (orderSpecifiers.length > 0) {
             query.orderBy(orderSpecifiers);
         }
@@ -71,6 +81,83 @@ public class TeacherRepositoryImpl implements TeacherRepositoryCustom {
 
         log.debug("[TeacherRepositoryImpl] QueryDSL 강사 검색 완료. keyword={}, categoryId={}, isPublished={}, sortType={}, 결과수={}, 전체수={}", 
                 keyword, categoryId, isPublished, sortType, teachers.size(), total);
+
+        return new PageImpl<>(teachers, pageable, total);
+    }
+
+    /**
+     * 특정 카테고리의 강사를 sortOrder 기준으로 정렬하여 검색.
+     * ORDER_ASC/ORDER_DESC 정렬 시 사용.
+     */
+    private Page<Teacher> searchTeachersByCategoryWithSortOrder(String keyword, Long categoryId, Boolean isPublished, 
+                                                                 String sortType, Pageable pageable) {
+        log.debug("[TeacherRepositoryImpl] sortOrder 기준 정렬 검색. categoryId={}, sortType={}", categoryId, sortType);
+
+        // 기본 조건 설정
+        BooleanExpression predicate = teacherSubject.category.id.eq(categoryId);
+
+        // 키워드 검색 조건 추가
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String likeKeyword = "%" + keyword.trim() + "%";
+            predicate = predicate.and(teacherSubject.teacher.teacherName.like(likeKeyword));
+        }
+
+        // 공개 상태 필터 추가
+        if (isPublished != null) {
+            predicate = predicate.and(teacherSubject.teacher.isPublished.eq(isPublished));
+        }
+
+        // sortOrder 기준 정렬 설정
+        OrderSpecifier<?> primarySort = "ORDER_ASC".equals(sortType) 
+            ? teacherSubject.sortOrder.asc() 
+            : teacherSubject.sortOrder.desc();
+
+        // TeacherSubject를 정렬된 순서로 가져오기
+        List<TeacherSubject> sortedTeacherSubjects = queryFactory
+                .selectFrom(teacherSubject)
+                .join(teacherSubject.teacher, teacher).fetchJoin()
+                .join(teacherSubject.category, category).fetchJoin()
+                .leftJoin(teacher.careers, teacherCareer).fetchJoin()
+                .where(predicate)
+                .orderBy(primarySort)
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .fetch();
+
+        log.debug("[TeacherRepositoryImpl] 정렬된 TeacherSubject 목록:");
+        for (TeacherSubject ts : sortedTeacherSubjects) {
+            log.debug("  - Teacher: {}, sortOrder: {}", ts.getTeacher().getTeacherName(), ts.getSortOrder());
+        }
+
+        // 정렬된 순서대로 Teacher 리스트 생성 (순서 유지하며 중복 제거)
+        List<Teacher> teachers = new ArrayList<>();
+        Set<Long> addedTeacherIds = new HashSet<>();
+        
+        for (TeacherSubject ts : sortedTeacherSubjects) {
+            Teacher teacher = ts.getTeacher();
+            if (!addedTeacherIds.contains(teacher.getId())) {
+                // 이 Teacher의 subjects 컬렉션에 현재 TeacherSubject만 포함되도록 설정
+                List<TeacherSubject> subjectList = new ArrayList<>();
+                subjectList.add(ts);
+                teacher.getSubjects().clear();
+                teacher.getSubjects().addAll(subjectList);
+                
+                teachers.add(teacher);
+                addedTeacherIds.add(teacher.getId());
+                log.debug("[TeacherRepositoryImpl] Teacher 추가: {}, sortOrder: {}", 
+                         teacher.getTeacherName(), ts.getSortOrder());
+            }
+        }
+
+        // 카운트 쿼리
+        long total = queryFactory
+                .select(teacherSubject.countDistinct())
+                .from(teacherSubject)
+                .join(teacherSubject.teacher, teacher)
+                .where(predicate)
+                .fetchOne();
+
+        log.debug("[TeacherRepositoryImpl] sortOrder 정렬 검색 완료. 결과수={}, 전체수={}", teachers.size(), total);
 
         return new PageImpl<>(teachers, pageable, total);
     }
@@ -132,8 +219,11 @@ public class TeacherRepositoryImpl implements TeacherRepositoryCustom {
 
     /**
      * 정렬 조건 생성.
+     * 
+     * @param sortType 정렬 타입
+     * @param categoryId 카테고리 ID (sortOrder 정렬 시 필수)
      */
-    private OrderSpecifier<?>[] createOrderSpecifiers(String sortType) {
+    private OrderSpecifier<?>[] createOrderSpecifiers(String sortType, Long categoryId) {
         if (sortType == null) {
             return new OrderSpecifier[]{teacher.createdAt.desc()};
         }
@@ -142,6 +232,14 @@ public class TeacherRepositoryImpl implements TeacherRepositoryCustom {
             case "CREATED_ASC" -> new OrderSpecifier[]{teacher.createdAt.asc()};
             case "NAME_ASC" -> new OrderSpecifier[]{teacher.teacherName.asc()};
             case "NAME_DESC" -> new OrderSpecifier[]{teacher.teacherName.desc()};
+            case "ORDER_ASC", "ORDER_DESC" -> {
+                // ORDER_ASC/ORDER_DESC는 searchTeachersByCategoryWithSortOrder에서 처리
+                // categoryId가 없으면 기본 정렬 적용
+                if (categoryId == null) {
+                    log.warn("[TeacherRepositoryImpl] {} 정렬은 categoryId가 필요합니다. 기본 정렬 적용.", sortType);
+                }
+                yield new OrderSpecifier[]{teacher.createdAt.desc()};
+            }
             default -> new OrderSpecifier[]{teacher.createdAt.desc()};
         };
     }

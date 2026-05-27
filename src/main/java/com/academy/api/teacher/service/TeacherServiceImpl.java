@@ -18,6 +18,7 @@ import com.academy.api.teacher.dto.RequestTeacherUpdate;
 import com.academy.api.teacher.dto.ResponseTeacher;
 import com.academy.api.teacher.dto.ResponseTeacherByCategory;
 import com.academy.api.teacher.dto.ResponseTeacherListItem;
+import com.academy.api.teacher.dto.TeacherSimple;
 import com.academy.api.teacher.mapper.TeacherMapper;
 import com.academy.api.teacher.repository.TeacherRepository;
 import com.academy.api.teacher.repository.TeacherCareerRepository;
@@ -32,8 +33,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -184,9 +188,9 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
     @Override
     @Transactional
     public ResponseData<Long> createTeacher(RequestTeacherCreate request) {
-        log.info("[TeacherService] 강사 생성 시작. teacherName={}, 과목수={}", 
+        log.info("[TeacherService] 강사 생성 시작. teacherName={}, categoryId={}", 
                 request.getTeacherName(), 
-                request.getSubjectCategoryIds() != null ? request.getSubjectCategoryIds().size() : 0);
+                request.getCategoryId());
 
         // 1. 강사명 중복 검사
         if (teacherRepository.existsByTeacherName(request.getTeacherName())) {
@@ -231,10 +235,10 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
             }
         }
 
-        // 4. 과목 연결 처리
-        if (request.getSubjectCategoryIds() != null && !request.getSubjectCategoryIds().isEmpty()) {
-            createTeacherSubjects(savedTeacher, request.getSubjectCategoryIds());
-            log.debug("[TeacherService] 과목 연결 완료. 과목수={}", request.getSubjectCategoryIds().size());
+        // 4. 과목 연결 처리 (단일 과목)
+        if (request.getCategoryId() != null) {
+            assignTeacherToSubject(savedTeacher, request.getCategoryId());
+            log.debug("[TeacherService] 과목 연결 완료. categoryId={}", request.getCategoryId());
         }
 
         // 5. 경력 정보 처리
@@ -286,10 +290,10 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
         );
         log.debug("[TeacherService] 기본 정보 업데이트 완료");
 
-        // 4. 과목 관계 업데이트
-        if (request.getSubjectCategoryIds() != null) {
-            updateTeacherSubjects(teacher, request.getSubjectCategoryIds());
-            log.debug("[TeacherService] 과목 관계 업데이트 완료. 과목수={}", request.getSubjectCategoryIds().size());
+        // 4. 과목 관계 업데이트 (단일 과목, 순서 유지)
+        if (request.getCategoryId() != null) {
+            updateTeacherSubject(teacher, request.getCategoryId());
+            log.debug("[TeacherService] 과목 관계 업데이트 완료. categoryId={}", request.getCategoryId());
         }
 
         // 5. 경력 정보 업데이트
@@ -379,35 +383,77 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
     // ================== 내부 도우미 메서드 ==================
 
     /**
-     * 강사-과목 관계 생성.
+     * 강사에게 단일 과목 할당 (생성 시).
+     * 
+     * @param teacher 강사 엔티티
+     * @param categoryId 과목 카테고리 ID
      */
-    private void createTeacherSubjects(Teacher teacher, List<Long> categoryIds) {
-        List<Category> categories = categoryRepository.findAllById(categoryIds);
+    private void assignTeacherToSubject(Teacher teacher, Long categoryId) {
+        // 1. 카테고리 조회
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> {
+                    log.warn("[TeacherService] 과목 카테고리를 찾을 수 없음. categoryId={}", categoryId);
+                    return new BusinessException(ErrorCode.CATEGORY_NOT_FOUND);
+                });
         
-        if (categories.size() != categoryIds.size()) {
-            log.warn("[TeacherService] 일부 카테고리를 찾을 수 없음. 요청={}, 조회={}", 
-                    categoryIds.size(), categories.size());
-            throw new BusinessException(ErrorCode.CATEGORY_NOT_FOUND);
-        }
-
-        List<TeacherSubject> teacherSubjects = categories.stream()
-                .map(category -> teacherMapper.createTeacherSubject(teacher, category))
-                .collect(Collectors.toList());
-
-        teacherSubjectRepository.saveAll(teacherSubjects);
+        // 2. 해당 과목의 최대 sort_order 조회
+        Integer maxSortOrder = teacherSubjectRepository.findMaxSortOrderByCategoryId(categoryId);
+        
+        // 3. 새로운 과목 연결 생성 (자동으로 마지막 순서로 추가)
+        TeacherSubject subject = TeacherSubject.builder()
+                .teacher(teacher)
+                .category(category)
+                .sortOrder(maxSortOrder != null ? maxSortOrder + 1 : 0)
+                .build();
+        
+        teacherSubjectRepository.save(subject);
+        log.debug("[TeacherService] 강사-과목 연결 생성 완료. teacherId={}, categoryId={}, sortOrder={}", 
+                teacher.getId(), categoryId, subject.getSortOrder());
     }
-
+    
     /**
-     * 강사-과목 관계 업데이트.
+     * 강사의 과목 변경 (수정 시, 순서 유지).
+     * 
+     * @param teacher 강사 엔티티
+     * @param newCategoryId 새로운 과목 카테고리 ID
      */
-    private void updateTeacherSubjects(Teacher teacher, List<Long> categoryIds) {
-        // 1. 기존 관계 삭제
-        teacherSubjectRepository.deleteByTeacherId(teacher.getId());
-
-        // 2. 새로운 관계 생성
-        if (!categoryIds.isEmpty()) {
-            createTeacherSubjects(teacher, categoryIds);
+    private void updateTeacherSubject(Teacher teacher, Long newCategoryId) {
+        // 1. 기존 과목 연결 조회
+        Optional<TeacherSubject> existingSubject = teacherSubjectRepository.findByTeacherId(teacher.getId());
+        
+        if (existingSubject.isEmpty()) {
+            // 과목 연결이 없는 경우 새로 생성
+            log.debug("[TeacherService] 기존 과목 연결 없음. 새로 생성. teacherId={}", teacher.getId());
+            assignTeacherToSubject(teacher, newCategoryId);
+            return;
         }
+        
+        TeacherSubject subject = existingSubject.get();
+        
+        // 2. 같은 과목이면 순서 유지, 변경 없음
+        if (subject.getCategory().getId().equals(newCategoryId)) {
+            log.debug("[TeacherService] 동일한 과목. 변경 없음. teacherId={}, categoryId={}", 
+                    teacher.getId(), newCategoryId);
+            return;
+        }
+        
+        // 3. 다른 과목으로 변경하는 경우
+        Category newCategory = categoryRepository.findById(newCategoryId)
+                .orElseThrow(() -> {
+                    log.warn("[TeacherService] 새 과목 카테고리를 찾을 수 없음. categoryId={}", newCategoryId);
+                    return new BusinessException(ErrorCode.CATEGORY_NOT_FOUND);
+                });
+        
+        // 새 과목에서의 최대 순서 조회
+        Integer maxSortOrder = teacherSubjectRepository.findMaxSortOrderByCategoryId(newCategoryId);
+        
+        // 과목 변경 및 새 과목에서는 마지막 순서로 추가
+        subject.changeCategory(newCategory);
+        subject.changeSortOrder(maxSortOrder != null ? maxSortOrder + 1 : 0);
+        
+        teacherSubjectRepository.save(subject);
+        log.debug("[TeacherService] 강사 과목 변경 완료. teacherId={}, oldCategory={}, newCategory={}, sortOrder={}", 
+                teacher.getId(), subject.getCategory().getId(), newCategoryId, subject.getSortOrder());
     }
 
     /**
@@ -487,7 +533,9 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
         return sortType.equals("CREATED_DESC") || 
                sortType.equals("CREATED_ASC") || 
                sortType.equals("NAME_ASC") || 
-               sortType.equals("NAME_DESC");
+               sortType.equals("NAME_DESC") ||
+               sortType.equals("ORDER_ASC") ||
+               sortType.equals("ORDER_DESC");
     }
 
     /**
@@ -549,6 +597,7 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
     /**
      * 카테고리별 강사 목록 조회 (공개용).
      * 과목 그룹(ID=4)의 모든 카테고리별로 공개된 강사 목록을 그룹화하여 반환.
+     * 각 과목 내에서는 sort_order 순서대로 강사를 정렬하여 반환.
      */
     @Override
     @Transactional(readOnly = true)
@@ -560,36 +609,118 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
         List<Category> categories = categoryRepository.findByCategoryGroupIdOrderBySortOrder(subjectGroupId);
         log.debug("[TeacherService] 과목 카테고리 조회 완료. 카테고리 수={}", categories.size());
         
-        // 2. 공개된 모든 강사 조회 (과목 정보 포함, createdAt 순)
-        List<Teacher> publishedTeachers = teacherRepository.findAllPublishedWithSubjectsOrderByCreatedAt();
-        log.debug("[TeacherService] 공개 강사 조회 완료. 강사 수={}", publishedTeachers.size());
-        
-        // 3. 카테고리별로 강사 그룹화 (메모리에서 처리)
-        Map<Long, List<Teacher>> teachersByCategoryId = new HashMap<>();
-        for (Teacher teacher : publishedTeachers) {
-            // 각 강사가 담당하는 과목들을 순회
-            for (TeacherSubject subject : teacher.getSubjects()) {
-                Long categoryId = subject.getCategory().getId();
-                teachersByCategoryId.computeIfAbsent(categoryId, k -> new ArrayList<>()).add(teacher);
-            }
-        }
-        
-        // 4. ResponseTeacherByCategory 리스트 생성
+        // 2. ResponseTeacherByCategory 리스트 생성
         List<ResponseTeacherByCategory> responseList = new ArrayList<>();
+        
         for (Category category : categories) {
-            List<Teacher> categoryTeachers = teachersByCategoryId.getOrDefault(category.getId(), new ArrayList<>());
+            // 3. 각 카테고리별로 강사-과목 연결 조회 (sort_order 순서대로)
+            List<TeacherSubject> teacherSubjects = teacherSubjectRepository.findPublishedByCategoryIdOrderBySortOrder(category.getId());
             
-            // Mapper를 통해 DTO 변환
-            ResponseTeacherByCategory categoryResponse = teacherMapper.toCategoryResponse(category, categoryTeachers);
+            // 4. TeacherSubject를 TeacherSimple로 변환 (sortOrder 포함)
+            List<TeacherSimple> teacherSimpleList = teacherSubjects.stream()
+                    .map(ts -> {
+                        TeacherSimple simple = teacherMapper.toTeacherSimple(ts.getTeacher());
+                        // sortOrder를 직접 설정 (Builder 패턴이므로 새로 생성)
+                        return TeacherSimple.builder()
+                                .id(simple.getId())
+                                .name(simple.getName())
+                                .roleName(simple.getRoleName())
+                                .comingSoon(simple.getComingSoon())
+                                .image(simple.getImage())
+                                .careers(simple.getCareers())
+                                .sortOrder(ts.getSortOrder())
+                                .build();
+                    })
+                    .collect(Collectors.toList());
+            
+            // 5. ResponseTeacherByCategory 생성
+            ResponseTeacherByCategory categoryResponse = ResponseTeacherByCategory.builder()
+                    .categoryId(category.getId())
+                    .slug(category.getSlug())
+                    .name(category.getName())
+                    .description(category.getDescription())
+                    .teachers(teacherSimpleList)
+                    .build();
             responseList.add(categoryResponse);
             
             log.debug("[TeacherService] 카테고리별 매핑 완료. category={}, 강사수={}", 
-                    category.getName(), categoryTeachers.size());
+                    category.getName(), teacherSimpleList.size());
         }
         
-        log.info("[TeacherService] 카테고리별 강사 목록 조회 완료. 카테고리 수={}, 총 강사 수={}", 
-                categories.size(), publishedTeachers.size());
+        log.info("[TeacherService] 카테고리별 강사 목록 조회 완료. 카테고리 수={}", categories.size());
         
         return ResponseData.ok("0000", "카테고리별 강사 목록 조회 성공", responseList);
+    }
+
+    /**
+     * 카테고리별 강사 순서 변경.
+     * 특정 과목 카테고리 내에서 강사들의 표시 순서를 변경합니다.
+     * 
+     * @param categoryId 카테고리 ID
+     * @param request 정렬된 강사 ID 목록
+     * @return 순서 변경 결과
+     */
+    @Override
+    @Transactional
+    public Response updateCategoryTeacherOrder(Long categoryId, com.academy.api.category.dto.RequestTeacherOrderUpdate request) {
+        log.info("[TeacherService] 카테고리별 강사 순서 변경 시작. categoryId={}, teacherCount={}", 
+                categoryId, request.getTeacherIds().size());
+
+        // 1. 카테고리 존재 여부 확인
+        if (!categoryRepository.existsById(categoryId)) {
+            log.warn("[TeacherService] 존재하지 않는 카테고리. categoryId={}", categoryId);
+            return Response.error("CATEGORY_NOT_FOUND", "카테고리를 찾을 수 없습니다.");
+        }
+
+        // 2. 해당 카테고리의 모든 강사-과목 연결 조회
+        List<TeacherSubject> teacherSubjects = teacherSubjectRepository.findByCategoryIdOrderBySortOrder(categoryId);
+        
+        if (teacherSubjects.isEmpty()) {
+            log.warn("[TeacherService] 해당 카테고리에 강사가 없음. categoryId={}", categoryId);
+            return Response.error("NO_TEACHERS_IN_CATEGORY", "해당 과목에 등록된 강사가 없습니다.");
+        }
+
+        // 3. 요청된 강사 ID 목록과 실제 강사 ID 목록 비교
+        Set<Long> requestedTeacherIds = new HashSet<>(request.getTeacherIds());
+        Set<Long> actualTeacherIds = teacherSubjects.stream()
+                .map(ts -> ts.getTeacher().getId())
+                .collect(Collectors.toSet());
+
+        // 3-1. 요청된 강사 ID 중 해당 카테고리에 없는 강사가 있는지 확인
+        Set<Long> invalidTeacherIds = new HashSet<>(requestedTeacherIds);
+        invalidTeacherIds.removeAll(actualTeacherIds);
+        if (!invalidTeacherIds.isEmpty()) {
+            log.warn("[TeacherService] 해당 카테고리에 속하지 않은 강사 ID 포함. invalidIds={}", invalidTeacherIds);
+            return Response.error("INVALID_TEACHER_IDS", "해당 과목에 속하지 않은 강사가 포함되어 있습니다.");
+        }
+
+        // 3-2. 실제 강사 중 요청에 누락된 강사가 있는지 확인
+        Set<Long> missingTeacherIds = new HashSet<>(actualTeacherIds);
+        missingTeacherIds.removeAll(requestedTeacherIds);
+        if (!missingTeacherIds.isEmpty()) {
+            log.warn("[TeacherService] 요청에 누락된 강사 ID 존재. missingIds={}", missingTeacherIds);
+            return Response.error("MISSING_TEACHER_IDS", "일부 강사가 누락되었습니다. 모든 강사를 포함해야 합니다.");
+        }
+
+        // 4. 순서 업데이트
+        Map<Long, TeacherSubject> teacherSubjectMap = teacherSubjects.stream()
+                .collect(Collectors.toMap(ts -> ts.getTeacher().getId(), ts -> ts));
+
+        for (int i = 0; i < request.getTeacherIds().size(); i++) {
+            Long teacherId = request.getTeacherIds().get(i);
+            TeacherSubject teacherSubject = teacherSubjectMap.get(teacherId);
+            if (teacherSubject != null) {
+                teacherSubject.changeSortOrder(i);
+                log.debug("[TeacherService] 강사 순서 업데이트. teacherId={}, newOrder={}", teacherId, i);
+            }
+        }
+
+        // 5. 변경사항 저장
+        teacherSubjectRepository.saveAll(teacherSubjects);
+
+        log.info("[TeacherService] 카테고리별 강사 순서 변경 완료. categoryId={}, updatedCount={}", 
+                categoryId, teacherSubjects.size());
+        
+        return Response.ok("0000", "강사 순서가 성공적으로 변경되었습니다.");
     }
 }

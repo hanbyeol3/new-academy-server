@@ -34,6 +34,7 @@ public class CategoryAdminController {
 
     private final CategoryGroupService categoryGroupService;
     private final CategoryService categoryService;
+    private final com.academy.api.teacher.service.TeacherService teacherService;
 
     // ===================== 카테고리 그룹 API =====================
 
@@ -242,5 +243,61 @@ public class CategoryAdminController {
         
         log.info("[CategoryAdminController] 카테고리 삭제 요청. categoryId={}", categoryId);
         return categoryService.deleteCategory(categoryId);
+    }
+    
+    // ===================== 카테고리별 강사 순서 관리 API =====================
+    
+    /**
+     * 카테고리별 강사 순서 변경.
+     *
+     * @param categoryId 카테고리 ID
+     * @param teacherIds 정렬된 강사 ID 목록
+     * @return 변경 결과
+     */
+    @Operation(
+        summary = "카테고리별 강사 순서 변경",
+        description = """
+                특정 과목 카테고리 내에서 강사들의 표시 순서를 변경합니다.
+                
+                기능:
+                - 과목별 강사 목록을 원하는 순서로 재정렬
+                - 배열 순서가 곧 표시 순서가 됨 (0부터 시작)
+                - 해당 카테고리에 속한 강사들만 순서 변경 가능
+                
+                요청 형식:
+                ```json
+                {
+                  "teacherIds": [5, 3, 8, 1]  // 새로운 순서대로 강사 ID 배열
+                }
+                ```
+                
+                사용 시나리오:
+                1. GET /api/admin/teachers?categoryId=12 로 특정 과목 강사 목록 조회
+                2. UI에서 드래그앤드롭으로 순서 재정렬
+                3. PUT /api/admin/categories/12/teacher-order 로 새 순서 저장
+                
+                검증 사항:
+                - 모든 teacherIds가 해당 카테고리에 속한 강사여야 함
+                - 누락되거나 중복된 ID가 없어야 함
+                - 해당 카테고리의 모든 강사가 포함되어야 함
+                
+                주의사항:
+                - 순서는 0부터 시작 (첫 번째 = 0, 두 번째 = 1, ...)
+                - 다른 카테고리의 강사 순서에는 영향 없음
+                
+                권한:
+                - ADMIN 권한 필수
+                """
+    )
+    @PutMapping("/{categoryId}/teacher-order")
+    public Response updateCategoryTeacherOrder(
+            @Parameter(description = "카테고리 ID", example = "12") 
+            @PathVariable Long categoryId,
+            @Parameter(description = "정렬된 강사 ID 목록")
+            @RequestBody @Valid RequestTeacherOrderUpdate request) {
+        
+        log.info("[CategoryAdminController] 카테고리별 강사 순서 변경 요청. categoryId={}, teacherCount={}", 
+                categoryId, request.getTeacherIds() != null ? request.getTeacherIds().size() : 0);
+        return teacherService.updateCategoryTeacherOrder(categoryId, request);
     }
 }

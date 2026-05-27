@@ -35,9 +35,32 @@ public class TeacherSubject {
                foreignKey = @ForeignKey(name = "fk_teacher_subject_category"))
     private Category category;
 
+    /** 과목 내 강사 노출 순서 */
+    @Column(name = "sort_order", nullable = false)
+    private Integer sortOrder = 0;
+
     @Builder
-    private TeacherSubject(Teacher teacher, Category category) {
+    private TeacherSubject(Teacher teacher, Category category, Integer sortOrder) {
         this.teacher = teacher;
         this.category = category;
+        this.sortOrder = sortOrder != null ? sortOrder : 0;
+    }
+    
+    /**
+     * 과목 변경.
+     * 
+     * @param newCategory 새로운 과목
+     */
+    public void changeCategory(Category newCategory) {
+        this.category = newCategory;
+    }
+    
+    /**
+     * 순서 변경.
+     * 
+     * @param newSortOrder 새로운 순서
+     */
+    public void changeSortOrder(Integer newSortOrder) {
+        this.sortOrder = newSortOrder;
     }
 }

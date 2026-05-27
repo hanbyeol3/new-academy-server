@@ -94,4 +94,14 @@ public interface TeacherService extends CategoryUsageChecker {
      */
     ResponseData<java.util.List<ResponseTeacherByCategory>> getTeachersByCategory();
 
+    /**
+     * 카테고리별 강사 순서 변경.
+     * 특정 과목 카테고리 내에서 강사들의 표시 순서를 변경합니다.
+     * 
+     * @param categoryId 카테고리 ID
+     * @param request 정렬된 강사 ID 목록을 담은 요청
+     * @return 순서 변경 결과
+     */
+    Response updateCategoryTeacherOrder(Long categoryId, com.academy.api.category.dto.RequestTeacherOrderUpdate request);
+
 }

@@ -64,13 +64,23 @@ public class TeacherMapper {
      * @return 상세 응답 DTO (과목 정보 포함)
      */
     public ResponseTeacher toResponse(Teacher teacher) {
-        List<ResponseTeacher.SubjectInfo> subjects = teacher.getSubjects().stream()
-                .map(ts -> ResponseTeacher.SubjectInfo.builder()
-                        .categoryId(ts.getCategory().getId())
-                        .categoryName(ts.getCategory().getName())
-                        .categoryDescription(ts.getCategory().getDescription())
-                        .build())
-                .collect(Collectors.toList());
+        // 단일 과목 정보 매핑
+        ResponseTeacher.CategoryInfo categoryInfo = null;
+        Integer sortOrder = null;
+        
+        if (!teacher.getSubjects().isEmpty()) {
+            TeacherSubject teacherSubject = teacher.getSubjects().get(0);  // 단일 과목만 존재
+            Category category = teacherSubject.getCategory();
+            
+            categoryInfo = ResponseTeacher.CategoryInfo.builder()
+                    .categoryId(category.getId())
+                    .categoryName(category.getName())
+                    .categorySlug(category.getSlug())
+                    .categoryDescription(category.getDescription())
+                    .build();
+            
+            sortOrder = teacherSubject.getSortOrder();
+        }
 
         List<CareerItem> careers = teacher.getCareers().stream()
                 .map(career -> CareerItem.builder()
@@ -91,7 +101,8 @@ public class TeacherMapper {
                 .introText(teacher.getIntroText())
                 .memo(teacher.getMemo())
                 .isPublished(teacher.getIsPublished())
-                .subjects(subjects)
+                .category(categoryInfo)
+                .sortOrder(sortOrder)
                 .createdBy(teacher.getCreatedBy())
                 .createdAt(teacher.getCreatedAt())
                 .updatedBy(teacher.getUpdatedBy())
@@ -106,20 +117,24 @@ public class TeacherMapper {
      * @return 목록용 응답 DTO (과목 정보 포함)
      */
     public ResponseTeacherListItem toListItemResponse(Teacher teacher) {
-        List<ResponseTeacherListItem.SubjectInfo> subjects = teacher.getSubjects().stream()
-                .map(ts -> {
-                    Category category = ts.getCategory();
-                    return ResponseTeacherListItem.SubjectInfo.builder()
-                            .id(ts.getId())
-                            .categoryId(category.getId())
-                            .categoryName(category.getName())
-                            .categorySlug(category.getSlug())
-                            .categoryGroupId(category.getCategoryGroup().getId())
-                            .categoryGroupName(category.getCategoryGroup().getName())
-                            .displayOrder(category.getSortOrder())
-                            .build();
-                })
-                .collect(Collectors.toList());
+        // 단일 과목 정보 매핑
+        ResponseTeacherListItem.CategoryInfo categoryInfo = null;
+        Integer sortOrder = null;
+        
+        if (!teacher.getSubjects().isEmpty()) {
+            TeacherSubject teacherSubject = teacher.getSubjects().get(0);  // 단일 과목만 존재
+            Category category = teacherSubject.getCategory();
+            
+            categoryInfo = ResponseTeacherListItem.CategoryInfo.builder()
+                    .categoryId(category.getId())
+                    .categoryName(category.getName())
+                    .categorySlug(category.getSlug())
+                    .categoryGroupId(category.getCategoryGroup().getId())
+                    .categoryGroupName(category.getCategoryGroup().getName())
+                    .build();
+            
+            sortOrder = teacherSubject.getSortOrder();
+        }
 
         List<CareerItem> careers = teacher.getCareers().stream()
                 .map(career -> CareerItem.builder()
@@ -139,7 +154,8 @@ public class TeacherMapper {
                 .image(getImageFromPath(teacher.getImagePath()))
                 .introText(teacher.getIntroText())
                 .isPublished(teacher.getIsPublished())
-                .subjects(subjects)
+                .category(categoryInfo)
+                .sortOrder(sortOrder)
                 .createdAt(teacher.getCreatedAt())
                 .updatedAt(teacher.getUpdatedAt())
                 .build();

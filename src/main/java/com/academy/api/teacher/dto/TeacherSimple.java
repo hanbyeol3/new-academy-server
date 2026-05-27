@@ -34,4 +34,7 @@ public class TeacherSimple {
     
     @Schema(description = "경력 목록")
     private List<CareerItem> careers;
+    
+    @Schema(description = "카테고리 내 정렬 순서", example = "0")
+    private Integer sortOrder;
 }

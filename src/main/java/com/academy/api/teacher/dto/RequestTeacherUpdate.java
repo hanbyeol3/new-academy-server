@@ -60,7 +60,7 @@ public class RequestTeacherUpdate {
             example = "true")
     private Boolean isPublished;
 
-    @Schema(description = "담당 과목 카테고리 ID 목록 (과목 ID들)", 
-            example = "[1, 2, 3]")
-    private List<Long> subjectCategoryIds;
+    @Schema(description = "담당 과목 카테고리 ID (단일 과목)", 
+            example = "12")
+    private Long categoryId;
 }

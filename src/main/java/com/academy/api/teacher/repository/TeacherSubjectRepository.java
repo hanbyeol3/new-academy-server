@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 강사-과목 연결 저장소.
@@ -77,6 +78,14 @@ public interface TeacherSubjectRepository extends JpaRepository<TeacherSubject, 
     boolean existsByTeacherIdAndCategoryId(Long teacherId, Long categoryId);
 
     /**
+     * 특정 과목에 강사가 존재하는지 확인.
+     * 
+     * @param categoryId 과목 카테고리 ID
+     * @return 강사 존재 여부
+     */
+    boolean existsByCategoryId(Long categoryId);
+
+    /**
      * 특정 강사가 담당하는 과목 수 조회.
      * 
      * @param teacherId 강사 ID
@@ -93,4 +102,77 @@ public interface TeacherSubjectRepository extends JpaRepository<TeacherSubject, 
      */
     @Query("SELECT COUNT(ts) FROM TeacherSubject ts WHERE ts.category.id = :categoryId")
     long countByCategoryId(@Param("categoryId") Long categoryId);
+
+    /**
+     * 강사의 과목 연결 조회 (단일 과목만 허용).
+     * 
+     * @param teacherId 강사 ID
+     * @return 강사의 과목 연결 정보
+     */
+    @Query("""
+        SELECT ts 
+        FROM TeacherSubject ts 
+        JOIN FETCH ts.category c
+        JOIN FETCH c.categoryGroup
+        WHERE ts.teacher.id = :teacherId
+        """)
+    Optional<TeacherSubject> findByTeacherId(@Param("teacherId") Long teacherId);
+
+    /**
+     * 과목의 최대 순서 조회.
+     * 
+     * @param categoryId 과목 카테고리 ID
+     * @return 최대 순서 값
+     */
+    @Query("SELECT MAX(ts.sortOrder) FROM TeacherSubject ts WHERE ts.category.id = :categoryId")
+    Integer findMaxSortOrderByCategoryId(@Param("categoryId") Long categoryId);
+
+    /**
+     * 과목별 공개 강사 목록 조회 (순서대로).
+     * 
+     * @param categoryId 과목 카테고리 ID
+     * @return 과목의 공개 강사 목록 (순서대로)
+     */
+    @Query("""
+        SELECT ts 
+        FROM TeacherSubject ts 
+        JOIN FETCH ts.teacher t
+        WHERE ts.category.id = :categoryId
+        AND t.isPublished = true
+        ORDER BY ts.sortOrder ASC, t.createdAt ASC
+        """)
+    List<TeacherSubject> findPublishedByCategoryIdOrderBySortOrder(@Param("categoryId") Long categoryId);
+
+    /**
+     * 과목별 모든 강사 목록 조회 (관리자용, 순서대로).
+     * 
+     * @param categoryId 과목 카테고리 ID
+     * @return 과목의 모든 강사 목록 (순서대로)
+     */
+    @Query("""
+        SELECT ts 
+        FROM TeacherSubject ts 
+        JOIN FETCH ts.teacher t
+        WHERE ts.category.id = :categoryId
+        ORDER BY ts.sortOrder ASC, t.createdAt ASC
+        """)
+    List<TeacherSubject> findByCategoryIdOrderBySortOrder(@Param("categoryId") Long categoryId);
+
+    /**
+     * 강사의 과목 내 순서 업데이트.
+     * 
+     * @param teacherId 강사 ID
+     * @param categoryId 과목 카테고리 ID
+     * @param sortOrder 새로운 순서
+     */
+    @Modifying
+    @Query("""
+        UPDATE TeacherSubject ts 
+        SET ts.sortOrder = :sortOrder 
+        WHERE ts.teacher.id = :teacherId 
+        AND ts.category.id = :categoryId
+        """)
+    void updateSortOrder(@Param("teacherId") Long teacherId, 
+                        @Param("categoryId") Long categoryId, 
+                        @Param("sortOrder") Integer sortOrder);
 }
