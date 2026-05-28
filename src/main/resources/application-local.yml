@@ -39,8 +39,3 @@ jwt:
   secret: mySecretKeyForJWT2024!@#$%^&*()1234567890
   access-expire-minutes: 15
   refresh-expire-days: 14
-
-# 로깅 설정
-logging:
-  level:
-    com.academy.api.teacher.repository: DEBUG

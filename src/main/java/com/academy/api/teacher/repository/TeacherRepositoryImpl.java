@@ -124,11 +124,6 @@ public class TeacherRepositoryImpl implements TeacherRepositoryCustom {
                 .limit(pageable.getPageSize())
                 .fetch();
 
-        log.debug("[TeacherRepositoryImpl] 정렬된 TeacherSubject 목록:");
-        for (TeacherSubject ts : sortedTeacherSubjects) {
-            log.debug("  - Teacher: {}, sortOrder: {}", ts.getTeacher().getTeacherName(), ts.getSortOrder());
-        }
-
         // 정렬된 순서대로 Teacher 리스트 생성 (순서 유지하며 중복 제거)
         List<Teacher> teachers = new ArrayList<>();
         Set<Long> addedTeacherIds = new HashSet<>();
@@ -144,8 +139,6 @@ public class TeacherRepositoryImpl implements TeacherRepositoryCustom {
                 
                 teachers.add(teacher);
                 addedTeacherIds.add(teacher.getId());
-                log.debug("[TeacherRepositoryImpl] Teacher 추가: {}, sortOrder: {}", 
-                         teacher.getTeacherName(), ts.getSortOrder());
             }
         }
 
