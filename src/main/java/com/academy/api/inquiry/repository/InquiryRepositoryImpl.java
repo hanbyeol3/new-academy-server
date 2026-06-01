@@ -78,9 +78,10 @@ public class InquiryRepositoryImpl implements InquiryRepositoryCustom {
         predicate.and(inquiry.status.eq(InquiryStatus.NEW));
 
         if (keyword != null && !keyword.trim().isEmpty()) {
-            BooleanExpression keywordCondition = inquiry.name.containsIgnoreCase(keyword.trim())
-                    .or(inquiry.phoneNumber.contains(keyword.trim()))
-                    .or(inquiry.content.containsIgnoreCase(keyword.trim()));
+            String likeKeyword = "%" + keyword.trim() + "%";
+            BooleanExpression keywordCondition = inquiry.name.like(likeKeyword)
+                    .or(inquiry.phoneNumber.like(likeKeyword))
+                    .or(inquiry.content.like(likeKeyword));
             predicate.and(keywordCondition);
         }
 
@@ -276,7 +277,8 @@ public class InquiryRepositoryImpl implements InquiryRepositoryCustom {
 
         // 담당자명 필터
         if (assigneeName != null && !assigneeName.trim().isEmpty()) {
-            predicate.and(inquiry.assigneeName.containsIgnoreCase(assigneeName.trim()));
+            String likeAssigneeName = "%" + assigneeName.trim() + "%";
+            predicate.and(inquiry.assigneeName.like(likeAssigneeName));
         }
 
         // 접수일 범위 필터
@@ -331,13 +333,14 @@ public class InquiryRepositoryImpl implements InquiryRepositoryCustom {
             searchType = InquirySearchType.ALL;
         }
         
+        String likeKeyword = "%" + keyword + "%";
         return switch (searchType) {
-            case NAME -> inquiry.name.containsIgnoreCase(keyword);
-            case PHONE -> inquiry.phoneNumber.contains(keyword);
-            case CONTENT -> inquiry.content.containsIgnoreCase(keyword);
-            case ALL -> inquiry.name.containsIgnoreCase(keyword)
-                    .or(inquiry.phoneNumber.contains(keyword))
-                    .or(inquiry.content.containsIgnoreCase(keyword));
+            case NAME -> inquiry.name.like(likeKeyword);
+            case PHONE -> inquiry.phoneNumber.like(likeKeyword);
+            case CONTENT -> inquiry.content.like(likeKeyword);
+            case ALL -> inquiry.name.like(likeKeyword)
+                    .or(inquiry.phoneNumber.like(likeKeyword))
+                    .or(inquiry.content.like(likeKeyword));
         };
     }
 }

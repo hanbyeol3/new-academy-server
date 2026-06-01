@@ -184,11 +184,11 @@ public class InquiryServiceImpl implements InquiryService {
             return ResponseData.error("I404", "상담신청을 찾을 수 없습니다");
         }
 
-        // 수정 권한 검사 (처리 완료된 상담은 수정 제한)
-        if (inquiry.isProcessed() && request.hasStatusUpdate()) {
-            log.warn("[InquiryService] 처리 완료된 상담신청 상태 변경 시도. ID={}, 현재상태={}", id, inquiry.getStatus());
-            return ResponseData.error("I403", "이미 처리 완료된 상담신청입니다");
-        }
+//        // 수정 권한 검사 (처리 완료된 상담은 수정 제한)
+//        if (inquiry.isProcessed() && request.hasStatusUpdate()) {
+//            log.warn("[InquiryService] 처리 완료된 상담신청 상태 변경 시도. ID={}, 현재상태={}", id, inquiry.getStatus());
+//            return ResponseData.error("I403", "이미 처리 완료된 상담신청입니다");
+//        }
 
         Long currentUserId = SecurityUtils.getCurrentUserId();
 
