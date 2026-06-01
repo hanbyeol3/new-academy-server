@@ -113,7 +113,8 @@ public class PopupRepositoryImpl implements PopupRepositoryCustom {
 
         // 키워드 검색 (제목 부분 일치)
         if (keyword != null && !keyword.trim().isEmpty()) {
-            predicate = and(predicate, popup.title.containsIgnoreCase(keyword.trim()));
+            String likeKeyword = "%" + keyword.trim() + "%";
+            predicate = and(predicate, popup.title.like(likeKeyword));
         }
 
         // 팝업 타입 필터
