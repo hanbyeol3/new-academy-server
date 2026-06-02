@@ -6,6 +6,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -48,6 +50,15 @@ public class RequestExplanationReservationCreate {
     @Schema(description = "학생 휴대폰 번호 (선택)", 
             example = "010-9876-5432")
     private String studentPhone;
+
+    @Min(value = 1, message = "참석 인원은 최소 1명 이상이어야 합니다")
+    @Max(value = 10, message = "참석 인원은 최대 10명까지 가능합니다")
+    @Schema(description = "참석 인원 수 (본인 포함)", 
+            example = "1",
+            defaultValue = "1",
+            minimum = "1",
+            maximum = "10")
+    private Integer attendeeCount;
 
     @Schema(description = "성별", 
             example = "M",

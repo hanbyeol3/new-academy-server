@@ -44,6 +44,9 @@ public class ResponseExplanationReservation {
     @Schema(description = "학생 휴대폰 번호", example = "010-9876-5432")
     private String studentPhone;
 
+    @Schema(description = "참석 인원 수 (본인 포함)", example = "1")
+    private Integer attendeeCount;
+
     @Schema(description = "성별", example = "M")
     private Gender gender;
 

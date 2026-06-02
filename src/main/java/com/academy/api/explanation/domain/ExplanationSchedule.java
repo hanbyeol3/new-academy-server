@@ -190,18 +190,34 @@ public class ExplanationSchedule {
 
     /**
      * 예약 인원수 증가.
+     * 
+     * @param count 증가할 인원수
      */
-    public void incrementReservedCount() {
-        this.reservedCount++;
+    public void incrementReservedCount(int count) {
+        this.reservedCount += count;
     }
 
     /**
      * 예약 인원수 감소.
+     * 
+     * @param count 감소할 인원수
+     */
+    public void decrementReservedCount(int count) {
+        this.reservedCount = Math.max(0, this.reservedCount - count);
+    }
+    
+    /**
+     * 예약 인원수 증가 (1명).
+     */
+    public void incrementReservedCount() {
+        incrementReservedCount(1);
+    }
+
+    /**
+     * 예약 인원수 감소 (1명).
      */
     public void decrementReservedCount() {
-        if (this.reservedCount > 0) {
-            this.reservedCount--;
-        }
+        decrementReservedCount(1);
     }
 
     /**
@@ -255,7 +271,17 @@ public class ExplanationSchedule {
      * @return 정원에 여유가 있거나 무제한이면 true
      */
     public boolean hasAvailableCapacity() {
-        return this.capacity == null || this.reservedCount < this.capacity;
+        return hasAvailableCapacity(1);
+    }
+    
+    /**
+     * 정원 여유 확인 (인원수 지정).
+     * 
+     * @param requiredCount 필요한 인원수
+     * @return 정원에 여유가 있거나 무제한이면 true
+     */
+    public boolean hasAvailableCapacity(int requiredCount) {
+        return this.capacity == null || (this.reservedCount + requiredCount) <= this.capacity;
     }
 
     /**

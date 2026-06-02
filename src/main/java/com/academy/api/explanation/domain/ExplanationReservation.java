@@ -72,6 +72,10 @@ public class ExplanationReservation {
     @Column(name = "student_phone", length = 20)
     private String studentPhone;
 
+    /** 참석 인원 수 (본인 포함) */
+    @Column(name = "attendee_count", nullable = false)
+    private Integer attendeeCount = 1;
+
     /** 성별 (선택) */
     @Enumerated(EnumType.STRING)
     @Column(name = "gender")
@@ -114,6 +118,7 @@ public class ExplanationReservation {
      * @param applicantPhone 신청자 휴대폰 번호
      * @param studentName 학생 이름
      * @param studentPhone 학생 휴대폰 번호
+     * @param attendeeCount 참석 인원 수
      * @param gender 성별
      * @param schoolName 학교명
      * @param grade 학년
@@ -123,8 +128,8 @@ public class ExplanationReservation {
      */
     @Builder
     private ExplanationReservation(Long scheduleId, String applicantName, String applicantPhone,
-                                  String studentName, String studentPhone, Gender gender,
-                                  String schoolName, String grade,
+                                  String studentName, String studentPhone, Integer attendeeCount,
+                                  Gender gender, String schoolName, String grade,
                                   String memo, Boolean isMarketingAgree, byte[] clientIp) {
         this.scheduleId = scheduleId;
         this.status = ReservationStatus.CONFIRMED;
@@ -132,6 +137,7 @@ public class ExplanationReservation {
         this.applicantPhone = applicantPhone;
         this.studentName = studentName;
         this.studentPhone = studentPhone;
+        this.attendeeCount = attendeeCount != null && attendeeCount > 0 ? attendeeCount : 1;
         this.gender = gender;
         this.schoolName = schoolName;
         this.grade = grade;

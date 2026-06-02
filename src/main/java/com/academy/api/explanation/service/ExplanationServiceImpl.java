@@ -661,11 +661,11 @@ public class ExplanationServiceImpl implements ExplanationService {
             throw new BusinessException(ErrorCode.EXPLANATION_RESERVATION_DUPLICATE);
         }
 
-        // 4. 정원 확인
-        if (schedule.getCapacity() != null && 
-            schedule.getReservedCount() >= schedule.getCapacity()) {
-            log.warn("[ExplanationService] 정원 마감. scheduleId={}, capacity={}, reserved={}", 
-                    request.getScheduleId(), schedule.getCapacity(), schedule.getReservedCount());
+        // 4. 정원 확인 (attendeeCount 고려)
+        int attendeeCount = request.getAttendeeCount() != null ? request.getAttendeeCount() : 1;
+        if (!schedule.hasAvailableCapacity(attendeeCount)) {
+            log.warn("[ExplanationService] 정원 부족. scheduleId={}, capacity={}, reserved={}, requested={}", 
+                    request.getScheduleId(), schedule.getCapacity(), schedule.getReservedCount(), attendeeCount);
             throw new BusinessException(ErrorCode.EXPLANATION_SCHEDULE_FULL);
         }
 
@@ -673,8 +673,8 @@ public class ExplanationServiceImpl implements ExplanationService {
         ExplanationReservation reservation = explanationMapper.toReservationEntity(request, clientIp);
         ExplanationReservation savedReservation = reservationRepository.save(reservation);
 
-        // 6. 예약 인원수 증가 (캐시 갱신)
-        schedule.incrementReservedCount();
+        // 6. 예약 인원수 증가 (attendeeCount만큼)
+        schedule.incrementReservedCount(attendeeCount);
         scheduleRepository.save(schedule);
 
         log.debug("[ExplanationService] 예약 생성 완료. reservationId={}, scheduleId={}, reservedCount={}", 
@@ -823,15 +823,16 @@ public class ExplanationServiceImpl implements ExplanationService {
         // 예약 취소 처리
         reservation.cancel(CanceledBy.USER);
 
-        // 회차 예약 인원수 감소 (락 사용)
+        // 회차 예약 인원수 감소 (attendeeCount만큼 복구)
         ExplanationSchedule schedule = scheduleRepository.findByIdForUpdate(reservation.getScheduleId())
                 .orElse(null);
         
         if (schedule != null) {
-            schedule.decrementReservedCount();
+            int attendeeCount = reservation.getAttendeeCount() != null ? reservation.getAttendeeCount() : 1;
+            schedule.decrementReservedCount(attendeeCount);
             scheduleRepository.save(schedule);
-            log.debug("[ExplanationService] 회차 예약 인원수 감소. scheduleId={}, 현재 예약수={}", 
-                    schedule.getId(), schedule.getReservedCount());
+            log.debug("[ExplanationService] 회차 예약 인원수 감소. scheduleId={}, 감소인원={}, 현재 예약수={}", 
+                    schedule.getId(), attendeeCount, schedule.getReservedCount());
         }
 
         log.info("[ExplanationService] 사용자 예약 취소 완료. reservationId={}", reservationId);
@@ -863,15 +864,16 @@ public class ExplanationServiceImpl implements ExplanationService {
             reservation.updateMemo(reservation.getMemo() + " [관리자 취소 사유: " + reason.trim() + "]");
         }
 
-        // 회차 예약 인원수 감소
+        // 회차 예약 인원수 감소 (attendeeCount만큼 복구)
         ExplanationSchedule schedule = scheduleRepository.findByIdForUpdate(reservation.getScheduleId())
                 .orElse(null);
         
         if (schedule != null) {
-            schedule.decrementReservedCount();
+            int attendeeCount = reservation.getAttendeeCount() != null ? reservation.getAttendeeCount() : 1;
+            schedule.decrementReservedCount(attendeeCount);
             scheduleRepository.save(schedule);
-            log.debug("[ExplanationService] 회차 예약 인원수 감소. scheduleId={}, 현재 예약수={}", 
-                    schedule.getId(), schedule.getReservedCount());
+            log.debug("[ExplanationService] 회차 예약 인원수 감소. scheduleId={}, 감소인원={}, 현재 예약수={}", 
+                    schedule.getId(), attendeeCount, schedule.getReservedCount());
         }
 
         log.info("[ExplanationService] 관리자 예약 취소 완료. reservationId={}, reason={}", reservationId, reason);
@@ -1081,7 +1083,7 @@ public class ExplanationServiceImpl implements ExplanationService {
         String[] headers = {
                 "예약ID", "설명회 제목", "회차 정보", 
                 "신청자명", "신청자 전화번호", "학생명", "학생 전화번호", 
-                "성별", "학교명", "학년", "예약상태", 
+                "참석인원", "성별", "학교명", "학년", "예약상태", 
                 "메모", "마케팅수신동의", "예약생성일시", "취소일시", "취소주체"
         };
 
@@ -1128,6 +1130,9 @@ public class ExplanationServiceImpl implements ExplanationService {
             // 학생 정보
             row.createCell(cellIndex++).setCellValue(reservation.getStudentName() != null ? reservation.getStudentName() : "");
             row.createCell(cellIndex++).setCellValue(reservation.getStudentPhone() != null ? reservation.getStudentPhone() : "");
+
+            // 참석인원
+            row.createCell(cellIndex++).setCellValue(reservation.getAttendeeCount() != null ? reservation.getAttendeeCount() : 1);
 
             // 성별
             String genderValue = "";

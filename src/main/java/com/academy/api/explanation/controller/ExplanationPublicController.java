@@ -141,6 +141,7 @@ public class ExplanationPublicController {
                     선택 입력 사항:
                     - studentName: 학생 이름
                     - studentPhone: 학생 휴대폰 번호
+                    - attendeeCount: 참석 인원 수 (본인 포함, 1-10명, 기본값: 1)
                     - gender: 성별 (M/F)
                     - schoolName: 학교명
                     - grade: 학년
@@ -150,13 +151,14 @@ public class ExplanationPublicController {
                     검증 규칙:
                     - 회차 상태가 RESERVABLE이어야 함
                     - 현재 시각이 신청 기간 내여야 함 (applyStartAt <= now <= applyEndAt)
-                    - 정원 여유가 있어야 함 (capacity가 null이면 무제한)
+                    - 정원 여유가 있어야 함 (capacity가 null이면 무제한, attendeeCount만큼 확인)
                     - 동일 회차에 같은 전화번호로 확정 예약이 없어야 함
                     
                     동시성 처리:
                     - SELECT FOR UPDATE로 회차 정보 락 획득
                     - 정원 체크 후 예약 생성과 reserved_count 증가를 원자적 처리
-                    - "마지막 1자리" 상황에서도 안전하게 처리
+                    - attendeeCount만큼 정원 차감 및 복구 처리
+                    - "마지막 N자리" 상황에서도 안전하게 처리
                     """
     )
     @PostMapping("/reservations")
