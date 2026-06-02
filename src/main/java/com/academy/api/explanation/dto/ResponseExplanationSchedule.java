@@ -1,6 +1,6 @@
 package com.academy.api.explanation.dto;
 
-import com.academy.api.explanation.domain.ExplanationScheduleStatus;
+import com.academy.api.explanation.domain.ScheduleStatus;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -41,15 +41,12 @@ public class ResponseExplanationSchedule {
     @Schema(description = "예약 신청 종료 일시", example = "2024-01-14 18:00:00")
     private LocalDateTime applyEndAt;
 
-    @Schema(description = "회차 상태", example = "RESERVABLE")
-    private ExplanationScheduleStatus status;
+    @Schema(description = "회차 상태 (PENDING/OPEN/FULL/CLOSED/ADMIN_CLOSED/CANCELED)", example = "OPEN")
+    private String status;
 
     @Schema(description = "회차 정원 (null=무제한)", example = "50")
     private Integer capacity;
 
     @Schema(description = "예약 인원수", example = "25")
     private Integer reservedCount;
-
-    @Schema(description = "예약 가능 여부", example = "true")
-    private Boolean isReservable;
 }

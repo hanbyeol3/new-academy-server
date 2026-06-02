@@ -32,9 +32,6 @@ public class ResponseExplanationListItem {
     @Schema(description = "조회수", example = "150")
     private Long viewCount;
 
-    @Schema(description = "예약 가능한 회차 존재 여부", example = "true")
-    private Boolean hasReservableSchedule;
-
     @Schema(description = "설명회 회차 목록")
     private List<ResponseExplanationSchedule> schedules;
 

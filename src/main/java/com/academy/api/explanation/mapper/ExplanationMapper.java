@@ -108,17 +108,12 @@ public class ExplanationMapper {
                 .map(this::toScheduleResponse)
                 .collect(Collectors.toList());
 
-        // 예약 가능한 회차가 있는지 확인
-        boolean hasReservableSchedule = schedules.stream()
-                .anyMatch(ExplanationSchedule::isReservable);
-
         return ResponseExplanationListItem.builder()
                 .explanationId(explanation.getId())
                 .division(explanation.getDivision())
                 .title(explanation.getTitle())
                 .isPublished(explanation.getIsPublished())
                 .viewCount(explanation.getViewCount())
-                .hasReservableSchedule(hasReservableSchedule)
                 .schedules(scheduleResponses)
                 .createdAt(explanation.getCreatedAt())
                 .build();
@@ -139,10 +134,9 @@ public class ExplanationMapper {
                 .location(schedule.getLocation())
                 .applyStartAt(schedule.getApplyStartAt())
                 .applyEndAt(schedule.getApplyEndAt())
-                .status(schedule.getStatus())
+                .status(schedule.calculateStatus().name())  // 동적 계산된 상태
                 .capacity(schedule.getCapacity())
                 .reservedCount(schedule.getReservedCount())
-                .isReservable(schedule.isReservable())
                 .build();
     }
 
@@ -209,7 +203,6 @@ public class ExplanationMapper {
                 .location(request.getLocation())
                 .applyStartAt(request.getApplyStartAt())
                 .applyEndAt(request.getApplyEndAt())
-                .status(request.getStatus())
                 .capacity(request.getCapacity())
                 .createdBy(createdBy)
                 .build();

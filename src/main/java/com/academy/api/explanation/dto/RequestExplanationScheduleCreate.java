@@ -1,6 +1,5 @@
 package com.academy.api.explanation.dto;
 
-import com.academy.api.explanation.domain.ExplanationScheduleStatus;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Min;
@@ -59,12 +58,6 @@ public class RequestExplanationScheduleCreate {
             example = "2024-01-14 18:00:00",
             requiredMode = Schema.RequiredMode.REQUIRED)
     private LocalDateTime applyEndAt;
-
-    @Schema(description = "회차 상태", 
-            example = "RESERVABLE",
-            allowableValues = {"RESERVABLE", "CLOSED"},
-            defaultValue = "CLOSED")
-    private ExplanationScheduleStatus status = ExplanationScheduleStatus.CLOSED;
 
     @Min(value = 1, message = "정원은 1명 이상이어야 합니다")
     @Schema(description = "회차 정원 (null=무제한)", example = "50")

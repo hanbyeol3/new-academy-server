@@ -56,6 +56,9 @@ public class RequestExplanationFullUpdate {
         @Schema(description = "게시 여부", example = "true")
         private Boolean isPublished;
 
+	    @Schema(description = "조회수", example = "0")
+	    private Long viewCount = 0L;
+
         @Schema(description = "새로 추가할 본문 이미지 목록 (임시파일 → 정식파일 변환)")
         private List<FileReference> newInlineImages;
         

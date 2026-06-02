@@ -423,16 +423,24 @@ public class ExplanationServiceImpl implements ExplanationService {
                         throw new BusinessException(ErrorCode.EXPLANATION_SCHEDULE_CAPACITY_VIOLATION);
                     }
                     
+                    // 기본 정보 업데이트
                     schedule.update(
                             updateReq.getStartAt(),
                             updateReq.getEndAt(),
                             updateReq.getLocation(),
                             updateReq.getApplyStartAt(),
                             updateReq.getApplyEndAt(),
-                            updateReq.getStatus(),
                             updateReq.getCapacity(),
                             updatedBy
                     );
+                    
+                    // 관리자 강제 마감/취소 설정
+                    if (updateReq.getIsAdminClosed() != null) {
+                        schedule.setAdminClosed(updateReq.getIsAdminClosed(), updatedBy);
+                    }
+                    if (updateReq.getIsCanceled() != null) {
+                        schedule.setCanceled(updateReq.getIsCanceled(), updatedBy);
+                    }
                     
                     scheduleRepository.save(schedule);
                     log.debug("[ExplanationService] 회차 수정 완료. scheduleId={}", updateReq.getScheduleId());
@@ -529,16 +537,24 @@ public class ExplanationServiceImpl implements ExplanationService {
             throw new BusinessException(ErrorCode.EXPLANATION_SCHEDULE_CAPACITY_VIOLATION);
         }
 
+        // 기본 정보 업데이트
         schedule.update(
                 request.getStartAt(),
                 request.getEndAt(),
                 request.getLocation(),
                 request.getApplyStartAt(),
                 request.getApplyEndAt(),
-                request.getStatus(),
                 request.getCapacity(),
                 updatedBy
         );
+        
+        // 관리자 강제 마감/취소 설정
+        if (request.getIsAdminClosed() != null) {
+            schedule.setAdminClosed(request.getIsAdminClosed(), updatedBy);
+        }
+        if (request.getIsCanceled() != null) {
+            schedule.setCanceled(request.getIsCanceled(), updatedBy);
+        }
 
         scheduleRepository.save(schedule);
 

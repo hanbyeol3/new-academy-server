@@ -1,7 +1,6 @@
 package com.academy.api.explanation.repository;
 
 import com.academy.api.explanation.domain.ExplanationSchedule;
-import com.academy.api.explanation.domain.ExplanationScheduleStatus;
 
 import java.util.List;
 
@@ -26,12 +25,20 @@ public interface ExplanationScheduleRepositoryCustom {
     List<ExplanationSchedule> findAllReservableSchedules();
 
     /**
-     * 상태별 회차 목록 조회.
+     * 취소 상태별 회차 목록 조회.
      * 
-     * @param status 회차 상태
+     * @param isCanceled 취소 여부
      * @return 회차 목록
      */
-    List<ExplanationSchedule> findByStatus(ExplanationScheduleStatus status);
+    List<ExplanationSchedule> findByCanceledStatus(boolean isCanceled);
+    
+    /**
+     * 관리자 마감 상태별 회차 목록 조회.
+     * 
+     * @param isAdminClosed 관리자 마감 여부
+     * @return 회차 목록
+     */
+    List<ExplanationSchedule> findByAdminClosedStatus(boolean isAdminClosed);
 
     /**
      * 정원 대비 예약률이 높은 회차 목록 조회.

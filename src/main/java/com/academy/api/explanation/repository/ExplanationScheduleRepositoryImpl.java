@@ -1,7 +1,6 @@
 package com.academy.api.explanation.repository;
 
 import com.academy.api.explanation.domain.ExplanationSchedule;
-import com.academy.api.explanation.domain.ExplanationScheduleStatus;
 import com.academy.api.explanation.domain.QExplanationSchedule;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.NumberExpression;
@@ -35,9 +34,14 @@ public class ExplanationScheduleRepositoryImpl implements ExplanationScheduleRep
                 .selectFrom(schedule)
                 .where(
                         schedule.explanationId.eq(explanationId),
-                        schedule.status.eq(ExplanationScheduleStatus.RESERVABLE),
+                        // 취소되지 않은 회차
+                        schedule.isCanceled.ne(true),
+                        // 관리자가 마감하지 않은 회차
+                        schedule.isAdminClosed.ne(true),
+                        // 신청 기간 내
                         schedule.applyStartAt.loe(now),
                         schedule.applyEndAt.goe(now),
+                        // 정원 여유 있음
                         createCapacityCondition()
                 )
                 .orderBy(schedule.startAt.asc())
@@ -56,9 +60,14 @@ public class ExplanationScheduleRepositoryImpl implements ExplanationScheduleRep
         List<ExplanationSchedule> schedules = queryFactory
                 .selectFrom(schedule)
                 .where(
-                        schedule.status.eq(ExplanationScheduleStatus.RESERVABLE),
+                        // 취소되지 않은 회차
+                        schedule.isCanceled.ne(true),
+                        // 관리자가 마감하지 않은 회차
+                        schedule.isAdminClosed.ne(true),
+                        // 신청 기간 내
                         schedule.applyStartAt.loe(now),
                         schedule.applyEndAt.goe(now),
+                        // 정원 여유 있음
                         createCapacityCondition()
                 )
                 .orderBy(schedule.startAt.asc())
@@ -69,16 +78,30 @@ public class ExplanationScheduleRepositoryImpl implements ExplanationScheduleRep
     }
 
     @Override
-    public List<ExplanationSchedule> findByStatus(ExplanationScheduleStatus status) {
-        log.debug("[ExplanationScheduleRepositoryImpl] 상태별 회차 조회. status={}", status);
+    public List<ExplanationSchedule> findByCanceledStatus(boolean isCanceled) {
+        log.debug("[ExplanationScheduleRepositoryImpl] 취소 상태별 회차 조회. isCanceled={}", isCanceled);
 
         List<ExplanationSchedule> schedules = queryFactory
                 .selectFrom(schedule)
-                .where(schedule.status.eq(status))
+                .where(schedule.isCanceled.eq(isCanceled))
                 .orderBy(schedule.startAt.asc())
                 .fetch();
 
-        log.debug("[ExplanationScheduleRepositoryImpl] 상태별 회차 조회 완료. 개수={}", schedules.size());
+        log.debug("[ExplanationScheduleRepositoryImpl] 취소 상태별 회차 조회 완료. 개수={}", schedules.size());
+        return schedules;
+    }
+    
+    @Override
+    public List<ExplanationSchedule> findByAdminClosedStatus(boolean isAdminClosed) {
+        log.debug("[ExplanationScheduleRepositoryImpl] 관리자 마감 상태별 회차 조회. isAdminClosed={}", isAdminClosed);
+
+        List<ExplanationSchedule> schedules = queryFactory
+                .selectFrom(schedule)
+                .where(schedule.isAdminClosed.eq(isAdminClosed))
+                .orderBy(schedule.startAt.asc())
+                .fetch();
+
+        log.debug("[ExplanationScheduleRepositoryImpl] 관리자 마감 상태별 회차 조회 완료. 개수={}", schedules.size());
         return schedules;
     }
 

@@ -67,10 +67,13 @@ public class ExplanationSchedule {
     @Column(name = "apply_end_at", nullable = false)
     private LocalDateTime applyEndAt;
 
-    /** 회차 상태 */
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
-    private ExplanationScheduleStatus status = ExplanationScheduleStatus.CLOSED;
+    /** 관리자 강제 마감 여부 */
+    @Column(name = "is_admin_closed", nullable = false)
+    private Boolean isAdminClosed = false;
+
+    /** 회차 취소 여부 */
+    @Column(name = "is_canceled", nullable = false)
+    private Boolean isCanceled = false;
 
     /** 회차 정원 (NULL = 무제한) */
     @Column(name = "capacity")
@@ -106,15 +109,13 @@ public class ExplanationSchedule {
      * @param location 회차 장소
      * @param applyStartAt 예약 신청 시작 일시
      * @param applyEndAt 예약 신청 종료 일시
-     * @param status 회차 상태
      * @param capacity 회차 정원
      * @param createdBy 생성자 ID
      */
     @Builder
     private ExplanationSchedule(Long explanationId, Integer roundNo, LocalDateTime startAt,
                                LocalDateTime endAt, String location, LocalDateTime applyStartAt,
-                               LocalDateTime applyEndAt, ExplanationScheduleStatus status,
-                               Integer capacity, Long createdBy) {
+                               LocalDateTime applyEndAt, Integer capacity, Long createdBy) {
         this.explanationId = explanationId;
         this.roundNo = roundNo;
         this.startAt = startAt;
@@ -122,9 +123,10 @@ public class ExplanationSchedule {
         this.location = location;
         this.applyStartAt = applyStartAt;
         this.applyEndAt = applyEndAt;
-        this.status = status != null ? status : ExplanationScheduleStatus.CLOSED;
         this.capacity = capacity;
         this.reservedCount = 0;
+        this.isAdminClosed = false;
+        this.isCanceled = false;
         this.createdBy = createdBy;
         this.updatedBy = createdBy;
     }
@@ -137,31 +139,52 @@ public class ExplanationSchedule {
      * @param location 회차 장소
      * @param applyStartAt 예약 신청 시작 일시
      * @param applyEndAt 예약 신청 종료 일시
-     * @param status 회차 상태
      * @param capacity 회차 정원
      * @param updatedBy 수정자 ID
      */
     public void update(LocalDateTime startAt, LocalDateTime endAt, String location,
                       LocalDateTime applyStartAt, LocalDateTime applyEndAt,
-                      ExplanationScheduleStatus status, Integer capacity, Long updatedBy) {
-        this.startAt = startAt;
-        this.endAt = endAt;
-        this.location = location;
-        this.applyStartAt = applyStartAt;
-        this.applyEndAt = applyEndAt;
-        this.status = status != null ? status : this.status;
-        this.capacity = capacity;
+                      Integer capacity, Long updatedBy) {
+        if (startAt != null) {
+            this.startAt = startAt;
+        }
+        if (endAt != null) {
+            this.endAt = endAt;
+        }
+        if (location != null) {
+            this.location = location;
+        }
+        if (applyStartAt != null) {
+            this.applyStartAt = applyStartAt;
+        }
+        if (applyEndAt != null) {
+            this.applyEndAt = applyEndAt;
+        }
+        if (capacity != null) {
+            this.capacity = capacity;
+        }
         this.updatedBy = updatedBy;
     }
 
     /**
-     * 회차 상태 변경.
+     * 관리자 강제 마감 설정.
      * 
-     * @param status 변경할 상태
+     * @param isAdminClosed 강제 마감 여부
      * @param updatedBy 수정자 ID
      */
-    public void updateStatus(ExplanationScheduleStatus status, Long updatedBy) {
-        this.status = status;
+    public void setAdminClosed(Boolean isAdminClosed, Long updatedBy) {
+        this.isAdminClosed = isAdminClosed != null ? isAdminClosed : false;
+        this.updatedBy = updatedBy;
+    }
+
+    /**
+     * 회차 취소 설정.
+     * 
+     * @param isCanceled 취소 여부
+     * @param updatedBy 수정자 ID
+     */
+    public void setCanceled(Boolean isCanceled, Long updatedBy) {
+        this.isCanceled = isCanceled != null ? isCanceled : false;
         this.updatedBy = updatedBy;
     }
 
@@ -182,29 +205,48 @@ public class ExplanationSchedule {
     }
 
     /**
-     * 예약 가능 여부 확인.
+     * 회차 상태 동적 계산.
+     * 
+     * @return 현재 시점의 회차 상태
+     */
+    public ScheduleStatus calculateStatus() {
+        // 우선순위: 취소 > 관리자마감 > 시간 > 정원
+        if (Boolean.TRUE.equals(this.isCanceled)) {
+            return ScheduleStatus.CANCELED;
+        }
+        
+        if (Boolean.TRUE.equals(this.isAdminClosed)) {
+            return ScheduleStatus.ADMIN_CLOSED;
+        }
+        
+        LocalDateTime now = LocalDateTime.now();
+        
+        // 신청 기간 전
+        if (now.isBefore(this.applyStartAt)) {
+            return ScheduleStatus.PENDING;
+        }
+        
+        // 신청 기간 후
+        if (now.isAfter(this.applyEndAt)) {
+            return ScheduleStatus.CLOSED;
+        }
+        
+        // 신청 기간 중 - 정원 확인
+        if (this.capacity != null && this.reservedCount >= this.capacity) {
+            return ScheduleStatus.FULL;
+        }
+        
+        // 예약 가능
+        return ScheduleStatus.OPEN;
+    }
+
+    /**
+     * 예약 가능 여부 확인 (calculateStatus가 OPEN인지 체크).
      * 
      * @return 예약 가능하면 true
      */
     public boolean isReservable() {
-        LocalDateTime now = LocalDateTime.now();
-        
-        // 상태가 RESERVABLE이어야 함
-        if (this.status != ExplanationScheduleStatus.RESERVABLE) {
-            return false;
-        }
-        
-        // 신청 기간 내여야 함
-        if (now.isBefore(this.applyStartAt) || now.isAfter(this.applyEndAt)) {
-            return false;
-        }
-        
-        // 정원이 있다면 여유가 있어야 함
-        if (this.capacity != null && this.reservedCount >= this.capacity) {
-            return false;
-        }
-        
-        return true;
+        return calculateStatus() == ScheduleStatus.OPEN;
     }
 
     /**

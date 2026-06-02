@@ -43,6 +43,9 @@ public class RequestExplanationCreate {
     @Schema(description = "게시 여부", example = "true", defaultValue = "true")
     private Boolean isPublished = true;
 
+	@Schema(description = "조회수", example = "0")
+	private Long viewCount = 0L;
+
     @Valid
     @NotNull(message = "회차 정보를 입력해주세요")
     @Size(min = 1, message = "최소 1개 이상의 회차를 입력해주세요")
