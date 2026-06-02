@@ -1026,7 +1026,7 @@ public class ExplanationServiceImpl implements ExplanationService {
         Row headerRow = sheet.createRow(0);
         String[] headers = {
                 "예약ID", "신청자명", "신청자 전화번호", "학생명", "학생 전화번호", 
-                "성별", "계열", "학교명", "학년", "예약상태", 
+                "성별", "학교명", "학년", "예약상태", 
                 "메모", "마케팅수신동의", "예약생성일시", "취소일시", "취소주체"
         };
 
@@ -1063,44 +1063,33 @@ public class ExplanationServiceImpl implements ExplanationService {
             }
             row.createCell(5).setCellValue(genderValue);
 
-            // 계열
-            String trackValue = "";
-            if (reservation.getAcademicTrack() != null) {
-                trackValue = switch (reservation.getAcademicTrack()) {
-                    case LIBERAL_ARTS -> "문과";
-                    case SCIENCE -> "이과";
-                    case UNDECIDED -> "미정";
-                };
-            }
-            row.createCell(6).setCellValue(trackValue);
-
             // 학교/학년
-            row.createCell(7).setCellValue(reservation.getSchoolName() != null ? reservation.getSchoolName() : "");
-            row.createCell(8).setCellValue(reservation.getGrade() != null ? reservation.getGrade() : "");
+            row.createCell(6).setCellValue(reservation.getSchoolName() != null ? reservation.getSchoolName() : "");
+            row.createCell(7).setCellValue(reservation.getGrade() != null ? reservation.getGrade() : "");
 
             // 예약 상태
             String statusValue = switch (reservation.getStatus()) {
                 case CONFIRMED -> "확정";
                 case CANCELED -> "취소";
             };
-            row.createCell(9).setCellValue(statusValue);
+            row.createCell(8).setCellValue(statusValue);
 
             // 메모 및 기타
-            row.createCell(10).setCellValue(reservation.getMemo() != null ? reservation.getMemo() : "");
-            row.createCell(11).setCellValue(reservation.getIsMarketingAgree() ? "동의" : "비동의");
+            row.createCell(9).setCellValue(reservation.getMemo() != null ? reservation.getMemo() : "");
+            row.createCell(10).setCellValue(reservation.getIsMarketingAgree() ? "동의" : "비동의");
 
             // 예약 생성일시
-            Cell createdAtCell = row.createCell(12);
+            Cell createdAtCell = row.createCell(11);
             createdAtCell.setCellValue(reservation.getCreatedAt());
             createdAtCell.setCellStyle(dateStyle);
 
             // 취소 정보
             if (reservation.getCanceledAt() != null) {
-                Cell canceledAtCell = row.createCell(13);
+                Cell canceledAtCell = row.createCell(12);
                 canceledAtCell.setCellValue(reservation.getCanceledAt());
                 canceledAtCell.setCellStyle(dateStyle);
             } else {
-                row.createCell(13).setCellValue("");
+                row.createCell(12).setCellValue("");
             }
 
             String canceledByValue = "";
@@ -1111,7 +1100,7 @@ public class ExplanationServiceImpl implements ExplanationService {
                     case SYSTEM -> "시스템";
                 };
             }
-            row.createCell(14).setCellValue(canceledByValue);
+            row.createCell(13).setCellValue(canceledByValue);
 
             // 모든 셀에 스타일 적용
             for (int i = 0; i < headers.length; i++) {

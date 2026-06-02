@@ -1,6 +1,5 @@
 package com.academy.api.explanation.dto;
 
-import com.academy.api.explanation.domain.AcademicTrack;
 import com.academy.api.explanation.domain.Gender;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
@@ -54,12 +53,6 @@ public class RequestExplanationReservationCreate {
             example = "M",
             allowableValues = {"M", "F"})
     private Gender gender;
-
-    @Schema(description = "계열", 
-            example = "SCIENCE",
-            allowableValues = {"LIBERAL_ARTS", "SCIENCE", "UNDECIDED"},
-            defaultValue = "UNDECIDED")
-    private AcademicTrack academicTrack = AcademicTrack.UNDECIDED;
 
     @Size(max = 120, message = "학교명은 120자 이하여야 합니다")
     @Schema(description = "학교명 (선택)", 

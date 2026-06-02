@@ -115,7 +115,6 @@ public class ExplanationPublicController {
                     - studentName: 학생 이름
                     - studentPhone: 학생 휴대폰 번호
                     - gender: 성별 (M/F)
-                    - academicTrack: 계열 (LIBERAL_ARTS/SCIENCE/UNDECIDED)
                     - schoolName: 학교명
                     - grade: 학년
                     - memo: 메모

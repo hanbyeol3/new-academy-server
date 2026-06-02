@@ -77,10 +77,6 @@ public class ExplanationReservation {
     @Column(name = "gender")
     private Gender gender;
 
-    /** 계열 */
-    @Enumerated(EnumType.STRING)
-    @Column(name = "academic_track", nullable = false)
-    private AcademicTrack academicTrack = AcademicTrack.UNDECIDED;
 
     /** 학교명 (선택) */
     @Column(name = "school_name", length = 120)
@@ -119,7 +115,6 @@ public class ExplanationReservation {
      * @param studentName 학생 이름
      * @param studentPhone 학생 휴대폰 번호
      * @param gender 성별
-     * @param academicTrack 계열
      * @param schoolName 학교명
      * @param grade 학년
      * @param memo 메모
@@ -129,7 +124,7 @@ public class ExplanationReservation {
     @Builder
     private ExplanationReservation(Long scheduleId, String applicantName, String applicantPhone,
                                   String studentName, String studentPhone, Gender gender,
-                                  AcademicTrack academicTrack, String schoolName, String grade,
+                                  String schoolName, String grade,
                                   String memo, Boolean isMarketingAgree, byte[] clientIp) {
         this.scheduleId = scheduleId;
         this.status = ReservationStatus.CONFIRMED;
@@ -138,7 +133,6 @@ public class ExplanationReservation {
         this.studentName = studentName;
         this.studentPhone = studentPhone;
         this.gender = gender;
-        this.academicTrack = academicTrack != null ? academicTrack : AcademicTrack.UNDECIDED;
         this.schoolName = schoolName;
         this.grade = grade;
         this.memo = memo;

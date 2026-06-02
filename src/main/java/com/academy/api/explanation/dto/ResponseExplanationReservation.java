@@ -47,9 +47,6 @@ public class ResponseExplanationReservation {
     @Schema(description = "성별", example = "M")
     private Gender gender;
 
-    @Schema(description = "계열", example = "SCIENCE")
-    private AcademicTrack academicTrack;
-
     @Schema(description = "학교명", example = "서울고등학교")
     private String schoolName;
 
