@@ -52,7 +52,7 @@ public class ExplanationPublicController {
                     - isPublished=true인 설명회만 포함
                     - 각 설명회에 회차 목록 포함
                     - hasReservableSchedule: 현재 예약 가능한 회차 존재 여부
-                    - content 필드는 목록에서 제외됨 (성능 최적화)
+                    - content 필드 포함 (설명회 내용)
                     """
     )
     @GetMapping
@@ -97,6 +97,33 @@ public class ExplanationPublicController {
         log.info("공개 설명회 상세 조회 요청. id={}", id);
         
         return explanationService.getPublishedExplanation(id);
+    }
+
+    @Operation(
+            summary = "설명회 조회수 증가",
+            description = """
+                    설명회의 조회수를 1 증가시킵니다.
+                    
+                    사용 용도:
+                    - 상세 조회와 별도로 조회수만 증가시킬 때 사용
+                    - 비동기 처리나 별도 통계 집계 시 활용
+                    
+                    응답 데이터:
+                    - 업데이트된 조회수를 반환합니다
+                    
+                    주의사항:
+                    - 비공개 설명회는 조회수가 증가하지 않습니다 (404 에러)
+                    - 중복 호출 방지 로직은 프론트엔드에서 처리해야 합니다
+                    """
+    )
+    @PostMapping("/{id}/view-count")
+    public ResponseData<Long> incrementViewCount(
+            @Parameter(description = "설명회 ID", example = "1") 
+            @PathVariable Long id) {
+        
+        log.info("설명회 조회수 증가 요청. id={}", id);
+        
+        return explanationService.incrementExplanationViewCount(id);
     }
 
     // ===== 예약 관리 =====

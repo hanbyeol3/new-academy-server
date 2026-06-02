@@ -33,6 +33,9 @@ public class RequestExplanationUpdate {
     @Schema(description = "게시 여부", example = "true", defaultValue = "true")
     private Boolean isPublished;
 
+    @Schema(description = "조회수 (관리자 직접 수정용)", example = "100")
+    private Long viewCount;
+
     @Schema(description = "새로 추가할 본문 이미지 목록 (임시파일 → 정식파일 변환)")
     private List<FileReference> newInlineImages;
     

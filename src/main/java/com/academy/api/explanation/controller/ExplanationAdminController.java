@@ -392,6 +392,7 @@ public class ExplanationAdminController {
                     - scheduleId: 회차 ID 필터
                     - keyword: 검색 키워드 (신청자명, 학생명 LIKE 검색)
                     - status: 예약 상태 필터 (CONFIRMED/CANCELED)
+                    - isMarketingAgree: 마케팅 수신 동의 여부 필터 (true/false)
                     - startDate: 예약 생성 시작일 (yyyy-MM-dd 형식)
                     - endDate: 예약 생성 종료일 (yyyy-MM-dd 형식)
                     
@@ -400,6 +401,7 @@ public class ExplanationAdminController {
                     
                     응답 데이터:
                     - 예약 상세 정보 (신청자/학생 정보, 연락처, 메모)
+                    - 마케팅 수신 동의 여부
                     - 취소 관련 정보 (취소자, 취소 일시)
                     - 클라이언트 IP 정보
                     """
@@ -414,6 +416,8 @@ public class ExplanationAdminController {
             @RequestParam(required = false) String keyword,
             @Parameter(description = "예약 상태", example = "CONFIRMED")
             @RequestParam(required = false) String status,
+            @Parameter(description = "마케팅 수신 동의 여부", example = "true")
+            @RequestParam(required = false) Boolean isMarketingAgree,
             @Parameter(description = "예약 시작일", example = "2024-01-01")
             @RequestParam(required = false) String startDate,
             @Parameter(description = "예약 종료일", example = "2024-12-31")
@@ -422,11 +426,11 @@ public class ExplanationAdminController {
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) 
             Pageable pageable) {
         
-        log.info("예약 목록 조회 요청. explanationId={}, scheduleId={}, keyword={}, status={}", 
-                explanationId, scheduleId, keyword, status);
+        log.info("예약 목록 조회 요청. explanationId={}, scheduleId={}, keyword={}, status={}, isMarketingAgree={}", 
+                explanationId, scheduleId, keyword, status, isMarketingAgree);
         
         return explanationService.getReservationListForAdmin(
-                explanationId, scheduleId, keyword, status, startDate, endDate, pageable);
+                explanationId, scheduleId, keyword, status, isMarketingAgree, startDate, endDate, pageable);
     }
 
     @Operation(

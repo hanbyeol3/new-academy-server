@@ -4,6 +4,7 @@ import com.academy.api.explanation.domain.Explanation;
 import com.academy.api.explanation.domain.ExplanationReservation;
 import com.academy.api.explanation.domain.ExplanationSchedule;
 import com.academy.api.explanation.dto.*;
+import com.academy.api.explanation.repository.ReservationWithDetails;
 import com.academy.api.data.responses.common.ResponseList;
 import com.academy.api.file.dto.ResponseFileInfo;
 import org.springframework.data.domain.Page;
@@ -112,6 +113,7 @@ public class ExplanationMapper {
                 .explanationId(explanation.getId())
                 .division(explanation.getDivision())
                 .title(explanation.getTitle())
+                .content(explanation.getContent())
                 .isPublished(explanation.getIsPublished())
                 .viewCount(explanation.getViewCount())
                 .schedules(scheduleResponses)
@@ -263,6 +265,67 @@ public class ExplanationMapper {
                 .collect(Collectors.toList());
 
         return ResponseList.ok(items, page.getTotalElements(), page.getNumber(), page.getSize());
+    }
+
+    /**
+     * 예약 상세 정보 페이지를 ResponseList로 변환 (설명회/회차 정보 포함).
+     * 
+     * @param page 예약 상세 정보 페이지
+     * @return 예약 목록 응답
+     */
+    public ResponseList<ResponseExplanationReservation> toReservationListResponseWithDetails(Page<ReservationWithDetails> page) {
+        List<ResponseExplanationReservation> items = page.getContent().stream()
+                .map(this::toReservationResponseWithDetails)
+                .collect(Collectors.toList());
+
+        return ResponseList.ok(items, page.getTotalElements(), page.getNumber(), page.getSize());
+    }
+
+    /**
+     * ReservationWithDetails를 Response DTO로 변환 (설명회/회차 정보 포함).
+     * 
+     * @param details 예약 상세 정보
+     * @return 예약 응답 DTO
+     */
+    public ResponseExplanationReservation toReservationResponseWithDetails(ReservationWithDetails details) {
+        ExplanationReservation reservation = details.getReservation();
+        ExplanationSchedule schedule = details.getSchedule();
+        Explanation explanation = details.getExplanation();
+        
+        ResponseExplanationReservation.ResponseExplanationReservationBuilder builder = ResponseExplanationReservation.builder()
+                .id(reservation.getId())
+                .scheduleId(reservation.getScheduleId())
+                .status(reservation.getStatus())
+                .canceledBy(reservation.getCanceledBy())
+                .canceledAt(reservation.getCanceledAt())
+                .applicantName(reservation.getApplicantName())
+                .applicantPhone(reservation.getApplicantPhone())
+                .studentName(reservation.getStudentName())
+                .studentPhone(reservation.getStudentPhone())
+                .gender(reservation.getGender())
+                .schoolName(reservation.getSchoolName())
+                .grade(reservation.getGrade())
+                .memo(reservation.getMemo())
+                .isMarketingAgree(reservation.getIsMarketingAgree())
+                .clientIp(byteArrayToIpString(reservation.getClientIp()))
+                .createdAt(reservation.getCreatedAt())
+                .updatedAt(reservation.getUpdatedAt());
+
+        // 설명회 정보 추가 (null 체크)
+        if (explanation != null) {
+            builder.explanationDivision(explanation.getDivision())
+                   .explanationTitle(explanation.getTitle());
+        }
+
+        // 회차 정보 추가 (null 체크)
+        if (schedule != null) {
+            builder.roundNo(schedule.getRoundNo())
+                   .scheduleStartAt(schedule.getStartAt())
+                   .scheduleEndAt(schedule.getEndAt())
+                   .scheduleLocation(schedule.getLocation());
+        }
+
+        return builder.build();
     }
 
     /**

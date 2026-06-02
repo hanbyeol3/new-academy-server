@@ -71,6 +71,14 @@ public interface ExplanationService {
     ResponseData<ResponseExplanation> getPublishedExplanation(Long id);
 
     /**
+     * 설명회 조회수 증가.
+     * 
+     * @param id 설명회 ID
+     * @return 업데이트된 조회수
+     */
+    ResponseData<Long> incrementExplanationViewCount(Long id);
+
+    /**
      * 설명회 수정.
      * 
      * @param id 설명회 ID
@@ -170,7 +178,7 @@ public interface ExplanationService {
      */
     ResponseList<ResponseExplanationReservation> getReservationListForAdmin(
             Long explanationId, Long scheduleId, String keyword, String status, 
-            String startDate, String endDate, Pageable pageable);
+            Boolean isMarketingAgree, String startDate, String endDate, Pageable pageable);
 
     /**
      * 예약 상세 조회.

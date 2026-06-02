@@ -70,6 +70,28 @@ public class ResponseExplanationReservation {
     @Schema(description = "수정 시각", example = "2024-01-10 14:30:00")
     private LocalDateTime updatedAt;
 
+    // 설명회 정보
+    @Schema(description = "설명회 구분", example = "MIDDLE")
+    private ExplanationDivision explanationDivision;
+
+    @Schema(description = "설명회 제목", example = "2024 중등부 입학설명회")
+    private String explanationTitle;
+
+    // 회차 정보  
+    @Schema(description = "회차 번호", example = "1")
+    private Integer roundNo;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @Schema(description = "회차 시작 일시", example = "2024-06-10 10:00:00")
+    private LocalDateTime scheduleStartAt;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @Schema(description = "회차 종료 일시", example = "2024-06-10 12:00:00")
+    private LocalDateTime scheduleEndAt;
+
+    @Schema(description = "회차 장소", example = "본관 3층 대강당")
+    private String scheduleLocation;
+
     @Schema(description = "설명회 정보 (상세 조회시)")
     private ResponseExplanation explanation;
 

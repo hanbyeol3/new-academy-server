@@ -41,14 +41,33 @@ public interface ExplanationReservationRepositoryCustom {
                                                           Pageable pageable);
 
     /**
-     * 엑셀 다운로드용 예약 목록 조회 (페이징 없음).
+     * 엑셀 다운로드용 예약 목록 조회 (설명회/회차 정보 포함, 페이징 없음).
      * 
      * @param explanationId 설명회 ID (선택)
      * @param scheduleId 회차 ID (선택)
      * @param status 예약 상태 (선택)
      * @param keyword 검색 키워드
-     * @return 예약 목록
+     * @return 예약 목록 (설명회/회차 정보 포함)
      */
-    java.util.List<ExplanationReservation> findReservationsForExport(Long explanationId, Long scheduleId,
+    java.util.List<ReservationWithDetails> findReservationsForExport(Long explanationId, Long scheduleId,
                                                                      ReservationStatus status, String keyword);
+
+    /**
+     * 관리자용 예약 목록 검색 (설명회/회차 정보 포함).
+     * 
+     * @param explanationId 설명회 ID (선택)
+     * @param scheduleId 회차 ID (선택)
+     * @param keyword 검색 키워드 (이름, 전화번호, 학교명)
+     * @param status 예약 상태 (선택)
+     * @param isMarketingAgree 마케팅 수신 동의 여부 (선택)
+     * @param startDateTime 시작 일시 (선택)
+     * @param endDateTime 종료 일시 (선택)
+     * @param pageable 페이징 정보
+     * @return 예약 정보와 설명회/회차 정보가 포함된 결과
+     */
+    Page<ReservationWithDetails> searchReservationsWithDetailsForAdmin(Long explanationId, Long scheduleId,
+                                                                       String keyword, ReservationStatus status,
+                                                                       Boolean isMarketingAgree,
+                                                                       LocalDateTime startDateTime, LocalDateTime endDateTime,
+                                                                       Pageable pageable);
 }

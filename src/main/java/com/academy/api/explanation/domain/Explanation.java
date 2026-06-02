@@ -101,12 +101,14 @@ public class Explanation {
      * @param title 설명회 제목
      * @param content 설명회 내용
      * @param isPublished 게시 여부
+     * @param viewCount 조회수 (관리자 직접 수정)
      * @param updatedBy 수정자 ID
      */
-    public void update(String title, String content, Boolean isPublished, Long updatedBy) {
+    public void update(String title, String content, Boolean isPublished, Long viewCount, Long updatedBy) {
         this.title = title;
         this.content = content;
         this.isPublished = isPublished != null ? isPublished : this.isPublished;
+        this.viewCount = viewCount != null ? viewCount : this.viewCount;
         this.updatedBy = updatedBy;
     }
 

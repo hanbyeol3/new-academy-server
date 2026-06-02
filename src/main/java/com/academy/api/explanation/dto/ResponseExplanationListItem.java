@@ -26,6 +26,9 @@ public class ResponseExplanationListItem {
     @Schema(description = "설명회 제목", example = "2024 고등부 입학설명회")
     private String title;
 
+    @Schema(description = "설명회 내용", example = "고등부 교육과정 및 입학 절차에 대한 상세한 안내를 제공합니다.")
+    private String content;
+
     @Schema(description = "게시 여부", example = "true")
     private Boolean isPublished;
 

@@ -1,11 +1,13 @@
 package com.academy.api.explanation.service;
 
 import com.academy.api.explanation.domain.*;
+import com.academy.api.explanation.repository.ReservationWithDetails;
 import com.academy.api.explanation.dto.*;
 import com.academy.api.explanation.mapper.ExplanationMapper;
 import com.academy.api.explanation.repository.ExplanationRepository;
 import com.academy.api.explanation.repository.ExplanationReservationRepository;
 import com.academy.api.explanation.repository.ExplanationScheduleRepository;
+import com.academy.api.explanation.repository.ReservationWithDetails;
 import com.academy.api.common.exception.BusinessException;
 import com.academy.api.common.exception.ErrorCode;
 import com.academy.api.data.responses.common.Response;
@@ -31,6 +33,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
@@ -250,6 +254,28 @@ public class ExplanationServiceImpl implements ExplanationService {
 
     @Override
     @Transactional
+    public ResponseData<Long> incrementExplanationViewCount(Long id) {
+        log.info("[ExplanationService] 설명회 조회수 증가 요청. id={}", id);
+
+        // 공개된 설명회만 조회수 증가 가능
+        Explanation explanation = explanationRepository.findByIdAndPublished(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.EXPLANATION_NOT_FOUND));
+
+        // 조회수 증가
+        explanationRepository.incrementViewCount(id);
+        
+        // 증가된 조회수를 다시 조회
+        Long updatedViewCount = explanationRepository.findById(id)
+                .map(Explanation::getViewCount)
+                .orElse(0L);
+        
+        log.debug("[ExplanationService] 설명회 조회수 증가 완료. id={}, viewCount={}", id, updatedViewCount);
+        
+        return ResponseData.ok("0000", "조회수가 증가되었습니다.", updatedViewCount);
+    }
+
+    @Override
+    @Transactional
     public Response updateExplanation(Long id, RequestExplanationUpdate request, Long updatedBy) {
         log.info("[ExplanationService] 설명회 수정. id={}, title={}, updatedBy={}", 
                 id, request.getTitle(), updatedBy);
@@ -258,7 +284,7 @@ public class ExplanationServiceImpl implements ExplanationService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.EXPLANATION_NOT_FOUND));
 
         explanation.update(request.getTitle(), request.getContent(), 
-                          request.getIsPublished(), updatedBy);
+                          request.getIsPublished(), request.getViewCount(), updatedBy);
 
         // 인라인 이미지 처리
         if (request.getNewInlineImages() != null && !request.getNewInlineImages().isEmpty()) {
@@ -358,6 +384,7 @@ public class ExplanationServiceImpl implements ExplanationService {
                     basic.getTitle(),
                     basic.getContent(),
                     basic.getIsPublished(),
+                    basic.getViewCount(),
                     updatedBy
             );
 
@@ -695,10 +722,10 @@ public class ExplanationServiceImpl implements ExplanationService {
     @Transactional(readOnly = true)
     public ResponseList<ResponseExplanationReservation> getReservationListForAdmin(
             Long explanationId, Long scheduleId, String keyword, String status, 
-            String startDate, String endDate, Pageable pageable) {
+            Boolean isMarketingAgree, String startDate, String endDate, Pageable pageable) {
         
-        log.info("[ExplanationService] 관리자용 예약 목록 조회 시작. explanationId={}, scheduleId={}, keyword={}, status={}", 
-                explanationId, scheduleId, keyword, status);
+        log.info("[ExplanationService] 관리자용 예약 목록 조회 시작. explanationId={}, scheduleId={}, keyword={}, status={}, isMarketingAgree={}", 
+                explanationId, scheduleId, keyword, status, isMarketingAgree);
 
         // 상태 enum 변환
         ReservationStatus statusEnum = null;
@@ -724,12 +751,14 @@ public class ExplanationServiceImpl implements ExplanationService {
             log.warn("[ExplanationService] 날짜 파싱 오류: startDate={}, endDate={}", startDate, endDate);
         }
 
-        Page<ExplanationReservation> reservationPage = reservationRepository.searchReservationsForAdmin(
-                explanationId, scheduleId, keyword, statusEnum, startDateTime, endDateTime, pageable);
+        // 설명회와 회차 정보를 함께 조회
+        Page<ReservationWithDetails> reservationPage = reservationRepository.searchReservationsWithDetailsForAdmin(
+                explanationId, scheduleId, keyword, statusEnum, isMarketingAgree, startDateTime, endDateTime, pageable);
 
         log.debug("[ExplanationService] 관리자용 예약 목록 조회 완료. 총 {}건", reservationPage.getTotalElements());
         
-        return explanationMapper.toReservationListResponse(reservationPage);
+        // Mapper를 사용하여 상세 정보를 포함한 응답 생성
+        return explanationMapper.toReservationListResponseWithDetails(reservationPage);
     }
 
     @Override
@@ -918,41 +947,62 @@ public class ExplanationServiceImpl implements ExplanationService {
         log.info("[ExplanationService] 예약 목록 엑셀 다운로드 시작. explanationId={}, scheduleId={}, keyword={}, status={}",
                 explanationId, scheduleId, keyword, status);
 
-        try {
-            // 상태 및 날짜 파싱
-            ReservationStatus reservationStatus = parseReservationStatus(status);
-            LocalDateTime startDateTime = parseDateTime(startDate);
-            LocalDateTime endDateTime = parseDateTime(endDate);
+        // 상태 및 날짜 파싱
+        ReservationStatus reservationStatus = parseReservationStatus(status);
+        LocalDateTime startDateTime = parseDateTime(startDate);
+        LocalDateTime endDateTime = parseDateTime(endDate);
 
-            // 예약 목록 조회 (페이징 없이 모든 데이터)
-            List<ExplanationReservation> reservations = reservationRepository.findReservationsForExport(
-                    explanationId, scheduleId, reservationStatus, keyword);
+        // 예약 목록 조회 (설명회/회차 정보 포함, 페이징 없이 모든 데이터)
+        List<ReservationWithDetails> reservationsWithDetails = reservationRepository.findReservationsForExport(
+                explanationId, scheduleId, reservationStatus, keyword);
+        log.debug("[ExplanationService] 엑셀 다운로드용 예약 조회 완료. 건수={}", reservationsWithDetails.size());
 
-            log.debug("[ExplanationService] 엑셀 다운로드용 예약 조회 완료. 건수={}", reservations.size());
+        // 파일명 생성
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String filenameKorean = String.format("설명회_신청자_목록_%s.xlsx", timestamp);
 
-            // 엑셀 파일 생성
-            Workbook workbook = createReservationExcelWorkbook(reservations);
+        // ByteArrayOutputStream을 사용하여 메모리에 엑셀 파일 생성
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             Workbook workbook = createReservationExcelWorkbook(reservationsWithDetails)) {
 
-            // 파일명 생성 (URL 인코딩)
-            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-            String filenameKorean = String.format("설명회_예약목록_%s.xlsx", timestamp);
-            String filenameEncoded = URLEncoder.encode(filenameKorean, StandardCharsets.UTF_8);
+            // 엑셀 파일을 ByteArrayOutputStream에 작성
+            workbook.write(baos);
+            baos.flush();
+
+            // 바이트 배열 가져오기
+            byte[] excelBytes = baos.toByteArray();
 
             // HTTP 응답 설정
+            response.reset(); // 응답 초기화
             response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setCharacterEncoding("UTF-8");
+
+            // 파일명 인코딩 (한글 깨짐 방지)
+            String encodedFilename = URLEncoder.encode(filenameKorean, StandardCharsets.UTF_8)
+                    .replaceAll("\\+", "%20"); // 공백 처리
+
             response.setHeader("Content-Disposition", 
-                String.format("attachment; filename=\"%s\"; filename*=UTF-8''%s", 
-                    "explanation_reservations_" + timestamp + ".xlsx", filenameEncoded));
-            response.setHeader("Cache-Control", "no-cache");
+                String.format("attachment; filename*=UTF-8''%s", encodedFilename));
+            response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+            response.setHeader("Pragma", "no-cache");
+            response.setHeader("Expires", "0");
 
-            // 엑셀 파일 출력
-            workbook.write(response.getOutputStream());
-            workbook.close();
+            // Content-Length 설정 (파일 크기 명시)
+            response.setContentLength(excelBytes.length);
 
-            log.info("[ExplanationService] 엑셀 다운로드 완료. 파일명={}, 건수={}", filenameKorean, reservations.size());
+            // 출력 스트림에 쓰기
+            response.getOutputStream().write(excelBytes);
+            response.getOutputStream().flush();
+            response.getOutputStream().close();
 
-        } catch (Exception e) {
+            log.info("[ExplanationService] 엑셀 다운로드 완료. 파일명={}, 건수={}, 크기={}bytes", 
+                    filenameKorean, reservationsWithDetails.size(), excelBytes.length);
+
+        } catch (IOException e) {
             log.error("[ExplanationService] 엑셀 다운로드 실패: {}", e.getMessage(), e);
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR);
+        } catch (Exception e) {
+            log.error("[ExplanationService] 예상치 못한 오류 발생: {}", e.getMessage(), e);
             throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
     }
@@ -992,22 +1042,24 @@ public class ExplanationServiceImpl implements ExplanationService {
     /**
      * 예약 목록 엑셀 워크북 생성.
      */
-    private Workbook createReservationExcelWorkbook(List<ExplanationReservation> reservations) {
+    private Workbook createReservationExcelWorkbook(List<ReservationWithDetails> reservationsWithDetails) {
         Workbook workbook = new XSSFWorkbook();
         Sheet sheet = workbook.createSheet("예약 목록");
 
-        // 헤더 스타일 생성
+        // 헤더 스타일 생성 (노란색 배경)
         CellStyle headerStyle = workbook.createCellStyle();
         Font headerFont = workbook.createFont();
         headerFont.setBold(true);
-        headerFont.setFontHeightInPoints((short) 12);
+        headerFont.setFontHeightInPoints((short) 11);
         headerStyle.setFont(headerFont);
-        headerStyle.setFillForegroundColor(IndexedColors.LIGHT_BLUE.getIndex());
+        headerStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
         headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
         headerStyle.setBorderBottom(BorderStyle.THIN);
         headerStyle.setBorderTop(BorderStyle.THIN);
         headerStyle.setBorderRight(BorderStyle.THIN);
         headerStyle.setBorderLeft(BorderStyle.THIN);
+        headerStyle.setAlignment(HorizontalAlignment.CENTER);
+        headerStyle.setVerticalAlignment(VerticalAlignment.CENTER);
 
         // 일반 셀 스타일 생성
         CellStyle cellStyle = workbook.createCellStyle();
@@ -1016,16 +1068,19 @@ public class ExplanationServiceImpl implements ExplanationService {
         cellStyle.setBorderRight(BorderStyle.THIN);
         cellStyle.setBorderLeft(BorderStyle.THIN);
 
-        // 날짜 스타일 생성
+        // 날짜 스타일 생성 (문자열로 처리)
         CellStyle dateStyle = workbook.createCellStyle();
-        dateStyle.cloneStyleFrom(cellStyle);
-        CreationHelper createHelper = workbook.getCreationHelper();
-        dateStyle.setDataFormat(createHelper.createDataFormat().getFormat("yyyy-mm-dd hh:mm:ss"));
+        dateStyle.setBorderBottom(BorderStyle.THIN);
+        dateStyle.setBorderTop(BorderStyle.THIN);
+        dateStyle.setBorderRight(BorderStyle.THIN);
+        dateStyle.setBorderLeft(BorderStyle.THIN);
+        dateStyle.setAlignment(HorizontalAlignment.CENTER);
 
         // 헤더 생성
         Row headerRow = sheet.createRow(0);
         String[] headers = {
-                "예약ID", "신청자명", "신청자 전화번호", "학생명", "학생 전화번호", 
+                "예약ID", "설명회 제목", "회차 정보", 
+                "신청자명", "신청자 전화번호", "학생명", "학생 전화번호", 
                 "성별", "학교명", "학년", "예약상태", 
                 "메모", "마케팅수신동의", "예약생성일시", "취소일시", "취소주체"
         };
@@ -1039,19 +1094,40 @@ public class ExplanationServiceImpl implements ExplanationService {
 
         // 데이터 행 생성
         int rowIndex = 1;
-        for (ExplanationReservation reservation : reservations) {
+        for (ReservationWithDetails detail : reservationsWithDetails) {
+            ExplanationReservation reservation = detail.getReservation();
+            ExplanationSchedule schedule = detail.getSchedule();
+            Explanation explanation = detail.getExplanation();
+            
             Row row = sheet.createRow(rowIndex++);
+            int cellIndex = 0;
 
             // 예약 ID
-            row.createCell(0).setCellValue(reservation.getId());
+            row.createCell(cellIndex++).setCellValue(reservation.getId() != null ? reservation.getId() : 0);
+            
+            // 설명회 제목
+            String explanationTitle = explanation != null && explanation.getTitle() != null ? 
+                explanation.getTitle() : "";
+            row.createCell(cellIndex++).setCellValue(explanationTitle);
+            
+            // 회차 정보 (예: "1회차 - 2026-06-15 14:00")
+            String scheduleInfo = "";
+            if (schedule != null) {
+                String sessionNumber = schedule.getRoundNo() != null ? 
+                    schedule.getRoundNo() + "회차" : "";
+                String scheduleDate = schedule.getStartAt() != null ?
+                    schedule.getStartAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "";
+                scheduleInfo = sessionNumber + (scheduleDate.isEmpty() ? "" : " - " + scheduleDate);
+            }
+            row.createCell(cellIndex++).setCellValue(scheduleInfo);
 
             // 신청자 정보
-            row.createCell(1).setCellValue(reservation.getApplicantName());
-            row.createCell(2).setCellValue(reservation.getApplicantPhone());
+            row.createCell(cellIndex++).setCellValue(reservation.getApplicantName());
+            row.createCell(cellIndex++).setCellValue(reservation.getApplicantPhone());
 
             // 학생 정보
-            row.createCell(3).setCellValue(reservation.getStudentName() != null ? reservation.getStudentName() : "");
-            row.createCell(4).setCellValue(reservation.getStudentPhone() != null ? reservation.getStudentPhone() : "");
+            row.createCell(cellIndex++).setCellValue(reservation.getStudentName() != null ? reservation.getStudentName() : "");
+            row.createCell(cellIndex++).setCellValue(reservation.getStudentPhone() != null ? reservation.getStudentPhone() : "");
 
             // 성별
             String genderValue = "";
@@ -1061,36 +1137,44 @@ public class ExplanationServiceImpl implements ExplanationService {
                     case F -> "여성";
                 };
             }
-            row.createCell(5).setCellValue(genderValue);
+            row.createCell(cellIndex++).setCellValue(genderValue);
 
             // 학교/학년
-            row.createCell(6).setCellValue(reservation.getSchoolName() != null ? reservation.getSchoolName() : "");
-            row.createCell(7).setCellValue(reservation.getGrade() != null ? reservation.getGrade() : "");
+            row.createCell(cellIndex++).setCellValue(reservation.getSchoolName() != null ? reservation.getSchoolName() : "");
+            row.createCell(cellIndex++).setCellValue(reservation.getGrade() != null ? reservation.getGrade() : "");
 
             // 예약 상태
             String statusValue = switch (reservation.getStatus()) {
                 case CONFIRMED -> "확정";
                 case CANCELED -> "취소";
             };
-            row.createCell(8).setCellValue(statusValue);
+            row.createCell(cellIndex++).setCellValue(statusValue);
 
             // 메모 및 기타
-            row.createCell(9).setCellValue(reservation.getMemo() != null ? reservation.getMemo() : "");
-            row.createCell(10).setCellValue(reservation.getIsMarketingAgree() ? "동의" : "비동의");
+            row.createCell(cellIndex++).setCellValue(reservation.getMemo() != null ? reservation.getMemo() : "");
+            row.createCell(cellIndex++).setCellValue(reservation.getIsMarketingAgree() ? "동의" : "비동의");
 
-            // 예약 생성일시
-            Cell createdAtCell = row.createCell(11);
-            createdAtCell.setCellValue(reservation.getCreatedAt());
+            // 예약 생성일시 (문자열로 포맷팅)
+            Cell createdAtCell = row.createCell(cellIndex++);
+            if (reservation.getCreatedAt() != null) {
+                String formattedDate = reservation.getCreatedAt()
+                        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                createdAtCell.setCellValue(formattedDate);
+            } else {
+                createdAtCell.setCellValue("");
+            }
             createdAtCell.setCellStyle(dateStyle);
 
-            // 취소 정보
+            // 취소 정보 (문자열로 포맷팅)
+            Cell canceledAtCell = row.createCell(cellIndex++);
             if (reservation.getCanceledAt() != null) {
-                Cell canceledAtCell = row.createCell(12);
-                canceledAtCell.setCellValue(reservation.getCanceledAt());
-                canceledAtCell.setCellStyle(dateStyle);
+                String formattedDate = reservation.getCanceledAt()
+                        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                canceledAtCell.setCellValue(formattedDate);
             } else {
-                row.createCell(12).setCellValue("");
+                canceledAtCell.setCellValue("");
             }
+            canceledAtCell.setCellStyle(dateStyle);
 
             String canceledByValue = "";
             if (reservation.getCanceledBy() != null) {
@@ -1100,7 +1184,7 @@ public class ExplanationServiceImpl implements ExplanationService {
                     case SYSTEM -> "시스템";
                 };
             }
-            row.createCell(13).setCellValue(canceledByValue);
+            row.createCell(cellIndex).setCellValue(canceledByValue);
 
             // 모든 셀에 스타일 적용
             for (int i = 0; i < headers.length; i++) {
