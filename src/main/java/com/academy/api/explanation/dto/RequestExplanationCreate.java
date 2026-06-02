@@ -44,9 +44,10 @@ public class RequestExplanationCreate {
     private Boolean isPublished = true;
 
     @Valid
-    @NotNull(message = "초기 회차 정보를 입력해주세요")
-    @Schema(description = "초기 회차 정보", requiredMode = Schema.RequiredMode.REQUIRED)
-    private RequestExplanationScheduleCreate initialSchedule;
+    @NotNull(message = "회차 정보를 입력해주세요")
+    @Size(min = 1, message = "최소 1개 이상의 회차를 입력해주세요")
+    @Schema(description = "회차 정보 목록 (최소 1개 이상)", requiredMode = Schema.RequiredMode.REQUIRED)
+    private List<RequestExplanationScheduleCreate> schedules = new ArrayList<>();
 
     @Schema(description = "본문 이미지 목록 (임시파일 기반)")
     private List<InlineImageInfo> inlineImages = new ArrayList<>();

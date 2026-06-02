@@ -45,12 +45,12 @@ public class ExplanationAdminController {
     @Operation(
             summary = "설명회 생성",
             description = """
-                    새로운 설명회를 생성합니다. 초기 회차 1개가 함께 생성됩니다.
+                    새로운 설명회를 생성합니다. 여러 개의 회차를 함께 생성할 수 있습니다.
                     
                     필수 입력 사항:
                     - division: 설명회 구분 (MIDDLE/HIGH/SELF_STUDY_RETAKE)
                     - title: 설명회 제목 (255자 이하)
-                    - initialSchedule: 초기 회차 정보 (필수)
+                    - schedules: 회차 정보 목록 (최소 1개 이상 필수)
                     
                     선택 입력 사항:
                     - content: 설명회 내용
@@ -58,7 +58,9 @@ public class ExplanationAdminController {
                     
                     주의사항:
                     - 트랜잭션으로 처리되어 설명회 또는 회차 생성 실패 시 모두 롤백됩니다
+                    - 각 회차의 roundNo는 중복될 수 없습니다
                     - 회차의 apply 기간과 시간은 논리적으로 유효해야 합니다
+                    - 여러 회차를 한 번에 등록하여 효율적으로 설명회를 구성할 수 있습니다
                     """
     )
     @PostMapping

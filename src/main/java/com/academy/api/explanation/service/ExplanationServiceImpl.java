@@ -24,7 +24,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -41,9 +40,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
-import static com.academy.api.explanation.domain.Gender.*;
-import static com.academy.api.explanation.domain.AcademicTrack.*;
-import static com.academy.api.explanation.domain.CanceledBy.*;
 
 /**
  * 설명회 서비스 구현체.
@@ -87,16 +83,33 @@ public class ExplanationServiceImpl implements ExplanationService {
             
             log.debug("[ExplanationService] 설명회 저장 완료. id={}", savedExplanation.getId());
 
-            // 2. 초기 회차 생성
-            ExplanationSchedule schedule = explanationMapper.toScheduleEntity(
-                    request.getInitialSchedule(), 
-                    savedExplanation.getId(), 
-                    createdBy
-            );
-            ExplanationSchedule savedSchedule = scheduleRepository.save(schedule);
+            // 2. 회차들 생성
+            List<ExplanationSchedule> savedSchedules = new ArrayList<>();
+            if (request.getSchedules() != null && !request.getSchedules().isEmpty()) {
+                for (RequestExplanationScheduleCreate scheduleRequest : request.getSchedules()) {
+                    // 회차 번호 중복 확인
+                    if (scheduleRepository.existsByExplanationIdAndRoundNo(
+                            savedExplanation.getId(), scheduleRequest.getRoundNo())) {
+                        log.warn("[ExplanationService] 중복된 회차 번호. explanationId={}, roundNo={}", 
+                                savedExplanation.getId(), scheduleRequest.getRoundNo());
+                        // 트랜잭션 롤백을 위해 예외 발생
+                        throw new BusinessException(ErrorCode.DUPLICATE_ROUND_NO);
+                    }
+                    
+                    ExplanationSchedule schedule = explanationMapper.toScheduleEntity(
+                            scheduleRequest, 
+                            savedExplanation.getId(), 
+                            createdBy
+                    );
+                    ExplanationSchedule savedSchedule = scheduleRepository.save(schedule);
+                    savedSchedules.add(savedSchedule);
+                    
+                    log.debug("[ExplanationService] 회차 저장 완료. scheduleId={}, roundNo={}", 
+                            savedSchedule.getId(), savedSchedule.getRoundNo());
+                }
+            }
 
-            log.debug("[ExplanationService] 초기 회차 저장 완료. scheduleId={}, roundNo={}", 
-                    savedSchedule.getId(), savedSchedule.getRoundNo());
+            log.debug("[ExplanationService] 전체 회차 저장 완료. 총 {}개 회차", savedSchedules.size());
 
             // 3. 인라인 이미지 처리
             if (request.getInlineImages() != null && !request.getInlineImages().isEmpty()) {
@@ -117,8 +130,8 @@ public class ExplanationServiceImpl implements ExplanationService {
                 log.debug("[ExplanationService] 인라인 이미지 처리 완료. 링크 수={}", inlineTempMap.size());
             }
 
-            log.info("[ExplanationService] 설명회 생성 완료. explanationId={}, scheduleId={}", 
-                    savedExplanation.getId(), savedSchedule.getId());
+            log.info("[ExplanationService] 설명회 생성 완료. explanationId={}, 회차수={}", 
+                    savedExplanation.getId(), savedSchedules.size());
 
             return ResponseData.ok("0000", "설명회가 생성되었습니다.", savedExplanation.getId());
 
