@@ -17,6 +17,7 @@ import com.academy.api.file.dto.ResponseFileInfo;
 import com.academy.api.file.repository.UploadFileLinkRepository;
 import com.academy.api.file.service.FileService;
 import com.academy.api.file.dto.FileReference;
+import com.academy.api.member.domain.Member;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -67,6 +68,7 @@ public class ExplanationServiceImpl implements ExplanationService {
     private final ExplanationMapper explanationMapper;
     private final FileService fileService;
     private final UploadFileLinkRepository uploadFileLinkRepository;
+    private final com.academy.api.member.repository.MemberRepository memberRepository;
 
     // ===== 설명회 관리 =====
 
@@ -203,7 +205,12 @@ public class ExplanationServiceImpl implements ExplanationService {
         // 인라인 이미지 조회
         List<ResponseFileInfo> inlineImages = getInlineImagesByExplanationId(id);
 
-        ResponseExplanation response = explanationMapper.toResponse(explanation, schedules, inlineImages);
+        // 회원 이름 조회
+        String createdByName = getMemberName(explanation.getCreatedBy());
+        String updatedByName = getMemberName(explanation.getUpdatedBy());
+
+        ResponseExplanation response = explanationMapper.toResponseWithNames(
+                explanation, schedules, inlineImages, createdByName, updatedByName);
         
         log.debug("[ExplanationService] 관리자용 설명회 상세 조회 완료. id={}, 회차수={}, 인라인이미지수={}", 
                 id, schedules.size(), inlineImages.size());
@@ -228,7 +235,12 @@ public class ExplanationServiceImpl implements ExplanationService {
         // 인라인 이미지 조회
         List<ResponseFileInfo> inlineImages = getInlineImagesByExplanationId(id);
 
-        ResponseExplanation response = explanationMapper.toResponse(explanation, schedules, inlineImages);
+        // 회원 이름 조회
+        String createdByName = getMemberName(explanation.getCreatedBy());
+        String updatedByName = getMemberName(explanation.getUpdatedBy());
+
+        ResponseExplanation response = explanationMapper.toResponseWithNames(
+                explanation, schedules, inlineImages, createdByName, updatedByName);
 
         log.debug("[ExplanationService] 공개용 설명회 상세 조회 완료. id={}, 조회수 증가, 회차수={}, 인라인이미지수={}", 
                 id, schedules.size(), inlineImages.size());
@@ -326,6 +338,145 @@ public class ExplanationServiceImpl implements ExplanationService {
 
         return Response.ok("0000", 
                 newStatus ? "설명회가 공개되었습니다." : "설명회가 비공개로 변경되었습니다.");
+    }
+
+    @Override
+    @Transactional
+    public Response updateExplanationFull(Long id, RequestExplanationFullUpdate request, Long updatedBy) {
+        log.info("[ExplanationService] 설명회 통합 수정 시작. id={}, updatedBy={}", id, updatedBy);
+
+        // 1. 설명회 존재 확인
+        Explanation explanation = explanationRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.EXPLANATION_NOT_FOUND));
+
+        // 2. 기본 정보 수정
+        if (request.getBasic() != null) {
+            RequestExplanationFullUpdate.BasicInfo basic = request.getBasic();
+            
+            log.debug("[ExplanationService] 기본 정보 수정. title={}", basic.getTitle());
+            explanation.update(
+                    basic.getTitle(),
+                    basic.getContent(),
+                    basic.getIsPublished(),
+                    updatedBy
+            );
+
+            // 인라인 이미지 처리 (기존 updateExplanation 로직 활용)
+            if (basic.getNewInlineImages() != null && !basic.getNewInlineImages().isEmpty()) {
+                log.debug("[ExplanationService] 새 인라인 이미지 처리. 개수={}", 
+                        basic.getNewInlineImages().size());
+                
+                // 임시파일을 정식파일로 변환하고 링크 생성
+                List<RequestExplanationCreate.InlineImageInfo> tempImages = 
+                        basic.getNewInlineImages().stream()
+                        .map(ref -> {
+                            RequestExplanationCreate.InlineImageInfo img = 
+                                    new RequestExplanationCreate.InlineImageInfo();
+                            img.setTempFileId(ref.getTempFileId());
+                            img.setFileName(ref.getFileName());
+                            return img;
+                        })
+                        .toList();
+                
+                Map<String, Long> inlineTempMap = createFileLinkFromTempFiles(
+                        tempImages, id, "EXPLANATION", updatedBy);
+                
+                // content의 임시 URL을 정식 URL로 변환
+                if (!inlineTempMap.isEmpty()) {
+                    String convertedContent = fileService.convertTempUrlsInContent(
+                            explanation.getContent(), inlineTempMap);
+                    if (!convertedContent.equals(explanation.getContent())) {
+                        explanation.updateContent(convertedContent);
+                    }
+                }
+            }
+
+            // 삭제할 이미지 처리
+            if (basic.getDeleteInlineImageFileIds() != null && 
+                !basic.getDeleteInlineImageFileIds().isEmpty()) {
+                String finalContent = fileService.removeDeletedImageUrlsFromContent(
+                        explanation.getContent(), basic.getDeleteInlineImageFileIds());
+                explanation.updateContent(finalContent);
+                log.debug("[ExplanationService] 삭제된 이미지 URL 제거 완료. 개수={}", 
+                        basic.getDeleteInlineImageFileIds().size());
+            }
+
+            explanationRepository.save(explanation);
+        }
+
+        // 3. 회차 관리
+        if (request.getSchedules() != null) {
+            RequestExplanationFullUpdate.ScheduleOperations ops = request.getSchedules();
+            
+            // 3-1. 기존 회차 수정
+            if (ops.getUpdate() != null && !ops.getUpdate().isEmpty()) {
+                log.debug("[ExplanationService] 회차 수정 시작. 개수={}", ops.getUpdate().size());
+                
+                for (RequestExplanationFullUpdate.UpdateSchedule updateReq : ops.getUpdate()) {
+                    ExplanationSchedule schedule = scheduleRepository
+                            .findByIdAndExplanationId(updateReq.getScheduleId(), id)
+                            .orElseThrow(() -> new BusinessException(ErrorCode.EXPLANATION_SCHEDULE_MISMATCH));
+                    
+                    // 정원 축소 검증
+                    if (updateReq.getCapacity() != null && 
+                        schedule.getReservedCount() > updateReq.getCapacity()) {
+                        throw new BusinessException(ErrorCode.EXPLANATION_SCHEDULE_CAPACITY_VIOLATION);
+                    }
+                    
+                    schedule.update(
+                            updateReq.getStartAt(),
+                            updateReq.getEndAt(),
+                            updateReq.getLocation(),
+                            updateReq.getApplyStartAt(),
+                            updateReq.getApplyEndAt(),
+                            updateReq.getStatus(),
+                            updateReq.getCapacity(),
+                            updatedBy
+                    );
+                    
+                    scheduleRepository.save(schedule);
+                    log.debug("[ExplanationService] 회차 수정 완료. scheduleId={}", updateReq.getScheduleId());
+                }
+            }
+
+            // 3-2. 새 회차 추가
+            if (ops.getCreate() != null && !ops.getCreate().isEmpty()) {
+                log.debug("[ExplanationService] 새 회차 추가 시작. 개수={}", ops.getCreate().size());
+                
+                for (RequestExplanationScheduleCreate createReq : ops.getCreate()) {
+                    // 회차 번호 중복 확인
+                    if (scheduleRepository.existsByExplanationIdAndRoundNo(id, createReq.getRoundNo())) {
+                        throw new BusinessException(ErrorCode.DUPLICATE_ROUND_NO);
+                    }
+                    
+                    ExplanationSchedule newSchedule = explanationMapper.toScheduleEntity(
+                            createReq, id, updatedBy);
+                    scheduleRepository.save(newSchedule);
+                    
+                    log.debug("[ExplanationService] 새 회차 추가 완료. roundNo={}", createReq.getRoundNo());
+                }
+            }
+
+            // 3-3. 회차 삭제
+            if (ops.getDelete() != null && !ops.getDelete().isEmpty()) {
+                log.debug("[ExplanationService] 회차 삭제 시작. 개수={}", ops.getDelete().size());
+                
+                for (Long scheduleId : ops.getDelete()) {
+                    // 설명회와 회차 매칭 확인
+                    if (!scheduleRepository.existsByIdAndExplanationId(scheduleId, id)) {
+                        log.warn("[ExplanationService] 삭제할 회차를 찾을 수 없음. scheduleId={}", scheduleId);
+                        continue;
+                    }
+                    
+                    // CASCADE 삭제로 예약도 함께 삭제됨
+                    scheduleRepository.deleteById(scheduleId);
+                    log.debug("[ExplanationService] 회차 삭제 완료. scheduleId={}", scheduleId);
+                }
+            }
+        }
+
+        log.info("[ExplanationService] 설명회 통합 수정 완료. id={}", id);
+        return Response.ok("0000", "설명회가 수정되었습니다.");
     }
 
     // ===== 회차 관리 =====
@@ -490,6 +641,21 @@ public class ExplanationServiceImpl implements ExplanationService {
     }
 
     // ===== 유틸리티 메서드 =====
+
+    /**
+     * 회원 ID로 회원 이름 조회.
+     * 
+     * @param memberId 회원 ID
+     * @return 회원 이름 (없으면 "Unknown")
+     */
+    private String getMemberName(Long memberId) {
+        if (memberId == null) {
+            return "Unknown";
+        }
+        return memberRepository.findById(memberId)
+                .map(Member::getMemberName)
+                .orElse("Unknown");
+    }
 
     /**
      * 설명회 ID 목록에 해당하는 회차 목록을 조회하고 그룹핑.

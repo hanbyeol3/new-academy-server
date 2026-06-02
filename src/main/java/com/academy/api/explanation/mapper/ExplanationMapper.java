@@ -54,7 +54,44 @@ public class ExplanationMapper {
                         .map(this::toScheduleResponse)
                         .collect(Collectors.toList()))
                 .inlineImages(inlineImages)
+                .createdBy(explanation.getCreatedBy())
+                .createdByName(null)  // 서비스에서 설정
                 .createdAt(explanation.getCreatedAt())
+                .updatedBy(explanation.getUpdatedBy())
+                .updatedByName(null)  // 서비스에서 설정
+                .updatedAt(explanation.getUpdatedAt())
+                .build();
+    }
+    
+    /**
+     * Explanation Entity를 Response DTO로 변환 (회원 이름 포함).
+     * 
+     * @param explanation 설명회 엔티티
+     * @param schedules 회차 목록
+     * @param inlineImages 인라인 이미지 목록
+     * @param createdByName 등록자 이름
+     * @param updatedByName 수정자 이름
+     * @return 설명회 응답 DTO
+     */
+    public ResponseExplanation toResponseWithNames(Explanation explanation, List<ExplanationSchedule> schedules, 
+                                                   List<ResponseFileInfo> inlineImages, 
+                                                   String createdByName, String updatedByName) {
+        return ResponseExplanation.builder()
+                .id(explanation.getId())
+                .division(explanation.getDivision())
+                .title(explanation.getTitle())
+                .content(explanation.getContent())
+                .isPublished(explanation.getIsPublished())
+                .viewCount(explanation.getViewCount())
+                .schedules(schedules.stream()
+                        .map(this::toScheduleResponse)
+                        .collect(Collectors.toList()))
+                .inlineImages(inlineImages)
+                .createdBy(explanation.getCreatedBy())
+                .createdByName(createdByName)
+                .createdAt(explanation.getCreatedAt())
+                .updatedBy(explanation.getUpdatedBy())
+                .updatedByName(updatedByName)
                 .updatedAt(explanation.getUpdatedAt())
                 .build();
     }

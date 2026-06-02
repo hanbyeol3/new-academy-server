@@ -225,6 +225,53 @@ public class ExplanationAdminController {
         return explanationService.toggleExplanationPublishStatus(id, updatedBy);
     }
 
+    @Operation(
+            summary = "설명회 통합 수정",
+            description = """
+                    설명회 기본 정보와 회차 정보를 한 번에 수정합니다.
+                    
+                    한 번의 API 호출로:
+                    - 기본 정보 수정 (제목, 내용, 공개여부, 이미지)
+                    - 기존 회차 수정
+                    - 새 회차 추가
+                    - 회차 삭제
+                    
+                    모든 작업은 하나의 트랜잭션으로 처리되어 원자성이 보장됩니다.
+                    
+                    요청 구조:
+                    {
+                      "basic": {
+                        "title": "수정된 제목",
+                        "content": "수정된 내용",
+                        "isPublished": true
+                      },
+                      "schedules": {
+                        "update": [ /* 수정할 기존 회차 */ ],
+                        "create": [ /* 새로 추가할 회차 */ ],
+                        "delete": [ /* 삭제할 회차 ID */ ]
+                      }
+                    }
+                    
+                    주의사항:
+                    - 회차 번호는 중복될 수 없습니다
+                    - 정원은 현재 예약 인원보다 적게 설정할 수 없습니다
+                    - 실패 시 모든 변경사항이 롤백됩니다
+                    """
+    )
+    @PutMapping("/{id}/full")
+    public Response updateExplanationFull(
+            @Parameter(description = "수정할 설명회 ID", example = "1") 
+            @PathVariable Long id,
+            @Parameter(description = "설명회 통합 수정 요청") 
+            @RequestBody @Valid RequestExplanationFullUpdate request) {
+        
+        log.info("설명회 통합 수정 요청. id={}", id);
+        
+        Long updatedBy = SecurityUtils.getCurrentUserId();
+        
+        return explanationService.updateExplanationFull(id, request, updatedBy);
+    }
+
     // ===== 회차 관리 =====
 
     @Operation(

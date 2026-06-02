@@ -97,6 +97,22 @@ public interface ExplanationService {
      */
     Response toggleExplanationPublishStatus(Long id, Long updatedBy);
 
+    /**
+     * 설명회 통합 수정 (기본 정보 + 회차 관리).
+     * 
+     * 설명회 기본 정보와 회차를 한 번의 트랜잭션으로 수정합니다.
+     * - 기본 정보 수정
+     * - 기존 회차 수정
+     * - 새 회차 추가
+     * - 회차 삭제
+     * 
+     * @param id 설명회 ID
+     * @param request 통합 수정 요청
+     * @param updatedBy 수정자 ID
+     * @return 수정 결과
+     */
+    Response updateExplanationFull(Long id, RequestExplanationFullUpdate request, Long updatedBy);
+
     // ===== 회차 관리 =====
 
     /**

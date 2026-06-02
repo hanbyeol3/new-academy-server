@@ -68,4 +68,13 @@ public interface ExplanationScheduleRepository extends JpaRepository<Explanation
      * @return 중복 여부
      */
     boolean existsByExplanationIdAndRoundNo(Long explanationId, Integer roundNo);
+    
+    /**
+     * 회차와 설명회 매칭 확인.
+     * 
+     * @param id 회차 ID
+     * @param explanationId 설명회 ID
+     * @return 존재 여부
+     */
+    boolean existsByIdAndExplanationId(Long id, Long explanationId);
 }

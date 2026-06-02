@@ -42,9 +42,21 @@ public class ResponseExplanation {
     @Schema(description = "본문 이미지 목록") 
     private List<ResponseFileInfo> inlineImages;
 
+    @Schema(description = "등록자 ID", example = "1")
+    private Long createdBy;
+    
+    @Schema(description = "등록자 이름", example = "관리자")
+    private String createdByName;
+
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @Schema(description = "생성 시각", example = "2024-01-01 10:00:00")
     private LocalDateTime createdAt;
+
+    @Schema(description = "수정자 ID", example = "1")
+    private Long updatedBy;
+    
+    @Schema(description = "수정자 이름", example = "관리자")
+    private String updatedByName;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @Schema(description = "수정 시각", example = "2024-01-01 10:00:00")
