@@ -45,19 +45,35 @@ public interface ExplanationReservationRepositoryCustom {
      * 
      * @param explanationId 설명회 ID (선택)
      * @param scheduleId 회차 ID (선택)
+     * @param keyword 통합 검색 키워드
+     * @param applicantName 신청자 이름 (개별 검색)
+     * @param applicantPhone 신청자 전화번호 (개별 검색)
+     * @param studentName 학생 이름 (개별 검색)
+     * @param studentPhone 학생 전화번호 (개별 검색)
+     * @param schoolName 학교명 (개별 검색)
      * @param status 예약 상태 (선택)
-     * @param keyword 검색 키워드
+     * @param startDateTime 시작 일시 (선택)
+     * @param endDateTime 종료 일시 (선택)
      * @return 예약 목록 (설명회/회차 정보 포함)
      */
     java.util.List<ReservationWithDetails> findReservationsForExport(Long explanationId, Long scheduleId,
-                                                                     ReservationStatus status, String keyword);
+                                                                     String keyword, String applicantName,
+                                                                     String applicantPhone, String studentName,
+                                                                     String studentPhone, String schoolName,
+                                                                     ReservationStatus status,
+                                                                     LocalDateTime startDateTime, LocalDateTime endDateTime);
 
     /**
      * 관리자용 예약 목록 검색 (설명회/회차 정보 포함).
      * 
      * @param explanationId 설명회 ID (선택)
      * @param scheduleId 회차 ID (선택)
-     * @param keyword 검색 키워드 (이름, 전화번호, 학교명)
+     * @param keyword 통합 검색 키워드 (이름, 전화번호, 학교명)
+     * @param applicantName 신청자 이름 (개별 검색)
+     * @param applicantPhone 신청자 전화번호 (개별 검색)
+     * @param studentName 학생 이름 (개별 검색)
+     * @param studentPhone 학생 전화번호 (개별 검색)
+     * @param schoolName 학교명 (개별 검색)
      * @param status 예약 상태 (선택)
      * @param isMarketingAgree 마케팅 수신 동의 여부 (선택)
      * @param startDateTime 시작 일시 (선택)
@@ -66,7 +82,10 @@ public interface ExplanationReservationRepositoryCustom {
      * @return 예약 정보와 설명회/회차 정보가 포함된 결과
      */
     Page<ReservationWithDetails> searchReservationsWithDetailsForAdmin(Long explanationId, Long scheduleId,
-                                                                       String keyword, ReservationStatus status,
+                                                                       String keyword, String applicantName,
+                                                                       String applicantPhone, String studentName,
+                                                                       String studentPhone, String schoolName,
+                                                                       ReservationStatus status,
                                                                        Boolean isMarketingAgree,
                                                                        LocalDateTime startDateTime, LocalDateTime endDateTime,
                                                                        Pageable pageable);

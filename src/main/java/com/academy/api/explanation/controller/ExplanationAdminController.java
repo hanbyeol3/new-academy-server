@@ -385,12 +385,28 @@ public class ExplanationAdminController {
     @Operation(
             summary = "예약 목록 조회",
             description = """
-                    관리자용 예약 목록을 조회합니다. 다양한 필터 조건으로 검색할 수 있습니다.
+                    관리자용 예약 목록을 조회합니다. 통합 키워드 검색과 개별 필드 검색을 모두 지원합니다.
+                    
+                    검색 방식:
+                    1. 통합 키워드 검색 (keyword 파라미터)
+                       - 신청자명, 신청자 전화번호, 학생명, 학생 전화번호, 학교명을 OR 조건으로 검색
+                       - 예: keyword=김철수 -> 모든 필드에서 "김철수" 포함 여부 검색
+                    
+                    2. 개별 필드 검색 (각 필드별 파라미터)
+                       - applicantName: 신청자 이름 검색
+                       - applicantPhone: 신청자 전화번호 검색
+                       - studentName: 학생 이름 검색
+                       - studentPhone: 학생 전화번호 검색
+                       - schoolName: 학교명 검색
+                       - 개별 필드는 AND 조건으로 결합됨
+                    
+                    3. 통합+개별 검색 혼용
+                       - 통합 키워드와 개별 필드를 함께 사용하면 AND 조건으로 결합
+                       - 예: keyword=김 & schoolName=서울고 -> "김"이 포함되고 학교명이 "서울고" 포함
                     
                     필터 조건:
                     - explanationId: 설명회 ID 필터
                     - scheduleId: 회차 ID 필터
-                    - keyword: 검색 키워드 (신청자명, 학생명 LIKE 검색)
                     - status: 예약 상태 필터 (CONFIRMED/CANCELED)
                     - isMarketingAgree: 마케팅 수신 동의 여부 필터 (true/false)
                     - startDate: 예약 생성 시작일 (yyyy-MM-dd 형식)
@@ -401,6 +417,7 @@ public class ExplanationAdminController {
                     
                     응답 데이터:
                     - 예약 상세 정보 (신청자/학생 정보, 연락처, 메모)
+                    - 참석 인원 수 (attendeeCount)
                     - 마케팅 수신 동의 여부
                     - 취소 관련 정보 (취소자, 취소 일시)
                     - 클라이언트 IP 정보
@@ -412,8 +429,18 @@ public class ExplanationAdminController {
             @RequestParam(required = false) Long explanationId,
             @Parameter(description = "회차 ID", example = "1")
             @RequestParam(required = false) Long scheduleId,
-            @Parameter(description = "검색 키워드", example = "김철수")
+            @Parameter(description = "통합 검색 키워드 (모든 필드)", example = "김철수")
             @RequestParam(required = false) String keyword,
+            @Parameter(description = "신청자 이름", example = "김철수")
+            @RequestParam(required = false) String applicantName,
+            @Parameter(description = "신청자 전화번호", example = "010-1234-5678")
+            @RequestParam(required = false) String applicantPhone,
+            @Parameter(description = "학생 이름", example = "홍길동")
+            @RequestParam(required = false) String studentName,
+            @Parameter(description = "학생 전화번호", example = "010-9876-5432")
+            @RequestParam(required = false) String studentPhone,
+            @Parameter(description = "학교명", example = "서울고등학교")
+            @RequestParam(required = false) String schoolName,
             @Parameter(description = "예약 상태", example = "CONFIRMED")
             @RequestParam(required = false) String status,
             @Parameter(description = "마케팅 수신 동의 여부", example = "true")
@@ -426,11 +453,13 @@ public class ExplanationAdminController {
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) 
             Pageable pageable) {
         
-        log.info("예약 목록 조회 요청. explanationId={}, scheduleId={}, keyword={}, status={}, isMarketingAgree={}", 
-                explanationId, scheduleId, keyword, status, isMarketingAgree);
+        log.info("예약 목록 조회 요청. explanationId={}, scheduleId={}, keyword={}, applicantName={}, studentName={}, schoolName={}", 
+                explanationId, scheduleId, keyword, applicantName, studentName, schoolName);
         
         return explanationService.getReservationListForAdmin(
-                explanationId, scheduleId, keyword, status, isMarketingAgree, startDate, endDate, pageable);
+                explanationId, scheduleId, keyword, applicantName, applicantPhone, 
+                studentName, studentPhone, schoolName, status, isMarketingAgree, 
+                startDate, endDate, pageable);
     }
 
     @Operation(
@@ -565,24 +594,27 @@ public class ExplanationAdminController {
             description = """
                     예약 목록을 엑셀 파일로 다운로드합니다. 필터 조건에 맞는 모든 예약 데이터를 내보냅니다.
                     
-                    필터 조건 (예약 목록 조회와 동일):
+                    검색 방식 (예약 목록 조회와 동일):
+                    - keyword: 통합 검색 (신청자명, 전화번호, 학생명, 학교명 OR 조건)
+                    - applicantName, applicantPhone, studentName, studentPhone, schoolName: 개별 필드 검색 (AND 조건)
+                    
+                    필터 조건:
                     - explanationId: 설명회 ID 필터
                     - scheduleId: 회차 ID 필터
-                    - keyword: 검색 키워드 (신청자명, 학생명 LIKE 검색)
                     - status: 예약 상태 필터 (CONFIRMED/CANCELED)
                     - startDate: 예약 생성 시작일 (yyyy-MM-dd 형식)
                     - endDate: 예약 생성 종료일 (yyyy-MM-dd 형식)
                     
                     엑셀 파일 구조:
+                    - 예약ID, 설명회 제목, 회차 정보
                     - 신청자명, 신청자 전화번호
-                    - 학생명, 학생 전화번호, 성별
-                    - 학교명, 학년, 예약 상태
-                    - 예약 생성일시, 메모
-                    - 취소 정보 (취소자, 취소 일시)
+                    - 학생명, 학생 전화번호
+                    - 참석인원, 성별, 학교명, 학년
+                    - 예약상태, 메모, 마케팅수신동의
+                    - 예약생성일시, 취소일시, 취소주체
                     
                     파일명 형식:
-                    - "설명회_예약목록_YYYYMMDD_HHMMSS.xlsx"
-                    - 예: "설명회_예약목록_20241201_143025.xlsx"
+                    - "설명회_신청자_목록_YYYYMMDD.xlsx"
                     
                     주의사항:
                     - 페이징 없이 모든 데이터를 내보냅니다
@@ -596,8 +628,18 @@ public class ExplanationAdminController {
             @RequestParam(required = false) Long explanationId,
             @Parameter(description = "회차 ID", example = "1")
             @RequestParam(required = false) Long scheduleId,
-            @Parameter(description = "검색 키워드", example = "김철수")
+            @Parameter(description = "통합 검색 키워드", example = "김철수")
             @RequestParam(required = false) String keyword,
+            @Parameter(description = "신청자 이름", example = "김철수")
+            @RequestParam(required = false) String applicantName,
+            @Parameter(description = "신청자 전화번호", example = "010-1234-5678")
+            @RequestParam(required = false) String applicantPhone,
+            @Parameter(description = "학생 이름", example = "홍길동")
+            @RequestParam(required = false) String studentName,
+            @Parameter(description = "학생 전화번호", example = "010-9876-5432")
+            @RequestParam(required = false) String studentPhone,
+            @Parameter(description = "학교명", example = "서울고등학교")
+            @RequestParam(required = false) String schoolName,
             @Parameter(description = "예약 상태", example = "CONFIRMED")
             @RequestParam(required = false) String status,
             @Parameter(description = "예약 시작일", example = "2024-01-01")
@@ -606,11 +648,14 @@ public class ExplanationAdminController {
             @RequestParam(required = false) String endDate,
             HttpServletResponse response) {
         
-        log.info("예약 목록 엑셀 다운로드 요청. explanationId={}, scheduleId={}, keyword={}, status={}", 
-                explanationId, scheduleId, keyword, status);
+        log.info("예약 목록 엑셀 다운로드 요청. explanationId={}, scheduleId={}, keyword={}, applicantName={}, " +
+                "applicantPhone={}, studentName={}, studentPhone={}, schoolName={}, status={}", 
+                explanationId, scheduleId, keyword, applicantName, applicantPhone, 
+                studentName, studentPhone, schoolName, status);
         
         explanationService.exportReservationListToExcel(
-                explanationId, scheduleId, keyword, status, startDate, endDate, response);
+                explanationId, scheduleId, keyword, applicantName, applicantPhone,
+                studentName, studentPhone, schoolName, status, startDate, endDate, response);
     }
 
     // ===== 유틸리티 메서드 =====

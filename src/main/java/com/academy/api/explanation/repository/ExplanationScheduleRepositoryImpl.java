@@ -44,7 +44,7 @@ public class ExplanationScheduleRepositoryImpl implements ExplanationScheduleRep
                         // 정원 여유 있음
                         createCapacityCondition()
                 )
-                .orderBy(schedule.startAt.asc())
+                .orderBy(schedule.roundNo.asc())
                 .fetch();
 
         log.debug("[ExplanationScheduleRepositoryImpl] 예약 가능 회차 조회 완료. 개수={}", schedules.size());
@@ -70,7 +70,7 @@ public class ExplanationScheduleRepositoryImpl implements ExplanationScheduleRep
                         // 정원 여유 있음
                         createCapacityCondition()
                 )
-                .orderBy(schedule.startAt.asc())
+                .orderBy(schedule.roundNo.asc())
                 .fetch();
 
         log.debug("[ExplanationScheduleRepositoryImpl] 전체 예약 가능 회차 조회 완료. 개수={}", schedules.size());
@@ -84,7 +84,7 @@ public class ExplanationScheduleRepositoryImpl implements ExplanationScheduleRep
         List<ExplanationSchedule> schedules = queryFactory
                 .selectFrom(schedule)
                 .where(schedule.isCanceled.eq(isCanceled))
-                .orderBy(schedule.startAt.asc())
+                .orderBy(schedule.roundNo.asc())
                 .fetch();
 
         log.debug("[ExplanationScheduleRepositoryImpl] 취소 상태별 회차 조회 완료. 개수={}", schedules.size());
@@ -98,7 +98,7 @@ public class ExplanationScheduleRepositoryImpl implements ExplanationScheduleRep
         List<ExplanationSchedule> schedules = queryFactory
                 .selectFrom(schedule)
                 .where(schedule.isAdminClosed.eq(isAdminClosed))
-                .orderBy(schedule.startAt.asc())
+                .orderBy(schedule.roundNo.asc())
                 .fetch();
 
         log.debug("[ExplanationScheduleRepositoryImpl] 관리자 마감 상태별 회차 조회 완료. 개수={}", schedules.size());
@@ -120,7 +120,7 @@ public class ExplanationScheduleRepositoryImpl implements ExplanationScheduleRep
                         schedule.capacity.gt(0),
                         occupancyRate.goe(thresholdPercent)
                 )
-                .orderBy(occupancyRate.desc(), schedule.startAt.asc())
+                .orderBy(occupancyRate.desc(), schedule.roundNo.asc())
                 .limit(limit)
                 .fetch();
 

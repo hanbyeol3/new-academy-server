@@ -16,21 +16,21 @@ import java.util.Optional;
 public interface ExplanationScheduleRepository extends JpaRepository<ExplanationSchedule, Long>, ExplanationScheduleRepositoryCustom {
 
     /**
-     * 설명회별 회차 목록 조회.
+     * 설명회별 회차 목록 조회 (회차 번호 순).
      * 
      * @param explanationId 설명회 ID
      * @return 회차 목록
      */
-    List<ExplanationSchedule> findByExplanationIdOrderByStartAtAsc(Long explanationId);
+    List<ExplanationSchedule> findByExplanationIdOrderByRoundNoAsc(Long explanationId);
 
     /**
-     * 설명회별 회차 목록 조회 (Map용).
+     * 설명회별 회차 목록 조회 (Map용, 회차 번호 순).
      * 
      * @param explanationIds 설명회 ID 목록
      * @return 회차 목록
      */
-    @Query("SELECT s FROM ExplanationSchedule s WHERE s.explanationId IN :explanationIds ORDER BY s.explanationId, s.startAt ASC")
-    List<ExplanationSchedule> findByExplanationIdInOrderByExplanationIdAndStartAtAsc(@Param("explanationIds") List<Long> explanationIds);
+    @Query("SELECT s FROM ExplanationSchedule s WHERE s.explanationId IN :explanationIds ORDER BY s.explanationId, s.roundNo ASC")
+    List<ExplanationSchedule> findByExplanationIdInOrderByExplanationIdAndRoundNoAsc(@Param("explanationIds") List<Long> explanationIds);
 
     /**
      * 동시성 제어를 위한 회차 조회 (비관적 락).

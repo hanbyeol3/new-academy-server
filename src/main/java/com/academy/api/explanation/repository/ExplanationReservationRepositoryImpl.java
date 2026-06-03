@@ -4,6 +4,8 @@ import com.academy.api.explanation.domain.*;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.Expressions;
+import com.querydsl.core.types.dsl.StringTemplate;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
@@ -114,11 +116,17 @@ public class ExplanationReservationRepositoryImpl implements ExplanationReservat
 
     @Override
     public List<ReservationWithDetails> findReservationsForExport(Long explanationId, Long scheduleId,
-                                                                 ReservationStatus status, String keyword) {
-        log.debug("[ExplanationReservationRepositoryImpl] 엑셀용 예약 조회 (상세정보 포함). explanationId={}, scheduleId={}, status={}, keyword={}", 
-                explanationId, scheduleId, status, keyword);
+                                                                 String keyword, String applicantName,
+                                                                 String applicantPhone, String studentName,
+                                                                 String studentPhone, String schoolName,
+                                                                 ReservationStatus status,
+                                                                 LocalDateTime startDateTime, LocalDateTime endDateTime) {
+        log.debug("[ExplanationReservationRepositoryImpl] 엑셀용 예약 조회 (상세정보 포함). explanationId={}, scheduleId={}, keyword={}, " +
+                "applicantName={}, applicantPhone={}, studentName={}, studentPhone={}, schoolName={}, status={}", 
+                explanationId, scheduleId, keyword, applicantName, applicantPhone, studentName, studentPhone, schoolName, status);
 
-        BooleanExpression predicate = createSearchPredicateForExport(explanationId, scheduleId, status, keyword);
+        BooleanExpression predicate = createAdvancedSearchPredicate(explanationId, scheduleId, keyword, applicantName, applicantPhone, 
+                studentName, studentPhone, schoolName, status, null, startDateTime, endDateTime);
 
         List<Tuple> tuples = queryFactory
                 .select(reservation, schedule, explanation)
@@ -139,6 +147,107 @@ public class ExplanationReservationRepositoryImpl implements ExplanationReservat
 
         log.debug("[ExplanationReservationRepositoryImpl] 엑셀용 예약 조회 완료. 개수={}", results.size());
         return results;
+    }
+
+    /**
+     * 고급 검색 조건 생성 (개별 필드 검색 + 통합 키워드 검색).
+     * 
+     * @param explanationId 설명회 ID
+     * @param scheduleId 회차 ID
+     * @param keyword 통합 검색 키워드 (OR 조건)
+     * @param applicantName 신청자 이름 (개별 검색)
+     * @param applicantPhone 신청자 전화번호 (개별 검색)
+     * @param studentName 학생 이름 (개별 검색)
+     * @param studentPhone 학생 전화번호 (개별 검색)
+     * @param schoolName 학교명 (개별 검색)
+     * @param status 예약 상태
+     * @param isMarketingAgree 마케팅 동의 여부
+     * @param startDateTime 시작 일시
+     * @param endDateTime 종료 일시
+     * @return 검색 조건
+     */
+    private BooleanExpression createAdvancedSearchPredicate(Long explanationId, Long scheduleId,
+                                                           String keyword, String applicantName,
+                                                           String applicantPhone, String studentName,
+                                                           String studentPhone, String schoolName,
+                                                           ReservationStatus status,
+                                                           Boolean isMarketingAgree,
+                                                           LocalDateTime startDateTime, LocalDateTime endDateTime) {
+        BooleanExpression predicate = null;
+
+        // 설명회 ID 필터
+        if (explanationId != null) {
+            predicate = and(predicate, schedule.explanationId.eq(explanationId));
+        }
+
+        // 회차 ID 필터
+        if (scheduleId != null) {
+            predicate = and(predicate, reservation.scheduleId.eq(scheduleId));
+        }
+
+        // 예약 상태 필터
+        if (status != null) {
+            predicate = and(predicate, reservation.status.eq(status));
+        }
+
+        // 마케팅 수신 동의 여부 필터
+        if (isMarketingAgree != null) {
+            predicate = and(predicate, reservation.isMarketingAgree.eq(isMarketingAgree));
+        }
+
+        // 개별 필드 검색 조건 (AND 연산)
+        if (applicantName != null && !applicantName.trim().isEmpty()) {
+            predicate = and(predicate, reservation.applicantName.like("%" + applicantName.trim() + "%"));
+        }
+        
+        if (applicantPhone != null && !applicantPhone.trim().isEmpty()) {
+            // 전화번호 검색 시 하이픈 제거하고 검색
+            String phoneNumber = applicantPhone.trim().replaceAll("-", "");
+            StringTemplate phoneWithoutHyphen = Expressions.stringTemplate("REPLACE({0}, '-', '')", reservation.applicantPhone);
+            predicate = and(predicate, phoneWithoutHyphen.like("%" + phoneNumber + "%"));
+        }
+        
+        if (studentName != null && !studentName.trim().isEmpty()) {
+            predicate = and(predicate, reservation.studentName.like("%" + studentName.trim() + "%"));
+        }
+        
+        if (studentPhone != null && !studentPhone.trim().isEmpty()) {
+            // 전화번호 검색 시 하이픈 제거하고 검색
+            String phoneNumber = studentPhone.trim().replaceAll("-", "");
+            StringTemplate phoneWithoutHyphen = Expressions.stringTemplate("REPLACE({0}, '-', '')", reservation.studentPhone);
+            predicate = and(predicate, phoneWithoutHyphen.like("%" + phoneNumber + "%"));
+        }
+        
+        if (schoolName != null && !schoolName.trim().isEmpty()) {
+            predicate = and(predicate, reservation.schoolName.like("%" + schoolName.trim() + "%"));
+        }
+
+        // 통합 키워드 검색 (OR 연산) - 개별 필드 검색과 별개로 적용
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String likeKeyword = "%" + keyword.trim() + "%";
+            // 전화번호 검색용 키워드 (하이픈 제거)
+            String phoneKeyword = "%" + keyword.trim().replaceAll("-", "") + "%";
+            
+            StringTemplate applicantPhoneNoHyphen = Expressions.stringTemplate("REPLACE({0}, '-', '')", reservation.applicantPhone);
+            StringTemplate studentPhoneNoHyphen = Expressions.stringTemplate("REPLACE({0}, '-', '')", reservation.studentPhone);
+            
+            BooleanExpression keywordCondition = reservation.applicantName.like(likeKeyword)
+                    .or(applicantPhoneNoHyphen.like(phoneKeyword))
+                    .or(reservation.studentName.like(likeKeyword))
+                    .or(studentPhoneNoHyphen.like(phoneKeyword))
+                    .or(reservation.schoolName.like(likeKeyword));
+            predicate = and(predicate, keywordCondition);
+        }
+
+        // 날짜 범위 검색
+        if (startDateTime != null) {
+            predicate = and(predicate, reservation.createdAt.goe(startDateTime));
+        }
+        if (endDateTime != null) {
+            predicate = and(predicate, reservation.createdAt.loe(endDateTime));
+        }
+
+        return predicate;
     }
 
     /**
@@ -175,9 +284,16 @@ public class ExplanationReservationRepositoryImpl implements ExplanationReservat
         // 키워드 검색 (신청자명, 전화번호, 학생명, 학교명)
         if (keyword != null && !keyword.trim().isEmpty()) {
             String likeKeyword = "%" + keyword.trim() + "%";
+            // 전화번호 검색용 키워드 (하이픈 제거)
+            String phoneKeyword = "%" + keyword.trim().replaceAll("-", "") + "%";
+            
+            StringTemplate applicantPhoneNoHyphen = Expressions.stringTemplate("REPLACE({0}, '-', '')", reservation.applicantPhone);
+            StringTemplate studentPhoneNoHyphen = Expressions.stringTemplate("REPLACE({0}, '-', '')", reservation.studentPhone);
+            
             BooleanExpression keywordCondition = reservation.applicantName.like(likeKeyword)
-                    .or(reservation.applicantPhone.like(likeKeyword))
+                    .or(applicantPhoneNoHyphen.like(phoneKeyword))
                     .or(reservation.studentName.like(likeKeyword))
+                    .or(studentPhoneNoHyphen.like(phoneKeyword))
                     .or(reservation.schoolName.like(likeKeyword));
             predicate = and(predicate, keywordCondition);
         }
@@ -224,9 +340,16 @@ public class ExplanationReservationRepositoryImpl implements ExplanationReservat
         // 키워드 검색 (신청자명, 전화번호, 학생명, 학교명)
         if (keyword != null && !keyword.trim().isEmpty()) {
             String likeKeyword = "%" + keyword.trim() + "%";
+            // 전화번호 검색용 키워드 (하이픈 제거)
+            String phoneKeyword = "%" + keyword.trim().replaceAll("-", "") + "%";
+            
+            StringTemplate applicantPhoneNoHyphen = Expressions.stringTemplate("REPLACE({0}, '-', '')", reservation.applicantPhone);
+            StringTemplate studentPhoneNoHyphen = Expressions.stringTemplate("REPLACE({0}, '-', '')", reservation.studentPhone);
+            
             BooleanExpression keywordCondition = reservation.applicantName.like(likeKeyword)
-                    .or(reservation.applicantPhone.like(likeKeyword))
+                    .or(applicantPhoneNoHyphen.like(phoneKeyword))
                     .or(reservation.studentName.like(likeKeyword))
+                    .or(studentPhoneNoHyphen.like(phoneKeyword))
                     .or(reservation.schoolName.like(likeKeyword));
             predicate = and(predicate, keywordCondition);
         }
@@ -290,14 +413,19 @@ public class ExplanationReservationRepositoryImpl implements ExplanationReservat
 
     @Override
     public Page<ReservationWithDetails> searchReservationsWithDetailsForAdmin(Long explanationId, Long scheduleId,
-                                                                             String keyword, ReservationStatus status,
+                                                                             String keyword, String applicantName,
+                                                                             String applicantPhone, String studentName,
+                                                                             String studentPhone, String schoolName,
+                                                                             ReservationStatus status,
                                                                              Boolean isMarketingAgree,
                                                                              LocalDateTime startDateTime, LocalDateTime endDateTime,
                                                                              Pageable pageable) {
-        log.debug("[ExplanationReservationRepositoryImpl] 관리자용 예약 검색(상세정보 포함). explanationId={}, scheduleId={}, keyword={}, status={}, isMarketingAgree={}", 
-                explanationId, scheduleId, keyword, status, isMarketingAgree);
+        log.debug("[ExplanationReservationRepositoryImpl] 관리자용 예약 검색(상세정보 포함). explanationId={}, scheduleId={}, keyword={}, " +
+                "applicantName={}, applicantPhone={}, studentName={}, studentPhone={}, schoolName={}, status={}, isMarketingAgree={}", 
+                explanationId, scheduleId, keyword, applicantName, applicantPhone, studentName, studentPhone, schoolName, status, isMarketingAgree);
 
-        BooleanExpression predicate = createSearchPredicateWithMarketing(explanationId, scheduleId, keyword, status, isMarketingAgree, startDateTime, endDateTime);
+        BooleanExpression predicate = createAdvancedSearchPredicate(explanationId, scheduleId, keyword, applicantName, applicantPhone, 
+                studentName, studentPhone, schoolName, status, isMarketingAgree, startDateTime, endDateTime);
 
         // 메인 쿼리 - Tuple로 각 엔티티 조회
         JPAQuery<Tuple> query = queryFactory
@@ -382,9 +510,16 @@ public class ExplanationReservationRepositoryImpl implements ExplanationReservat
         // 키워드 검색 (신청자명, 전화번호, 학생명, 학교명)
         if (keyword != null && !keyword.trim().isEmpty()) {
             String likeKeyword = "%" + keyword.trim() + "%";
+            // 전화번호 검색용 키워드 (하이픈 제거)
+            String phoneKeyword = "%" + keyword.trim().replaceAll("-", "") + "%";
+            
+            StringTemplate applicantPhoneNoHyphen = Expressions.stringTemplate("REPLACE({0}, '-', '')", reservation.applicantPhone);
+            StringTemplate studentPhoneNoHyphen = Expressions.stringTemplate("REPLACE({0}, '-', '')", reservation.studentPhone);
+            
             BooleanExpression keywordCondition = reservation.applicantName.like(likeKeyword)
-                    .or(reservation.applicantPhone.like(likeKeyword))
+                    .or(applicantPhoneNoHyphen.like(phoneKeyword))
                     .or(reservation.studentName.like(likeKeyword))
+                    .or(studentPhoneNoHyphen.like(phoneKeyword))
                     .or(reservation.schoolName.like(likeKeyword));
             predicate = and(predicate, keywordCondition);
         }

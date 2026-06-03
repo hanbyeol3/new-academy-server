@@ -204,7 +204,7 @@ public class ExplanationServiceImpl implements ExplanationService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.EXPLANATION_NOT_FOUND));
 
         List<ExplanationSchedule> schedules = scheduleRepository
-                .findByExplanationIdOrderByStartAtAsc(id);
+                .findByExplanationIdOrderByRoundNoAsc(id);
 
         // 인라인 이미지 조회
         List<ResponseFileInfo> inlineImages = getInlineImagesByExplanationId(id);
@@ -234,7 +234,7 @@ public class ExplanationServiceImpl implements ExplanationService {
         explanationRepository.incrementViewCount(id);
         
         List<ExplanationSchedule> schedules = scheduleRepository
-                .findByExplanationIdOrderByStartAtAsc(id);
+                .findByExplanationIdOrderByRoundNoAsc(id);
 
         // 인라인 이미지 조회
         List<ResponseFileInfo> inlineImages = getInlineImagesByExplanationId(id);
@@ -712,7 +712,7 @@ public class ExplanationServiceImpl implements ExplanationService {
         }
 
         List<ExplanationSchedule> allSchedules = scheduleRepository
-                .findByExplanationIdInOrderByExplanationIdAndStartAtAsc(explanationIds);
+                .findByExplanationIdInOrderByExplanationIdAndRoundNoAsc(explanationIds);
 
         return allSchedules.stream()
                 .collect(Collectors.groupingBy(ExplanationSchedule::getExplanationId));
@@ -721,11 +721,16 @@ public class ExplanationServiceImpl implements ExplanationService {
     @Override
     @Transactional(readOnly = true)
     public ResponseList<ResponseExplanationReservation> getReservationListForAdmin(
-            Long explanationId, Long scheduleId, String keyword, String status, 
+            Long explanationId, Long scheduleId, String keyword,
+            String applicantName, String applicantPhone, String studentName,
+            String studentPhone, String schoolName, String status, 
             Boolean isMarketingAgree, String startDate, String endDate, Pageable pageable) {
         
-        log.info("[ExplanationService] 관리자용 예약 목록 조회 시작. explanationId={}, scheduleId={}, keyword={}, status={}, isMarketingAgree={}", 
-                explanationId, scheduleId, keyword, status, isMarketingAgree);
+        log.info("[ExplanationService] 관리자용 예약 목록 조회 시작. explanationId={}, scheduleId={}, keyword={}, " +
+                "applicantName={}, applicantPhone={}, studentName={}, studentPhone={}, schoolName={}, " +
+                "status={}, isMarketingAgree={}", 
+                explanationId, scheduleId, keyword, applicantName, applicantPhone, 
+                studentName, studentPhone, schoolName, status, isMarketingAgree);
 
         // 상태 enum 변환
         ReservationStatus statusEnum = null;
@@ -753,7 +758,8 @@ public class ExplanationServiceImpl implements ExplanationService {
 
         // 설명회와 회차 정보를 함께 조회
         Page<ReservationWithDetails> reservationPage = reservationRepository.searchReservationsWithDetailsForAdmin(
-                explanationId, scheduleId, keyword, statusEnum, isMarketingAgree, startDateTime, endDateTime, pageable);
+                explanationId, scheduleId, keyword, applicantName, applicantPhone, studentName, 
+                studentPhone, schoolName, statusEnum, isMarketingAgree, startDateTime, endDateTime, pageable);
 
         log.debug("[ExplanationService] 관리자용 예약 목록 조회 완료. 총 {}건", reservationPage.getTotalElements());
         
@@ -944,10 +950,14 @@ public class ExplanationServiceImpl implements ExplanationService {
     }
 
     @Override
-    public void exportReservationListToExcel(Long explanationId, Long scheduleId, String keyword, String status,
+    public void exportReservationListToExcel(Long explanationId, Long scheduleId, String keyword,
+                                            String applicantName, String applicantPhone, String studentName,
+                                            String studentPhone, String schoolName, String status,
                                             String startDate, String endDate, HttpServletResponse response) {
-        log.info("[ExplanationService] 예약 목록 엑셀 다운로드 시작. explanationId={}, scheduleId={}, keyword={}, status={}",
-                explanationId, scheduleId, keyword, status);
+        log.info("[ExplanationService] 예약 목록 엑셀 다운로드 시작. explanationId={}, scheduleId={}, keyword={}, " +
+                "applicantName={}, applicantPhone={}, studentName={}, studentPhone={}, schoolName={}, status={}",
+                explanationId, scheduleId, keyword, applicantName, applicantPhone, 
+                studentName, studentPhone, schoolName, status);
 
         // 상태 및 날짜 파싱
         ReservationStatus reservationStatus = parseReservationStatus(status);
@@ -956,7 +966,8 @@ public class ExplanationServiceImpl implements ExplanationService {
 
         // 예약 목록 조회 (설명회/회차 정보 포함, 페이징 없이 모든 데이터)
         List<ReservationWithDetails> reservationsWithDetails = reservationRepository.findReservationsForExport(
-                explanationId, scheduleId, reservationStatus, keyword);
+                explanationId, scheduleId, keyword, applicantName, applicantPhone, studentName,
+                studentPhone, schoolName, reservationStatus, startDateTime, endDateTime);
         log.debug("[ExplanationService] 엑셀 다운로드용 예약 조회 완료. 건수={}", reservationsWithDetails.size());
 
         // 파일명 생성

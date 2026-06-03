@@ -175,9 +175,26 @@ public interface ExplanationService {
 
     /**
      * 관리자용 예약 목록 조회.
+     * 
+     * @param explanationId 설명회 ID (필터링)
+     * @param scheduleId 회차 ID (필터링)
+     * @param keyword 통합 검색 키워드 (신청자명, 학생명, 학교명, 전화번호)
+     * @param applicantName 신청자 이름 (개별 검색)
+     * @param applicantPhone 신청자 전화번호 (개별 검색)
+     * @param studentName 학생 이름 (개별 검색)
+     * @param studentPhone 학생 전화번호 (개별 검색)
+     * @param schoolName 학교명 (개별 검색)
+     * @param status 예약 상태 (CONFIRMED/CANCELED)
+     * @param isMarketingAgree 마케팅 동의 여부
+     * @param startDate 조회 시작일 (yyyy-MM-dd)
+     * @param endDate 조회 종료일 (yyyy-MM-dd)
+     * @param pageable 페이징 정보
+     * @return 예약 목록
      */
     ResponseList<ResponseExplanationReservation> getReservationListForAdmin(
-            Long explanationId, Long scheduleId, String keyword, String status, 
+            Long explanationId, Long scheduleId, String keyword,
+            String applicantName, String applicantPhone, String studentName, 
+            String studentPhone, String schoolName, String status, 
             Boolean isMarketingAgree, String startDate, String endDate, Pageable pageable);
 
     /**
@@ -233,12 +250,19 @@ public interface ExplanationService {
      * 
      * @param explanationId 설명회 ID
      * @param scheduleId 회차 ID
-     * @param keyword 검색 키워드
+     * @param keyword 통합 검색 키워드
+     * @param applicantName 신청자 이름 (개별 검색)
+     * @param applicantPhone 신청자 전화번호 (개별 검색)
+     * @param studentName 학생 이름 (개별 검색)
+     * @param studentPhone 학생 전화번호 (개별 검색)
+     * @param schoolName 학교명 (개별 검색)
      * @param status 예약 상태
      * @param startDate 시작일
      * @param endDate 종료일
      * @param response HTTP 응답
      */
-    void exportReservationListToExcel(Long explanationId, Long scheduleId, String keyword, String status,
+    void exportReservationListToExcel(Long explanationId, Long scheduleId, String keyword,
+                                      String applicantName, String applicantPhone, String studentName,
+                                      String studentPhone, String schoolName, String status,
                                       String startDate, String endDate, HttpServletResponse response);
 }
