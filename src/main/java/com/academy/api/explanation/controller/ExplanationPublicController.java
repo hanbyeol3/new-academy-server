@@ -212,6 +212,45 @@ public class ExplanationPublicController {
     }
 
     @Operation(
+            summary = "예약 확인",
+            description = """
+                    예약 존재 여부를 확인합니다.
+                    
+                    확인 조건:
+                    - explanationId: 설명회 ID (필수)
+                    - scheduleId: 회차 ID (필수)
+                    - applicantName: 신청자 이름 (필수)
+                    - applicantPhone: 신청자 전화번호 (필수)
+                    
+                    응답 데이터:
+                    - exists: 예약 존재 여부 (true/false)
+                    - reservation: 예약이 존재하는 경우 예약 정보 포함
+                    - message: 결과 메시지
+                    
+                    주의사항:
+                    - CONFIRMED 상태의 예약만 조회됩니다
+                    - 취소된 예약은 존재하지 않는 것으로 처리됩니다
+                    - 모든 조건이 정확히 일치해야 합니다
+                    """
+    )
+    @GetMapping("/reservations/check")
+    public ResponseData<ResponseExplanationReservationCheck> checkReservation(
+            @Parameter(description = "설명회 ID", example = "1", required = true)
+            @RequestParam Long explanationId,
+            @Parameter(description = "회차 ID", example = "1", required = true)
+            @RequestParam Long scheduleId,
+            @Parameter(description = "신청자 이름", example = "홍길동", required = true)
+            @RequestParam String applicantName,
+            @Parameter(description = "신청자 전화번호", example = "010-1234-5678", required = true)
+            @RequestParam String applicantPhone) {
+        
+        log.info("예약 확인 요청. explanationId={}, scheduleId={}, applicantName={}, applicantPhone={}", 
+                explanationId, scheduleId, applicantName, applicantPhone);
+        
+        return explanationService.checkReservation(explanationId, scheduleId, applicantName, applicantPhone);
+    }
+
+    @Operation(
             summary = "예약 취소 (사용자)",
             description = """
                     사용자가 직접 예약을 취소합니다. 예약 인원수가 감소됩니다.

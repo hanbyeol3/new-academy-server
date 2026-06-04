@@ -808,6 +808,51 @@ public class ExplanationServiceImpl implements ExplanationService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public ResponseData<ResponseExplanationReservationCheck> checkReservation(Long explanationId, Long scheduleId, 
+                                                                              String applicantName, String applicantPhone) {
+        log.info("[ExplanationService] 예약 확인 시작. explanationId={}, scheduleId={}, applicantName={}, applicantPhone={}", 
+                explanationId, scheduleId, applicantName, applicantPhone);
+
+        // 예약 조회 (CONFIRMED 상태만)
+        ExplanationReservation reservation = reservationRepository.findByScheduleIdAndApplicantNameAndApplicantPhoneAndStatus(
+                scheduleId, applicantName, applicantPhone, ReservationStatus.CONFIRMED
+        ).orElse(null);
+
+        // 예약이 존재하는 경우
+        if (reservation != null) {
+            // 설명회 ID가 일치하는지 확인
+            ExplanationSchedule schedule = scheduleRepository.findById(scheduleId).orElse(null);
+            if (schedule != null && schedule.getExplanationId().equals(explanationId)) {
+                log.info("[ExplanationService] 예약 확인됨. reservationId={}", reservation.getId());
+                
+                // 예약 정보를 ResponseExplanationReservation으로 변환
+                ResponseExplanationReservation reservationResponse = explanationMapper.toReservationResponse(reservation);
+                
+                ResponseExplanationReservationCheck response = ResponseExplanationReservationCheck.builder()
+                        .exists(true)
+                        .reservation(reservationResponse)
+                        .message("예약이 확인되었습니다.")
+                        .build();
+                        
+                return ResponseData.ok("0000", "예약이 확인되었습니다.", response);
+            }
+        }
+
+        // 예약이 존재하지 않는 경우
+        log.info("[ExplanationService] 예약을 찾을 수 없음. explanationId={}, scheduleId={}, applicantName={}, applicantPhone={}", 
+                explanationId, scheduleId, applicantName, applicantPhone);
+        
+        ResponseExplanationReservationCheck response = ResponseExplanationReservationCheck.builder()
+                .exists(false)
+                .reservation(null)
+                .message("해당 조건에 맞는 예약이 없습니다.")
+                .build();
+                
+        return ResponseData.ok("0000", "예약 조회 완료", response);
+    }
+
+    @Override
     @Transactional
     public Response cancelReservationByUser(Long reservationId) {
         log.info("[ExplanationService] 사용자 예약 취소 시작. reservationId={}", reservationId);

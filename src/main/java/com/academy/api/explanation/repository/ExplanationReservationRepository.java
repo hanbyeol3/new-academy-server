@@ -48,6 +48,12 @@ public interface ExplanationReservationRepository extends JpaRepository<Explanat
     Optional<ExplanationReservation> findConfirmedReservation(@Param("scheduleId") Long scheduleId, @Param("applicantPhone") String applicantPhone);
 
     /**
+     * 회차 ID, 신청자명, 전화번호로 예약 조회 (상태별).
+     */
+    Optional<ExplanationReservation> findByScheduleIdAndApplicantNameAndApplicantPhoneAndStatus(
+            Long scheduleId, String applicantName, String applicantPhone, ReservationStatus status);
+
+    /**
      * 회차별 확정 예약 수 조회.
      */
     long countByScheduleIdAndStatus(Long scheduleId, ReservationStatus status);

@@ -217,6 +217,18 @@ public interface ExplanationService {
                                                                            Pageable pageable);
 
     /**
+     * 예약 확인.
+     * 
+     * @param explanationId 설명회 ID
+     * @param scheduleId 회차 ID
+     * @param applicantName 신청자 이름
+     * @param applicantPhone 신청자 전화번호
+     * @return 예약 확인 결과
+     */
+    ResponseData<ResponseExplanationReservationCheck> checkReservation(Long explanationId, Long scheduleId, 
+                                                                       String applicantName, String applicantPhone);
+
+    /**
      * 예약 취소 (사용자).
      * 
      * @param reservationId 예약 ID
