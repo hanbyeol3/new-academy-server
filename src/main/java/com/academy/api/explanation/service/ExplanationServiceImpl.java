@@ -826,8 +826,14 @@ public class ExplanationServiceImpl implements ExplanationService {
             if (schedule != null && schedule.getExplanationId().equals(explanationId)) {
                 log.info("[ExplanationService] 예약 확인됨. reservationId={}", reservation.getId());
                 
-                // 예약 정보를 ResponseExplanationReservation으로 변환
-                ResponseExplanationReservation reservationResponse = explanationMapper.toReservationResponse(reservation);
+                // 설명회 정보 조회
+                Explanation explanation = explanationRepository.findById(explanationId).orElse(null);
+                
+                // ReservationWithDetails 객체 생성
+                ReservationWithDetails reservationWithDetails = new ReservationWithDetails(reservation, schedule, explanation);
+                
+                // 설명회와 회차 정보를 포함한 예약 정보로 변환
+                ResponseExplanationReservation reservationResponse = explanationMapper.toReservationResponseWithDetails(reservationWithDetails);
                 
                 ResponseExplanationReservationCheck response = ResponseExplanationReservationCheck.builder()
                         .exists(true)

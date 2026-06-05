@@ -202,4 +202,70 @@ public class GalleryRepositoryImpl implements GalleryRepositoryCustom {
                 .orderBy(gallery.createdAt.desc(), gallery.id.desc())
                 .fetchFirst();
     }
+
+    /**
+     * 이전 갤러리 조회 (공개용 - 공개된 것만).
+     * createdAt > current.createdAt OR (createdAt = current.createdAt AND id > current.id)
+     * AND isPublished = true
+     */
+    @Override
+    public Gallery findPreviousPublicGallery(Long currentId) {
+        // 현재 갤러리 조회
+        Gallery current = queryFactory
+                .selectFrom(gallery)
+                .where(gallery.id.eq(currentId))
+                .fetchOne();
+                
+        if (current == null) {
+            return null;
+        }
+        
+        return queryFactory
+                .selectFrom(gallery)
+                .where(
+                    // 이전 글 조건 (더 최신 글)
+                    gallery.createdAt.gt(current.getCreatedAt())
+                    .or(
+                        gallery.createdAt.eq(current.getCreatedAt())
+                        .and(gallery.id.gt(currentId))
+                    ),
+                    // 공개 상태 조건
+                    gallery.isPublished.eq(true)
+                )
+                .orderBy(gallery.createdAt.asc(), gallery.id.asc())
+                .fetchFirst();
+    }
+
+    /**
+     * 다음 갤러리 조회 (공개용 - 공개된 것만).
+     * createdAt < current.createdAt OR (createdAt = current.createdAt AND id < current.id)
+     * AND isPublished = true
+     */
+    @Override
+    public Gallery findNextPublicGallery(Long currentId) {
+        // 현재 갤러리 조회
+        Gallery current = queryFactory
+                .selectFrom(gallery)
+                .where(gallery.id.eq(currentId))
+                .fetchOne();
+                
+        if (current == null) {
+            return null;
+        }
+        
+        return queryFactory
+                .selectFrom(gallery)
+                .where(
+                    // 다음 글 조건 (더 오래된 글)
+                    gallery.createdAt.lt(current.getCreatedAt())
+                    .or(
+                        gallery.createdAt.eq(current.getCreatedAt())
+                        .and(gallery.id.lt(currentId))
+                    ),
+                    // 공개 상태 조건
+                    gallery.isPublished.eq(true)
+                )
+                .orderBy(gallery.createdAt.desc(), gallery.id.desc())
+                .fetchFirst();
+    }
 }

@@ -43,7 +43,7 @@ public interface GalleryRepositoryCustom {
 
 
     /**
-     * 이전 갤러리 조회.
+     * 이전 갤러리 조회 (관리자용 - 모든 갤러리).
      * 
      * @param currentId 현재 갤러리 ID
      * @return 이전 갤러리 (없으면 null)
@@ -51,10 +51,26 @@ public interface GalleryRepositoryCustom {
     Gallery findPreviousGallery(Long currentId);
 
     /**
-     * 다음 갤러리 조회.
+     * 다음 갤러리 조회 (관리자용 - 모든 갤러리).
      * 
      * @param currentId 현재 갤러리 ID
      * @return 다음 갤러리 (없으면 null)
      */
     Gallery findNextGallery(Long currentId);
+
+    /**
+     * 이전 갤러리 조회 (공개용 - 공개된 것만).
+     * 
+     * @param currentId 현재 갤러리 ID
+     * @return 이전 갤러리 (없으면 null)
+     */
+    Gallery findPreviousPublicGallery(Long currentId);
+
+    /**
+     * 다음 갤러리 조회 (공개용 - 공개된 것만).
+     * 
+     * @param currentId 현재 갤러리 ID
+     * @return 다음 갤러리 (없으면 null)
+     */
+    Gallery findNextPublicGallery(Long currentId);
 }

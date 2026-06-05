@@ -171,10 +171,11 @@ public class GalleryServiceImpl implements GalleryService, CategoryUsageChecker 
      * 파일 역할별로 분리하여 제공합니다.
      * 
      * @param id 갤러리 ID
+     * @param isPublicApi 공개 API 호출 여부
      * @return 갤러리 상세 정보 (파일 목록 포함)
      */
-    public ResponseData<ResponseGalleryDetail> getGalleryWithFiles(Long id) {
-        log.info("[GalleryService] 갤러리 상세 조회 (파일 포함) 시작. ID={}", id);
+    public ResponseData<ResponseGalleryDetail> getGalleryWithFiles(Long id, boolean isPublicApi) {
+        log.info("[GalleryService] 갤러리 상세 조회 (파일 포함) 시작. ID={}, isPublic={}", id, isPublicApi);
         
         Gallery gallery = findGalleryById(id);
         
@@ -198,8 +199,9 @@ public class GalleryServiceImpl implements GalleryService, CategoryUsageChecker 
         String createdByName = getMemberName(gallery.getCreatedBy());
         String updatedByName = getMemberName(gallery.getUpdatedBy());
         
-        // 이전글/다음글 조회
-        ResponseGalleryNavigation navigation = getGalleryNavigation(id);
+        // 이전글/다음글 조회 - 공개 API와 관리자 API 구분
+        ResponseGalleryNavigation navigation = isPublicApi ? 
+                getPublicGalleryNavigation(id) : getGalleryNavigation(id);
         
         // ResponseGallery 생성 (파일 목록 및 회원 이름 포함)
         ResponseGalleryDetail response = ResponseGalleryDetail.fromWithNames(gallery, createdByName, updatedByName);
@@ -228,16 +230,23 @@ public class GalleryServiceImpl implements GalleryService, CategoryUsageChecker 
     }
 
 	/**
-	 * [공개] 갤러리 상세 조회 (조회수 증가)
+	 * [관리자] 갤러리 상세 조회
 	 *
 	 * @param id 갤러리 ID
 	 * @return 갤러리 상세 정보
 	 */
     @Override
     public ResponseData<ResponseGalleryDetail> getGalleryForAdmin(Long id) {
-        return getGalleryWithFiles(id);
+        // 관리자용 네비게이션 (모든 갤러리 포함)
+        return getGalleryWithFiles(id, false);
     }
 
+    /**
+     * [공개] 갤러리 상세 조회 (조회수 증가)
+     *
+     * @param id 갤러리 ID
+     * @return 갤러리 상세 정보
+     */
     @Override
     @Transactional
     public ResponseData<ResponseGalleryDetail> getGalleryForPublic(Long id) {
@@ -253,8 +262,8 @@ public class GalleryServiceImpl implements GalleryService, CategoryUsageChecker 
         log.debug("[GalleryService] 조회수 증가 완료. ID={}, 이전조회수={}, 현재조회수={}",
                 id, beforeViewCount, gallery.getViewCount());
         
-        // 파일 정보를 포함한 상세 조회
-        return getGalleryWithFiles(id);
+        // 파일 정보를 포함한 상세 조회 - 공개용 네비게이션 사용
+        return getGalleryWithFiles(id, true);
     }
 
 
@@ -395,7 +404,8 @@ public class GalleryServiceImpl implements GalleryService, CategoryUsageChecker 
         log.info("[GalleryService] 갤러리 수정 완료. ID={}, 제목={}", id, gallery.getTitle());
         
         // 6. 완전한 갤러리 정보 반환 (파일 정보 포함)
-        ResponseGalleryDetail updatedGallery = getGalleryWithFiles(id).getData();
+        ResponseData<ResponseGalleryDetail> galleryResponse = getGalleryWithFiles(id, false); // 관리자용이므로 false
+        ResponseGalleryDetail updatedGallery = galleryResponse.getData();
         
         return ResponseData.ok("0000", "갤러리이 수정되었습니다.", updatedGallery);
     }
@@ -510,7 +520,7 @@ public class GalleryServiceImpl implements GalleryService, CategoryUsageChecker 
     }
 
     /**
-     * 이전글/다음글 네비게이션 정보 조회 도우미 메서드.
+     * 이전글/다음글 네비게이션 정보 조회 도우미 메서드 (관리자용 - 모든 갤러리).
      */
     private ResponseGalleryNavigation getGalleryNavigation(Long currentId) {
         log.debug("[GalleryService] 네비게이션 정보 조회 시작. currentId={}", currentId);
@@ -543,6 +553,45 @@ public class GalleryServiceImpl implements GalleryService, CategoryUsageChecker 
         
         ResponseGalleryNavigation navigation = ResponseGalleryNavigation.of(previous, next);
         log.debug("[GalleryService] 네비게이션 정보 조회 완료. hasPrevious={}, hasNext={}",
+                previous != null, next != null);
+        
+        return navigation;
+    }
+
+    /**
+     * 이전글/다음글 네비게이션 정보 조회 도우미 메서드 (공개용 - 공개된 것만).
+     */
+    private ResponseGalleryNavigation getPublicGalleryNavigation(Long currentId) {
+        log.debug("[GalleryService] 공개용 네비게이션 정보 조회 시작. currentId={}", currentId);
+        
+        // 이전글 조회 (공개된 것만)
+        Gallery previousGallery = galleryRepository.findPreviousPublicGallery(currentId);
+        ResponseGalleryNavigation.NavigationItem previous = null;
+        if (previousGallery != null) {
+            previous = ResponseGalleryNavigation.NavigationItem.builder()
+                    .id(previousGallery.getId())
+                    .title(previousGallery.getTitle())
+                    .createdAt(previousGallery.getCreatedAt())
+                    .build();
+            log.debug("[GalleryService] 공개 이전글 조회 완료. previousId={}, title={}",
+                    previousGallery.getId(), previousGallery.getTitle());
+        }
+        
+        // 다음글 조회 (공개된 것만)
+        Gallery nextGallery = galleryRepository.findNextPublicGallery(currentId);
+        ResponseGalleryNavigation.NavigationItem next = null;
+        if (nextGallery != null) {
+            next = ResponseGalleryNavigation.NavigationItem.builder()
+                    .id(nextGallery.getId())
+                    .title(nextGallery.getTitle())
+                    .createdAt(nextGallery.getCreatedAt())
+                    .build();
+            log.debug("[GalleryService] 공개 다음글 조회 완료. nextId={}, title={}",
+                    nextGallery.getId(), nextGallery.getTitle());
+        }
+        
+        ResponseGalleryNavigation navigation = ResponseGalleryNavigation.of(previous, next);
+        log.debug("[GalleryService] 공개용 네비게이션 정보 조회 완료. hasPrevious={}, hasNext={}",
                 previous != null, next != null);
         
         return navigation;

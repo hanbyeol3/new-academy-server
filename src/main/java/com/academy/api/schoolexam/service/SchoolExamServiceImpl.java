@@ -132,8 +132,8 @@ public class SchoolExamServiceImpl implements SchoolExamService, CategoryUsageCh
         log.info("[SchoolExamService] 관리자용 시험분석 상세 조회 시작. ID={}", id);
 
         SchoolExam schoolExam = findSchoolExamById(id);
-        // 관리자도 네비게이션 정보 포함 (공지사항과 동일하게)
-        ResponseSchoolExamDetail response = buildDetailResponse(schoolExam, true);
+        // 관리자용 네비게이션 (모든 시험분석 포함)
+        ResponseSchoolExamDetail response = buildDetailResponse(schoolExam, false);
         
         log.debug("[SchoolExamService] 관리자용 상세 조회 완료. ID={}, 제목={}", id, schoolExam.getTitle());
 
@@ -159,6 +159,7 @@ public class SchoolExamServiceImpl implements SchoolExamService, CategoryUsageCh
         // 조회수 증가
         schoolExam.incrementViewCount(null);
 
+        // 공개용 네비게이션 (공개된 것만)
         ResponseSchoolExamDetail response = buildDetailResponse(schoolExam, true);
         
         log.debug("[SchoolExamService] 공개용 상세 조회 완료. ID={}, 제목={}, 조회수={}", 
@@ -424,7 +425,7 @@ public class SchoolExamServiceImpl implements SchoolExamService, CategoryUsageCh
     /**
      * 상세 응답 DTO 생성.
      */
-    private ResponseSchoolExamDetail buildDetailResponse(SchoolExam schoolExam, boolean includeNavigation) {
+    private ResponseSchoolExamDetail buildDetailResponse(SchoolExam schoolExam, boolean isPublicApi) {
         ResponseSchoolExamDetail response = schoolExamMapper.toDetailResponse(schoolExam);
 
         // 파일 정보 조회 (첨부파일과 본문 이미지)
@@ -439,11 +440,9 @@ public class SchoolExamServiceImpl implements SchoolExamService, CategoryUsageCh
                 .map(this::mapToResponseFileInfo)
                 .collect(Collectors.toList());
 
-        // 네비게이션 정보 조회
-        ResponseSchoolExamNavigation navigation = null;
-        if (includeNavigation) {
-            navigation = buildNavigation(schoolExam.getId());
-        }
+        // 네비게이션 정보 조회 - 공개 API와 관리자 API 구분
+        ResponseSchoolExamNavigation navigation = isPublicApi ? 
+                buildPublicNavigation(schoolExam.getId()) : buildNavigation(schoolExam.getId());
 
         return ResponseSchoolExamDetail.builder()
                 .id(response.getId())
@@ -467,11 +466,40 @@ public class SchoolExamServiceImpl implements SchoolExamService, CategoryUsageCh
     }
 
     /**
-     * 네비게이션 정보 생성.
+     * 네비게이션 정보 생성 (관리자용 - 모든 시험분석).
      */
     private ResponseSchoolExamNavigation buildNavigation(Long currentId) {
         List<SchoolExam> previousList = schoolExamRepository.findPreviousSchoolExam(currentId, PageRequest.of(0, 1));
         List<SchoolExam> nextList = schoolExamRepository.findNextSchoolExam(currentId, PageRequest.of(0, 1));
+
+        if (previousList.isEmpty() && nextList.isEmpty()) {
+            return ResponseSchoolExamNavigation.empty();
+        }
+
+        if (!previousList.isEmpty() && nextList.isEmpty()) {
+            SchoolExam previous = previousList.get(0);
+            return ResponseSchoolExamNavigation.withPrevious(previous.getId(), previous.getTitle());
+        }
+
+        if (previousList.isEmpty() && !nextList.isEmpty()) {
+            SchoolExam next = nextList.get(0);
+            return ResponseSchoolExamNavigation.withNext(next.getId(), next.getTitle());
+        }
+
+        SchoolExam previous = previousList.get(0);
+        SchoolExam next = nextList.get(0);
+        return ResponseSchoolExamNavigation.withBoth(
+                previous.getId(), previous.getTitle(),
+                next.getId(), next.getTitle()
+        );
+    }
+
+    /**
+     * 네비게이션 정보 생성 (공개용 - 공개된 것만).
+     */
+    private ResponseSchoolExamNavigation buildPublicNavigation(Long currentId) {
+        List<SchoolExam> previousList = schoolExamRepository.findPreviousPublicSchoolExam(currentId, PageRequest.of(0, 1));
+        List<SchoolExam> nextList = schoolExamRepository.findNextPublicSchoolExam(currentId, PageRequest.of(0, 1));
 
         if (previousList.isEmpty() && nextList.isEmpty()) {
             return ResponseSchoolExamNavigation.empty();

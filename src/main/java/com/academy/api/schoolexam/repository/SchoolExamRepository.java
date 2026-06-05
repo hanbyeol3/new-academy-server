@@ -74,7 +74,27 @@ public interface SchoolExamRepository extends JpaRepository<SchoolExam, Long>, S
     List<Object[]> getStatsBySchoolLevel();
 
     /**
-     * 이전글 조회 (공개된 것만).
+     * 이전글 조회 (관리자용 - 모든 시험분석).
+     */
+    @Query("""
+        SELECT se FROM SchoolExam se 
+        WHERE se.id < :currentId 
+        ORDER BY se.id DESC
+        """)
+    List<SchoolExam> findPreviousSchoolExam(@Param("currentId") Long currentId, Pageable pageable);
+
+    /**
+     * 다음글 조회 (관리자용 - 모든 시험분석).
+     */
+    @Query("""
+        SELECT se FROM SchoolExam se 
+        WHERE se.id > :currentId 
+        ORDER BY se.id ASC
+        """)
+    List<SchoolExam> findNextSchoolExam(@Param("currentId") Long currentId, Pageable pageable);
+
+    /**
+     * 이전글 조회 (공개용 - 공개된 것만).
      */
     @Query("""
         SELECT se FROM SchoolExam se 
@@ -82,10 +102,10 @@ public interface SchoolExamRepository extends JpaRepository<SchoolExam, Long>, S
         AND se.isPublished = true 
         ORDER BY se.id DESC
         """)
-    List<SchoolExam> findPreviousSchoolExam(@Param("currentId") Long currentId, Pageable pageable);
+    List<SchoolExam> findPreviousPublicSchoolExam(@Param("currentId") Long currentId, Pageable pageable);
 
     /**
-     * 다음글 조회 (공개된 것만).
+     * 다음글 조회 (공개용 - 공개된 것만).
      */
     @Query("""
         SELECT se FROM SchoolExam se 
@@ -93,5 +113,5 @@ public interface SchoolExamRepository extends JpaRepository<SchoolExam, Long>, S
         AND se.isPublished = true 
         ORDER BY se.id ASC
         """)
-    List<SchoolExam> findNextSchoolExam(@Param("currentId") Long currentId, Pageable pageable);
+    List<SchoolExam> findNextPublicSchoolExam(@Param("currentId") Long currentId, Pageable pageable);
 }

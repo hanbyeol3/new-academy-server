@@ -95,9 +95,11 @@ public class ResponseExplanationReservation {
     @Schema(description = "회차 장소", example = "본관 3층 대강당")
     private String scheduleLocation;
 
-    @Schema(description = "설명회 정보 (상세 조회시)")
+    // 아래 필드들은 특별한 상세 조회시에만 사용되며, 일반적인 예약 조회에서는 사용되지 않음
+    // 설명회와 회차 정보는 위의 개별 필드들로 제공됨
+    @Schema(description = "설명회 정보 (특별한 상세 조회시에만 사용)", hidden = true)
     private ResponseExplanation explanation;
 
-    @Schema(description = "회차 정보 (상세 조회시)")
+    @Schema(description = "회차 정보 (특별한 상세 조회시에만 사용)", hidden = true)
     private ResponseExplanationSchedule schedule;
 }
