@@ -189,6 +189,40 @@ public class UploadFileLink {
 				.build();
 	}
 
+    /**
+     * 학교별 시험분석 첨부파일 연결 생성.
+     * 
+     * @param fileId 파일 ID
+     * @param schoolExamId 학교별 시험분석 ID
+     * @return UploadFileLink 인스턴스
+     */
+    public static UploadFileLink createSchoolExamAttachment(Long fileId, Long schoolExamId) {
+        return UploadFileLink.builder()
+                .fileId(fileId)
+                .ownerTable("school_exams")
+                .ownerId(schoolExamId)
+                .role(FileRole.ATTACHMENT)
+                .sortOrder(0)
+                .build();
+    }
+
+    /**
+     * 학교별 시험분석 본문 이미지 연결 생성.
+     * 
+     * @param fileId 파일 ID
+     * @param schoolExamId 학교별 시험분석 ID
+     * @return UploadFileLink 인스턴스
+     */
+    public static UploadFileLink createSchoolExamInlineImage(Long fileId, Long schoolExamId) {
+        return UploadFileLink.builder()
+                .fileId(fileId)
+                .ownerTable("school_exams")
+                .ownerId(schoolExamId)
+                .role(FileRole.INLINE)
+                .sortOrder(0)
+                .build();
+    }
+
 	/**
 	 * 설명회 본문 이미지 연결 생성.
 	 *

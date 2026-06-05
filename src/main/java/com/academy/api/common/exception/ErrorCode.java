@@ -58,6 +58,9 @@ public enum ErrorCode {
     // 공지사항 관련 에러
     NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTICE_NOT_FOUND", "공지사항을 찾을 수 없습니다."),
 
+    // 학교별 시험분석 관련 에러
+    SCHOOL_EXAM_NOT_FOUND(HttpStatus.NOT_FOUND, "SCHOOL_EXAM_NOT_FOUND", "학교별 시험분석을 찾을 수 없습니다."),
+
 	// Faq 관련 에러
 	FAQ_NOT_FOUND(HttpStatus.NOT_FOUND, "FAQ_NOT_FOUND", "Faq를 찾을 수 없습니다."),
 
