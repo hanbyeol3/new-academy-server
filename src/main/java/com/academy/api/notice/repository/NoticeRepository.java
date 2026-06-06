@@ -51,10 +51,11 @@ public interface NoticeRepository extends JpaRepository<Notice, Long>, NoticeRep
 
     /**
      * 조회수 증가.
+     * 수정일시(updatedAt)는 변경하지 않음
      */
     @Modifying
-    @Query("UPDATE Notice n SET n.viewCount = n.viewCount + 1, n.updatedBy = :updatedBy, n.updatedAt = CURRENT_TIMESTAMP WHERE n.id = :id")
-    int incrementViewCount(@Param("id") Long id, @Param("updatedBy") Long updatedBy);
+    @Query("UPDATE Notice n SET n.viewCount = n.viewCount + 1 WHERE n.id = :id")
+    int incrementViewCount(@Param("id") Long id);
 
     /**
      * 중요 공지 설정/해제.

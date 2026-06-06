@@ -114,12 +114,10 @@ public class Gallery {
 
     /**
      * 조회수 증가.
-     * 
-     * @param updatedBy 수정한 사용자 ID
      */
-    public void incrementViewCount(Long updatedBy) {
+    public void incrementViewCount() {
         this.viewCount++;
-        this.updatedBy = updatedBy;
+        // updatedBy는 업데이트하지 않음
     }
 
     /**

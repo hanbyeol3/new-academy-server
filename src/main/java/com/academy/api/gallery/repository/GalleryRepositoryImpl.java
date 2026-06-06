@@ -45,7 +45,8 @@ public class GalleryRepositoryImpl implements GalleryRepositoryCustom {
                 .leftJoin(gallery.category).fetchJoin()
                 .where(
                         keywordCondition(keyword, effectiveSearchType),
-                        categoryCondition(categoryId)
+                        categoryCondition(categoryId),
+                        gallery.isPublished.eq(true)  // 공개된 글만 조회
                 )
                 .orderBy(getOrderSpecifiers(sortBy))
                 .offset(pageable.getOffset())
@@ -57,7 +58,8 @@ public class GalleryRepositoryImpl implements GalleryRepositoryCustom {
                 .from(gallery)
                 .where(
                         keywordCondition(keyword, effectiveSearchType),
-                        categoryCondition(categoryId)
+                        categoryCondition(categoryId),
+                        gallery.isPublished.eq(true)  // 공개된 글만 카운트
                 );
 
         return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);

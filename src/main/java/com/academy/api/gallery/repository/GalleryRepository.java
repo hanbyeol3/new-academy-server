@@ -14,10 +14,11 @@ public interface GalleryRepository extends JpaRepository<Gallery, Long>, Gallery
 
     /**
      * 조회수 증가.
+     * 수정일시(updatedAt)는 변경하지 않음
      */
     @Modifying
-    @Query("UPDATE Gallery n SET n.viewCount = n.viewCount + 1, n.updatedBy = :updatedBy, n.updatedAt = CURRENT_TIMESTAMP WHERE n.id = :id")
-    int incrementViewCount(@Param("id") Long id, @Param("updatedBy") Long updatedBy);
+    @Query("UPDATE Gallery n SET n.viewCount = n.viewCount + 1 WHERE n.id = :id")
+    int incrementViewCount(@Param("id") Long id);
 
     /**
      * 공개/비공개 상태 변경.

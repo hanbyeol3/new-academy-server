@@ -1,5 +1,6 @@
 package com.academy.api.gallery.dto;
 
+import com.academy.api.file.dto.ResponseFileInfo;
 import com.academy.api.gallery.domain.Gallery;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -35,11 +36,8 @@ public class ResponseGalleryPublicList {
     @Schema(description = "조회수", example = "150")
     private Long viewCount;
 
-	@Schema(description = "커버 이미지 URL", example = "/api/public/files/download/123")
-	private String coverImageUrl;
-
-	@Schema(description = "커버 이미지 파일명", example = "cover_image.jpg")
-	private String coverImageName;
+    @Schema(description = "커버 이미지 정보")
+    private ResponseFileInfo coverImage;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @Schema(description = "생성 시각", example = "2024-01-01 10:00:00")
@@ -60,8 +58,7 @@ public class ResponseGalleryPublicList {
                 .categoryId(gallery.getCategory() != null ? gallery.getCategory().getId() : null)
                 .categoryName(gallery.getCategory() != null ? gallery.getCategory().getName() : null)
                 .viewCount(gallery.getViewCount())
-		        .coverImageUrl(null) // 서비스에서 별도 설정
-		        .coverImageName(null) // 서비스에서 별도 설정
+                .coverImage(null) // 서비스에서 별도 설정
                 .createdAt(gallery.getCreatedAt())
                 .updatedAt(gallery.getUpdatedAt())
                 .build();

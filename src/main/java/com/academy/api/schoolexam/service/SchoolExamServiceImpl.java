@@ -157,7 +157,7 @@ public class SchoolExamServiceImpl implements SchoolExamService, CategoryUsageCh
         }
 
         // 조회수 증가
-        schoolExam.incrementViewCount(null);
+        schoolExam.incrementViewCount();
 
         // 공개용 네비게이션 (공개된 것만)
         ResponseSchoolExamDetail response = buildDetailResponse(schoolExam, true);
@@ -326,8 +326,7 @@ public class SchoolExamServiceImpl implements SchoolExamService, CategoryUsageCh
 
         SchoolExam schoolExam = findSchoolExamById(id);
 
-        Long currentUserId = SecurityUtils.getCurrentUserId();
-        schoolExam.incrementViewCount(currentUserId);
+        schoolExam.incrementViewCount();
 
         log.debug("[SchoolExamService] 조회수 증가 완료. ID={}, 현재 조회수={}", id, schoolExam.getViewCount());
 

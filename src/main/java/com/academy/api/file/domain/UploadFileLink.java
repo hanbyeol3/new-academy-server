@@ -349,6 +349,40 @@ public class UploadFileLink {
     }
 
     /**
+     * 성적 향상 사례 첨부파일 연결 생성.
+     * 
+     * @param fileId 파일 ID
+     * @param improvementCaseId 성적 향상 사례 ID
+     * @return UploadFileLink 인스턴스
+     */
+    public static UploadFileLink createImprovementCaseAttachment(Long fileId, Long improvementCaseId) {
+        return UploadFileLink.builder()
+                .fileId(fileId)
+                .ownerTable("improvement_cases")
+                .ownerId(improvementCaseId)
+                .role(FileRole.ATTACHMENT)
+                .sortOrder(0)
+                .build();
+    }
+
+    /**
+     * 성적 향상 사례 본문 이미지 연결 생성.
+     * 
+     * @param fileId 파일 ID
+     * @param improvementCaseId 성적 향상 사례 ID
+     * @return UploadFileLink 인스턴스
+     */
+    public static UploadFileLink createImprovementCaseInlineImage(Long fileId, Long improvementCaseId) {
+        return UploadFileLink.builder()
+                .fileId(fileId)
+                .ownerTable("improvement_cases")
+                .ownerId(improvementCaseId)
+                .role(FileRole.INLINE)
+                .sortOrder(0)
+                .build();
+    }
+
+    /**
      * 특정 역할의 파일 연결인지 확인.
      * 
      * @param role 확인할 역할

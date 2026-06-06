@@ -1,5 +1,8 @@
 package com.academy.api.student;
 
+import com.academy.api.student.domain.Student;
+import com.academy.api.student.repository.StudentRepository;
+import com.academy.api.student.service.StudentQueryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

@@ -295,8 +295,7 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
         Long beforeViewCount = notice.getViewCount();
         
         // 조회수 증가
-        Long currentUserId = SecurityUtils.getCurrentUserId();
-        notice.incrementViewCount(currentUserId);
+        notice.incrementViewCount();
         
         log.debug("[NoticeService] 조회수 증가 완료. ID={}, 이전조회수={}, 현재조회수={}", 
                 id, beforeViewCount, notice.getViewCount());
@@ -474,14 +473,13 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
     public Response incrementViewCount(Long id) {
         log.info("[NoticeService] 조회수 증가 시작. ID={}", id);
         
-        Long currentUserId = SecurityUtils.getCurrentUserId();
-        int updatedCount = noticeRepository.incrementViewCount(id, currentUserId);
+        int updatedCount = noticeRepository.incrementViewCount(id);
         if (updatedCount == 0) {
             log.warn("[NoticeService] 조회수 증가 실패 - 공지사항을 찾을 수 없음. ID={}", id);
             throw new BusinessException(ErrorCode.NOTICE_NOT_FOUND);
         }
         
-        log.debug("[NoticeService] 조회수 증가 완료. ID={}, updatedBy={}", id, currentUserId);
+        log.debug("[NoticeService] 조회수 증가 완료. ID={}", id);
         
         return Response.ok("0000", "조회수가 증가되었습니다.");
     }

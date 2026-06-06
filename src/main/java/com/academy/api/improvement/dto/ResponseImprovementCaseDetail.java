@@ -1,0 +1,179 @@
+package com.academy.api.improvement.dto;
+
+import com.academy.api.improvement.domain.*;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Builder;
+import lombok.Getter;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+/**
+ * 성적 향상 사례 상세 응답 DTO.
+ * 
+ * 성적 향상 사례의 상세 정보를 반환합니다.
+ */
+@Getter
+@Builder
+@Schema(description = "성적 향상 사례 상세 응답")
+public class ResponseImprovementCaseDetail {
+    
+    @Schema(description = "사례 ID", example = "1")
+    private Long id;
+    
+    @Schema(description = "제목", example = "3등급에서 1등급으로! 수학 성적 향상 비결")
+    private String title;
+    
+    @Schema(description = "작성자 유형", example = "EXTERNAL")
+    private WriterType writerType;
+    
+    @Schema(description = "작성자 이름", example = "김학생")
+    private String authorName;
+    
+    @Schema(description = "학년 구분", example = "HIGH_3")
+    private Division division;
+    
+    @Schema(description = "학년 구분 텍스트", example = "고3")
+    private String divisionText;
+    
+    @Schema(description = "과목 (문자열)", example = "수학")
+    private String subject;
+    
+    @Schema(description = "과목 열거형", example = "MATH")
+    private Subject subjectEnum;
+    
+    @Schema(description = "과목 텍스트", example = "수학")
+    private String subjectText;
+    
+    @Schema(description = "이전 등급 (문자열)", example = "3등급")
+    private String prevGrade;
+    
+    @Schema(description = "이전 등급 열거형", example = "GRADE_3")
+    private GradeType prevGradeType;
+    
+    @Schema(description = "이전 등급 텍스트", example = "3등급")
+    private String prevGradeText;
+    
+    @Schema(description = "이후 등급 (문자열)", example = "1등급")
+    private String nextGrade;
+    
+    @Schema(description = "이후 등급 열거형", example = "GRADE_1")
+    private GradeType nextGradeType;
+    
+    @Schema(description = "이후 등급 텍스트", example = "1등급")
+    private String nextGradeText;
+    
+    @Schema(description = "내용", example = "저는 수학이 너무 어려워서...")
+    private String content;
+    
+    @Schema(description = "조회수", example = "100")
+    private Long viewCount;
+    
+    @Schema(description = "공개 여부", example = "true")
+    private Boolean isPublished;
+    
+    @Schema(description = "고정글 여부", example = "false")
+    private Boolean isPinned;
+    
+    @Schema(description = "비밀글 여부", example = "false")
+    private Boolean isSecret;
+    
+    @Schema(description = "첨부파일 목록")
+    private List<ResponseFileInfo> attachments;
+    
+    @Schema(description = "이전/다음글 정보")
+    private ResponseImprovementCaseNavigation navigation;
+    
+    @Schema(description = "등록자 ID", example = "1")
+    private Long createdBy;
+    
+    @Schema(description = "등록자 이름", example = "관리자")
+    private String createdByName;
+    
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @Schema(description = "등록일시", example = "2024-01-01 10:00:00")
+    private LocalDateTime createdAt;
+    
+    @Schema(description = "수정자 ID", example = "1")
+    private Long updatedBy;
+    
+    @Schema(description = "수정자 이름", example = "관리자")
+    private String updatedByName;
+    
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @Schema(description = "수정일시", example = "2024-01-01 11:00:00")
+    private LocalDateTime updatedAt;
+    
+    /**
+     * 엔티티에서 DTO로 변환.
+     */
+    public static ResponseImprovementCaseDetail from(ImprovementCase entity) {
+        return ResponseImprovementCaseDetail.builder()
+                .id(entity.getId())
+                .title(entity.getTitle())
+                .writerType(entity.getWriterType())
+                .authorName(entity.getAuthorName())
+                .division(entity.getDivision())
+                .divisionText(entity.getDivision() != null ? entity.getDivision().getTitle() : null)
+                .subject(entity.getSubject())
+                .subjectEnum(entity.getSubjectEnum())
+                .subjectText(entity.getSubjectEnum() != null ? entity.getSubjectEnum().getTitle() : entity.getSubject())
+                .prevGrade(entity.getPrevGrade())
+                .prevGradeType(entity.getPrevGradeType())
+                .prevGradeText(entity.getPrevGradeType() != null ? entity.getPrevGradeType().getTitle() : entity.getPrevGrade())
+                .nextGrade(entity.getNextGrade())
+                .nextGradeType(entity.getNextGradeType())
+                .nextGradeText(entity.getNextGradeType() != null ? entity.getNextGradeType().getTitle() : entity.getNextGrade())
+                .content(entity.getContent())
+                .viewCount(entity.getViewCount())
+                .isPublished(entity.getIsPublished())
+                .isPinned(entity.getIsPinned())
+                .isSecret(entity.getIsSecret())
+                .attachments(null) // 서비스에서 설정
+                .navigation(null) // 서비스에서 설정
+                .createdBy(entity.getCreatedBy())
+                .createdByName(null) // 서비스에서 설정
+                .createdAt(entity.getCreatedAt())
+                .updatedBy(entity.getUpdatedBy())
+                .updatedByName(null) // 서비스에서 설정
+                .updatedAt(entity.getUpdatedAt())
+                .build();
+    }
+    
+    /**
+     * 엔티티에서 DTO로 변환 (회원 이름 포함).
+     */
+    public static ResponseImprovementCaseDetail fromWithNames(ImprovementCase entity, String createdByName, String updatedByName) {
+        return ResponseImprovementCaseDetail.builder()
+                .id(entity.getId())
+                .title(entity.getTitle())
+                .writerType(entity.getWriterType())
+                .authorName(entity.getAuthorName())
+                .division(entity.getDivision())
+                .divisionText(entity.getDivision() != null ? entity.getDivision().getTitle() : null)
+                .subject(entity.getSubject())
+                .subjectEnum(entity.getSubjectEnum())
+                .subjectText(entity.getSubjectEnum() != null ? entity.getSubjectEnum().getTitle() : entity.getSubject())
+                .prevGrade(entity.getPrevGrade())
+                .prevGradeType(entity.getPrevGradeType())
+                .prevGradeText(entity.getPrevGradeType() != null ? entity.getPrevGradeType().getTitle() : entity.getPrevGrade())
+                .nextGrade(entity.getNextGrade())
+                .nextGradeType(entity.getNextGradeType())
+                .nextGradeText(entity.getNextGradeType() != null ? entity.getNextGradeType().getTitle() : entity.getNextGrade())
+                .content(entity.getContent())
+                .viewCount(entity.getViewCount())
+                .isPublished(entity.getIsPublished())
+                .isPinned(entity.getIsPinned())
+                .isSecret(entity.getIsSecret())
+                .attachments(null) // 서비스에서 설정
+                .navigation(null) // 서비스에서 설정
+                .createdBy(entity.getCreatedBy())
+                .createdByName(createdByName)
+                .createdAt(entity.getCreatedAt())
+                .updatedBy(entity.getUpdatedBy())
+                .updatedByName(updatedByName)
+                .updatedAt(entity.getUpdatedAt())
+                .build();
+    }
+}

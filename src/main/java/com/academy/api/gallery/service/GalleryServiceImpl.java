@@ -157,11 +157,45 @@ public class GalleryServiceImpl implements GalleryService, CategoryUsageChecker 
         }
         
         Page<Gallery> galleryPage = galleryRepository.searchGalleriesForPublic(keyword, effectiveSearchType, categoryId, isPublished, sortBy != null ? sortBy : "CREATED_DESC", pageable);
+        List<Gallery> galleries = galleryPage.getContent();
         
         log.debug("[GalleryService] 공개 갤러리 검색 결과. 전체={}건, 현재페이지={}, 실제반환={}건",
-                galleryPage.getTotalElements(), galleryPage.getNumber(), galleryPage.getContent().size());
+                galleryPage.getTotalElements(), galleryPage.getNumber(), galleries.size());
         
-        return galleryMapper.toSimpleResponseList(galleryPage);
+        // 커버 이미지 정보를 포함하여 DTO 변환
+        List<ResponseGalleryPublicList> items = galleries.stream()
+                .map(gallery -> {
+                    // 커버 이미지 정보 조회
+                    ResponseFileInfo coverImage = getCoverImage(gallery.getId());
+                    
+                    // 기본 DTO 생성
+                    ResponseGalleryPublicList dto = ResponseGalleryPublicList.from(gallery);
+                    
+                    // 커버 이미지 정보가 있으면 설정
+                    if (coverImage != null) {
+                        return ResponseGalleryPublicList.builder()
+                                .id(dto.getId())
+                                .title(dto.getTitle())
+                                .isPublished(dto.getIsPublished())
+                                .categoryId(dto.getCategoryId())
+                                .categoryName(dto.getCategoryName())
+                                .viewCount(dto.getViewCount())
+                                .coverImage(coverImage)
+                                .createdAt(dto.getCreatedAt())
+                                .updatedAt(dto.getUpdatedAt())
+                                .build();
+                    }
+                    
+                    return dto;
+                })
+                .toList();
+        
+        return ResponseList.ok(
+                items,
+                galleryPage.getTotalElements(),
+                galleryPage.getNumber(),
+                galleryPage.getSize()
+        );
     }
 
     /**
@@ -256,8 +290,7 @@ public class GalleryServiceImpl implements GalleryService, CategoryUsageChecker 
         Long beforeViewCount = gallery.getViewCount();
         
         // 조회수 증가
-        Long currentUserId = SecurityUtils.getCurrentUserId();
-        gallery.incrementViewCount(currentUserId);
+        gallery.incrementViewCount();
         
         log.debug("[GalleryService] 조회수 증가 완료. ID={}, 이전조회수={}, 현재조회수={}",
                 id, beforeViewCount, gallery.getViewCount());
@@ -436,14 +469,13 @@ public class GalleryServiceImpl implements GalleryService, CategoryUsageChecker 
     public Response incrementViewCount(Long id) {
         log.info("[GalleryService] 조회수 증가 시작. ID={}", id);
         
-        Long currentUserId = SecurityUtils.getCurrentUserId();
-        int updatedCount = galleryRepository.incrementViewCount(id, currentUserId);
+        int updatedCount = galleryRepository.incrementViewCount(id);
         if (updatedCount == 0) {
             log.warn("[GalleryService] 조회수 증가 실패 - 갤러리을 찾을 수 없음. ID={}", id);
             throw new BusinessException(ErrorCode.GALLERY_NOT_FOUND);
         }
 
-        log.debug("[GalleryService] 조회수 증가 완료. ID={}, updatedBy={}", id, currentUserId);
+        log.debug("[GalleryService] 조회수 증가 완료. ID={}", id);
         
         return Response.ok("0000", "조회수가 증가되었습니다.");
     }
