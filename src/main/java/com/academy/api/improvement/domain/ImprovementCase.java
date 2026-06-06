@@ -28,7 +28,7 @@ import java.time.LocalDateTime;
     @Index(name = "idx_improvement_deleted_pinned_created", columnList = "deleted_at, is_pinned, created_at"),
     @Index(name = "idx_improvement_writer_type", columnList = "writer_type"),
     @Index(name = "idx_improvement_division", columnList = "division"),
-    @Index(name = "idx_improvement_subject_enum", columnList = "subject_enum")
+    @Index(name = "idx_improvement_subject", columnList = "subject")
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -62,32 +62,23 @@ public class ImprovementCase {
     @Column(name = "division", length = 20)
     private Division division;
 
-    /** 과목 (기존 문자열 필드 - 호환성 유지) */
-    @Column(name = "subject", length = 100)
-    private String subject;
-
     /** 과목 열거형 */
     @Enumerated(EnumType.STRING)
-    @Column(name = "subject_enum", length = 20)
-    private Subject subjectEnum;
+    @Column(name = "subject", length = 20)
+    private Subject subject;
 
-    /** 이전 등급 (문자열) */
-    @Column(name = "prev_grade", length = 50)
-    private String prevGrade;
-
-    /** 이전 등급 열거형 */
+    /** 성적 구분 (점수/등급) */
     @Enumerated(EnumType.STRING)
-    @Column(name = "prev_grade_type", length = 20)
-    private GradeType prevGradeType;
+    @Column(name = "grade_type", nullable = false, length = 20)
+    private GradeType gradeType;
 
-    /** 이후 등급 (문자열) */
-    @Column(name = "next_grade", length = 50)
-    private String nextGrade;
+    /** 이전 성적 */
+    @Column(name = "prev_result", length = 50)
+    private String prevResult;
 
-    /** 이후 등급 열거형 */
-    @Enumerated(EnumType.STRING)
-    @Column(name = "next_grade_type", length = 20)
-    private GradeType nextGradeType;
+    /** 이후 성적 */
+    @Column(name = "next_result", length = 50)
+    private String nextResult;
 
     /** 내용 */
     @Lob
@@ -141,9 +132,8 @@ public class ImprovementCase {
      */
     @Builder
     private ImprovementCase(String title, WriterType writerType, String authorName, String phoneNumber, 
-                           Division division, String subject, Subject subjectEnum,
-                           String prevGrade, GradeType prevGradeType,
-                           String nextGrade, GradeType nextGradeType,
+                           Division division, Subject subject, GradeType gradeType,
+                           String prevResult, String nextResult,
                            String content, Boolean isPublished, Boolean isPinned,
                            Boolean isSecret, String passwordHash, Long createdBy) {
         this.title = title;
@@ -152,11 +142,9 @@ public class ImprovementCase {
         this.phoneNumber = phoneNumber;
         this.division = division;
         this.subject = subject;
-        this.subjectEnum = subjectEnum;
-        this.prevGrade = prevGrade;
-        this.prevGradeType = prevGradeType;
-        this.nextGrade = nextGrade;
-        this.nextGradeType = nextGradeType;
+        this.gradeType = gradeType;
+        this.prevResult = prevResult;
+        this.nextResult = nextResult;
         this.content = content;
         this.isPublished = isPublished != null ? isPublished : true;
         this.isPinned = isPinned != null ? isPinned : false;
@@ -171,29 +159,24 @@ public class ImprovementCase {
      * 
      * @param title 제목
      * @param division 학년 구분
-     * @param subject 과목 (문자열)
-     * @param subjectEnum 과목 열거형
-     * @param prevGrade 이전 등급 (문자열)
-     * @param prevGradeType 이전 등급 열거형
-     * @param nextGrade 이후 등급 (문자열)
-     * @param nextGradeType 이후 등급 열거형
+     * @param subject 과목
+     * @param gradeType 성적 구분 (점수/등급)
+     * @param prevResult 이전 성적
+     * @param nextResult 이후 성적
      * @param content 내용
      * @param isPublished 공개 여부
      * @param isPinned 고정글 여부
      * @param updatedBy 수정자 ID
      */
-    public void update(String title, Division division, String subject, Subject subjectEnum,
-                      String prevGrade, GradeType prevGradeType,
-                      String nextGrade, GradeType nextGradeType,
+    public void update(String title, Division division, Subject subject, GradeType gradeType,
+                      String prevResult, String nextResult,
                       String content, Boolean isPublished, Boolean isPinned, Long updatedBy) {
         this.title = title;
         this.division = division;
         this.subject = subject;
-        this.subjectEnum = subjectEnum;
-        this.prevGrade = prevGrade;
-        this.prevGradeType = prevGradeType;
-        this.nextGrade = nextGrade;
-        this.nextGradeType = nextGradeType;
+        this.gradeType = gradeType;
+        this.prevResult = prevResult;
+        this.nextResult = nextResult;
         this.content = content;
         this.isPublished = isPublished != null ? isPublished : true;
         this.isPinned = isPinned != null ? isPinned : false;

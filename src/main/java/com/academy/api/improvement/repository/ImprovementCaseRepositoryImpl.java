@@ -63,7 +63,7 @@ public class ImprovementCaseRepositoryImpl implements ImprovementCaseRepositoryC
         
         // 과목 필터
         if (subjectEnum != null) {
-            predicate = predicate.and(improvementCase.subjectEnum.eq(subjectEnum));
+            predicate = predicate.and(improvementCase.subject.eq(subjectEnum));
         }
         
         // 공개 상태 필터
@@ -128,7 +128,7 @@ public class ImprovementCaseRepositoryImpl implements ImprovementCaseRepositoryC
         
         // 과목 필터
         if (subjectEnum != null) {
-            predicate = predicate.and(improvementCase.subjectEnum.eq(subjectEnum));
+            predicate = predicate.and(improvementCase.subject.eq(subjectEnum));
         }
         
         // 정렬 조건 (공개용은 항상 고정글 우선)

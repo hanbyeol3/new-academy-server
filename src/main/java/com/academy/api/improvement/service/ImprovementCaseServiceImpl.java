@@ -140,6 +140,21 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
                 request.getTitle(), request.getAuthorName(), request.getIsSecret());
         
         try {
+            // 성적 값 검증
+            if (!validateGradeResult(request.getGradeType(), request.getPrevResult())) {
+                String errorMsg = request.getGradeType() == GradeType.SCORE 
+                    ? "이전 점수는 0~100 사이의 숫자여야 합니다."
+                    : "이전 등급은 1~9 사이의 숫자여야 합니다.";
+                return ResponseData.error("I400", errorMsg);
+            }
+            
+            if (!validateGradeResult(request.getGradeType(), request.getNextResult())) {
+                String errorMsg = request.getGradeType() == GradeType.SCORE 
+                    ? "이후 점수는 0~100 사이의 숫자여야 합니다."
+                    : "이후 등급은 1~9 사이의 숫자여야 합니다.";
+                return ResponseData.error("I400", errorMsg);
+            }
+            
             // 외부 작성자로 설정
             request.setWriterType(WriterType.EXTERNAL);
             
@@ -180,16 +195,29 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
                         return Response.error("I401", "비밀번호가 일치하지 않습니다.");
                     }
                     
+                    // 성적 값 검증
+                    if (!validateGradeResult(request.getGradeType(), request.getPrevResult())) {
+                        String errorMsg = request.getGradeType() == GradeType.SCORE 
+                            ? "이전 점수는 0~100 사이의 숫자여야 합니다."
+                            : "이전 등급은 1~9 사이의 숫자여야 합니다.";
+                        return Response.error("I400", errorMsg);
+                    }
+                    
+                    if (!validateGradeResult(request.getGradeType(), request.getNextResult())) {
+                        String errorMsg = request.getGradeType() == GradeType.SCORE 
+                            ? "이후 점수는 0~100 사이의 숫자여야 합니다."
+                            : "이후 등급은 1~9 사이의 숫자여야 합니다.";
+                        return Response.error("I400", errorMsg);
+                    }
+                    
                     // 엔티티 업데이트
                     entity.update(
                             request.getTitle(),
                             request.getDivision(),
-                            request.getSubject(),
-                            request.getSubjectEnum(),
-                            request.getPrevGrade(),
-                            request.getPrevGradeType(),
-                            request.getNextGrade(),
-                            request.getNextGradeType(),
+                            request.getSubject(),       // Subject enum
+                            request.getGradeType(),     // GradeType enum
+                            request.getPrevResult(),    // prevResult로 매핑
+                            request.getNextResult(),    // nextResult로 매핑
                             request.getContent(),
                             request.getIsPublished(),
                             false, // 외부 작성자는 고정글 설정 불가
@@ -295,6 +323,21 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
                 request.getTitle(), request.getWriterType(), request.getIsPinned());
         
         try {
+            // 성적 값 검증
+            if (!validateGradeResult(request.getGradeType(), request.getPrevResult())) {
+                String errorMsg = request.getGradeType() == GradeType.SCORE 
+                    ? "이전 점수는 0~100 사이의 숫자여야 합니다."
+                    : "이전 등급은 1~9 사이의 숫자여야 합니다.";
+                return ResponseData.error("I400", errorMsg);
+            }
+            
+            if (!validateGradeResult(request.getGradeType(), request.getNextResult())) {
+                String errorMsg = request.getGradeType() == GradeType.SCORE 
+                    ? "이후 점수는 0~100 사이의 숫자여야 합니다."
+                    : "이후 등급은 1~9 사이의 숫자여야 합니다.";
+                return ResponseData.error("I400", errorMsg);
+            }
+            
             // 관리자 작성자 정보 설정
             Long createdBy = SecurityUtils.getCurrentUserId();
             
@@ -323,6 +366,21 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
         
         return improvementCaseRepository.findByIdAndNotDeleted(id)
                 .map(entity -> {
+                    // 성적 값 검증
+                    if (!validateGradeResult(request.getGradeType(), request.getPrevResult())) {
+                        String errorMsg = request.getGradeType() == GradeType.SCORE 
+                            ? "이전 점수는 0~100 사이의 숫자여야 합니다."
+                            : "이전 등급은 1~9 사이의 숫자여야 합니다.";
+                        return Response.error("I400", errorMsg);
+                    }
+                    
+                    if (!validateGradeResult(request.getGradeType(), request.getNextResult())) {
+                        String errorMsg = request.getGradeType() == GradeType.SCORE 
+                            ? "이후 점수는 0~100 사이의 숫자여야 합니다."
+                            : "이후 등급은 1~9 사이의 숫자여야 합니다.";
+                        return Response.error("I400", errorMsg);
+                    }
+                    
                     // 수정자 정보
                     Long updatedBy = SecurityUtils.getCurrentUserId();
                     
@@ -330,12 +388,10 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
                     entity.update(
                             request.getTitle(),
                             request.getDivision(),
-                            request.getSubject(),
-                            request.getSubjectEnum(),
-                            request.getPrevGrade(),
-                            request.getPrevGradeType(),
-                            request.getNextGrade(),
-                            request.getNextGradeType(),
+                            request.getSubject(),       // Subject enum
+                            request.getGradeType(),     // GradeType enum
+                            request.getPrevResult(),    // prevResult로 매핑
+                            request.getNextResult(),    // nextResult로 매핑
                             request.getContent(),
                             request.getIsPublished(),
                             request.getIsPinned(),
@@ -447,6 +503,11 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
         
         // 첨부파일 정보 설정
         List<ResponseFileInfo> attachments = getAttachments(entity.getId());
+        
+        // 네비게이션 정보 설정
+        ResponseImprovementCaseNavigation navigation = getNavigation(entity.getId(), isPublicApi);
+        
+        // Response에 attachments와 navigation만 설정
         response = ResponseImprovementCaseDetail.builder()
                 .id(response.getId())
                 .title(response.getTitle())
@@ -454,22 +515,19 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
                 .authorName(response.getAuthorName())
                 .division(response.getDivision())
                 .divisionText(response.getDivisionText())
-                .subject(response.getSubject())
-                .subjectEnum(response.getSubjectEnum())
+                .subject(response.getSubject())  // subject 문자열
+                .subjectEnum(response.getSubjectEnum())  // Subject enum
                 .subjectText(response.getSubjectText())
-                .prevGrade(response.getPrevGrade())
-                .prevGradeType(response.getPrevGradeType())
-                .prevGradeText(response.getPrevGradeText())
-                .nextGrade(response.getNextGrade())
-                .nextGradeType(response.getNextGradeType())
-                .nextGradeText(response.getNextGradeText())
+                .gradeType(response.getGradeType())  // gradeType 추가
+                .prevGrade(response.getPrevGrade())  // prevResult를 prevGrade로 매핑
+                .nextGrade(response.getNextGrade())  // nextResult를 nextGrade로 매핑
                 .content(response.getContent())
                 .viewCount(response.getViewCount())
                 .isPublished(response.getIsPublished())
                 .isPinned(response.getIsPinned())
                 .isSecret(response.getIsSecret())
                 .attachments(attachments)
-                .navigation(getNavigation(entity.getId(), isPublicApi))
+                .navigation(navigation)
                 .createdBy(response.getCreatedBy())
                 .createdByName(response.getCreatedByName())
                 .createdAt(response.getCreatedAt())
@@ -576,5 +634,33 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
             log.warn("[ImprovementCaseService] 유효하지 않은 {} 값: {}", enumClass.getSimpleName(), value);
             return null;
         }
+    }
+    
+    /**
+     * 성적 유형에 따른 값 검증.
+     * SCORE: 0~100 숫자
+     * GRADE: 1~9 숫자
+     */
+    private boolean validateGradeResult(GradeType gradeType, String result) {
+        if (gradeType == null || result == null || result.trim().isEmpty()) {
+            return false;
+        }
+        
+        try {
+            int value = Integer.parseInt(result.trim());
+            
+            if (gradeType == GradeType.SCORE) {
+                // 점수는 0~100
+                return value >= 0 && value <= 100;
+            } else if (gradeType == GradeType.GRADE) {
+                // 등급은 1~9
+                return value >= 1 && value <= 9;
+            }
+        } catch (NumberFormatException e) {
+            log.warn("[ImprovementCaseService] 성적 값이 숫자가 아닙니다: {}", result);
+            return false;
+        }
+        
+        return false;
     }
 }

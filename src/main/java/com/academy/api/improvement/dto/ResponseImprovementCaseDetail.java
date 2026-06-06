@@ -46,23 +46,14 @@ public class ResponseImprovementCaseDetail {
     @Schema(description = "과목 텍스트", example = "수학")
     private String subjectText;
     
-    @Schema(description = "이전 등급 (문자열)", example = "3등급")
+    @Schema(description = "성적 유형 (SCORE: 점수, GRADE: 등급)", example = "GRADE")
+    private GradeType gradeType;
+    
+    @Schema(description = "이전 성적 (SCORE: 0~100 점수, GRADE: 1~9 등급)", example = "3")
     private String prevGrade;
     
-    @Schema(description = "이전 등급 열거형", example = "GRADE_3")
-    private GradeType prevGradeType;
-    
-    @Schema(description = "이전 등급 텍스트", example = "3등급")
-    private String prevGradeText;
-    
-    @Schema(description = "이후 등급 (문자열)", example = "1등급")
+    @Schema(description = "이후 성적 (SCORE: 0~100 점수, GRADE: 1~9 등급)", example = "1")
     private String nextGrade;
-    
-    @Schema(description = "이후 등급 열거형", example = "GRADE_1")
-    private GradeType nextGradeType;
-    
-    @Schema(description = "이후 등급 텍스트", example = "1등급")
-    private String nextGradeText;
     
     @Schema(description = "내용", example = "저는 수학이 너무 어려워서...")
     private String content;
@@ -116,15 +107,12 @@ public class ResponseImprovementCaseDetail {
                 .authorName(entity.getAuthorName())
                 .division(entity.getDivision())
                 .divisionText(entity.getDivision() != null ? entity.getDivision().getTitle() : null)
-                .subject(entity.getSubject())
-                .subjectEnum(entity.getSubjectEnum())
-                .subjectText(entity.getSubjectEnum() != null ? entity.getSubjectEnum().getTitle() : entity.getSubject())
-                .prevGrade(entity.getPrevGrade())
-                .prevGradeType(entity.getPrevGradeType())
-                .prevGradeText(entity.getPrevGradeType() != null ? entity.getPrevGradeType().getTitle() : entity.getPrevGrade())
-                .nextGrade(entity.getNextGrade())
-                .nextGradeType(entity.getNextGradeType())
-                .nextGradeText(entity.getNextGradeType() != null ? entity.getNextGradeType().getTitle() : entity.getNextGrade())
+                .subject(null) // 호환성을 위해 유지
+                .subjectEnum(entity.getSubject())
+                .subjectText(entity.getSubject() != null ? entity.getSubject().getTitle() : null)
+                .gradeType(entity.getGradeType())  // gradeType 추가
+                .prevGrade(entity.getPrevResult())
+                .nextGrade(entity.getNextResult())
                 .content(entity.getContent())
                 .viewCount(entity.getViewCount())
                 .isPublished(entity.getIsPublished())
@@ -152,15 +140,12 @@ public class ResponseImprovementCaseDetail {
                 .authorName(entity.getAuthorName())
                 .division(entity.getDivision())
                 .divisionText(entity.getDivision() != null ? entity.getDivision().getTitle() : null)
-                .subject(entity.getSubject())
-                .subjectEnum(entity.getSubjectEnum())
-                .subjectText(entity.getSubjectEnum() != null ? entity.getSubjectEnum().getTitle() : entity.getSubject())
-                .prevGrade(entity.getPrevGrade())
-                .prevGradeType(entity.getPrevGradeType())
-                .prevGradeText(entity.getPrevGradeType() != null ? entity.getPrevGradeType().getTitle() : entity.getPrevGrade())
-                .nextGrade(entity.getNextGrade())
-                .nextGradeType(entity.getNextGradeType())
-                .nextGradeText(entity.getNextGradeType() != null ? entity.getNextGradeType().getTitle() : entity.getNextGrade())
+                .subject(null) // 호환성을 위해 유지
+                .subjectEnum(entity.getSubject())
+                .subjectText(entity.getSubject() != null ? entity.getSubject().getTitle() : null)
+                .gradeType(entity.getGradeType())  // gradeType 추가
+                .prevGrade(entity.getPrevResult())
+                .nextGrade(entity.getNextResult())
                 .content(entity.getContent())
                 .viewCount(entity.getViewCount())
                 .isPublished(entity.getIsPublished())

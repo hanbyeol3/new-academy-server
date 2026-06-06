@@ -78,6 +78,7 @@ public class SecurityConfiguration {
 						.requestMatchers("/api/inquiries/**").permitAll()
 						.requestMatchers("/api/apply-applications/**").permitAll()  // 공개 원서접수 API
 						.requestMatchers("/api/school-exams/**").permitAll()  // 학교별 시험분석 공개 API
+						.requestMatchers("/api/improvement-cases/**").permitAll()  // 학교별 시험분석 공개 API
 
 						// ✅ 관리자 API (ADMIN 권한 필요)
 						.requestMatchers("/api/admin/**").hasRole("ADMIN")

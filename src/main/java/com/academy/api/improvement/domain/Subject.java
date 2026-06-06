@@ -12,14 +12,12 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum Subject {
     
-    KOREAN("국어", "국어 과목"),
+    ALL("전체", "전체 과목"),
+    KOR("국어", "국어 과목"),
+    ENG("영어", "영어 과목"),
     MATH("수학", "수학 과목"),
-    ENGLISH("영어", "영어 과목"),
-    SCIENCE("과학", "과학 과목 (물리, 화학, 생물, 지구과학)"),
-    SOCIAL("사회", "사회 과목 (역사, 지리, 정치, 경제)"),
-    KOREAN_HISTORY("한국사", "한국사 과목"),
-    SECOND_LANGUAGE("제2외국어", "제2외국어 과목"),
-    OTHER("기타", "기타 과목");
+    SOC("사회", "사회 과목"),
+    SCI("과학", "과학 과목");
     
     private final String title;
     private final String description;

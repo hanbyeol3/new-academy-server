@@ -43,12 +43,10 @@ public class ImprovementCaseMapper {
                 .authorName(request.getAuthorName())
                 .phoneNumber(request.getPhoneNumber())
                 .division(request.getDivision())
-                .subject(request.getSubject())
-                .subjectEnum(request.getSubjectEnum())
-                .prevGrade(request.getPrevGrade())
-                .prevGradeType(request.getPrevGradeType())
-                .nextGrade(request.getNextGrade())
-                .nextGradeType(request.getNextGradeType())
+                .subject(request.getSubject())  // 수정: getSubject() 사용
+                .gradeType(request.getGradeType())
+                .prevResult(request.getPrevResult()) // 수정: getPrevResult() 사용
+                .nextResult(request.getNextResult()) // 수정: getNextResult() 사용
                 .content(request.getContent())
                 .isPublished(request.getIsPublished())
                 .isPinned(request.getIsPinned())

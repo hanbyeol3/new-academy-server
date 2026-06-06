@@ -1,5 +1,6 @@
 package com.academy.api.improvement.dto;
 
+import com.academy.api.improvement.domain.GradeType;
 import com.academy.api.improvement.domain.ImprovementCase;
 import com.academy.api.improvement.domain.WriterType;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -40,6 +41,9 @@ public class ResponseImprovementCaseAdminList {
     @Schema(description = "성적 변화", example = "3등급 → 1등급")
     private String gradeChange;
     
+    @Schema(description = "성적 유형 (SCORE: 점수, GRADE: 등급)", example = "GRADE")
+    private GradeType gradeType;
+    
     @Schema(description = "조회수", example = "100")
     private Long viewCount;
     
@@ -77,12 +81,10 @@ public class ResponseImprovementCaseAdminList {
      */
     public static ResponseImprovementCaseAdminList from(ImprovementCase entity) {
         String divisionText = entity.getDivision() != null ? entity.getDivision().getTitle() : "";
-        String subjectText = entity.getSubjectEnum() != null ? entity.getSubjectEnum().getTitle() : entity.getSubject();
+        String subjectText = entity.getSubject() != null ? entity.getSubject().getTitle() : null;
         
-        String prevGradeText = entity.getPrevGradeType() != null ?
-                entity.getPrevGradeType().getTitle() : entity.getPrevGrade();
-        String nextGradeText = entity.getNextGradeType() != null ?
-                entity.getNextGradeType().getTitle() : entity.getNextGrade();
+        String prevGradeText = entity.getPrevResult();
+        String nextGradeText = entity.getNextResult();
         
         String gradeChange = "";
         if (prevGradeText != null && nextGradeText != null) {
@@ -97,6 +99,7 @@ public class ResponseImprovementCaseAdminList {
                 .divisionText(divisionText)
                 .subjectText(subjectText)
                 .gradeChange(gradeChange)
+                .gradeType(entity.getGradeType())
                 .viewCount(entity.getViewCount())
                 .isPublished(entity.getIsPublished())
                 .isPinned(entity.getIsPinned())
@@ -115,12 +118,10 @@ public class ResponseImprovementCaseAdminList {
      */
     public static ResponseImprovementCaseAdminList fromWithNames(ImprovementCase entity, String createdByName, String updatedByName) {
         String divisionText = entity.getDivision() != null ? entity.getDivision().getTitle() : "";
-        String subjectText = entity.getSubjectEnum() != null ? entity.getSubjectEnum().getTitle() : entity.getSubject();
+        String subjectText = entity.getSubject() != null ? entity.getSubject().getTitle() : null;
         
-        String prevGradeText = entity.getPrevGradeType() != null ?
-                entity.getPrevGradeType().getTitle() : entity.getPrevGrade();
-        String nextGradeText = entity.getNextGradeType() != null ?
-                entity.getNextGradeType().getTitle() : entity.getNextGrade();
+        String prevGradeText = entity.getPrevResult();
+        String nextGradeText = entity.getNextResult();
         
         String gradeChange = "";
         if (prevGradeText != null && nextGradeText != null) {
@@ -135,6 +136,7 @@ public class ResponseImprovementCaseAdminList {
                 .divisionText(divisionText)
                 .subjectText(subjectText)
                 .gradeChange(gradeChange)
+                .gradeType(entity.getGradeType())
                 .viewCount(entity.getViewCount())
                 .isPublished(entity.getIsPublished())
                 .isPinned(entity.getIsPinned())

@@ -6,6 +6,7 @@ import com.academy.api.improvement.domain.Subject;
 import com.academy.api.improvement.domain.WriterType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -40,39 +41,33 @@ public class RequestImprovementCaseCreate {
             requiredMode = Schema.RequiredMode.REQUIRED)
     private String authorName;
     
-    @Pattern(regexp = "^\\d{2,3}-\\d{3,4}-\\d{4}$", message = "올바른 전화번호 형식이 아닙니다 (예: 010-1234-5678)")
+    @Pattern(regexp = "^010-\\d{4}-\\d{4}$", message = "휴대폰 번호 형식이 올바르지 않습니다 (예: 010-1234-5678)")
     @Schema(description = "연락처 (외부 작성자용)", example = "010-1234-5678")
     private String phoneNumber;
     
-    @Schema(description = "학년 구분", example = "HIGH_3",
-            allowableValues = {"HIGH_1", "HIGH_2", "HIGH_3", "MIDDLE_1", "MIDDLE_2", "MIDDLE_3", "ELEMENTARY", "REEXAM", "OTHER"})
+    @Schema(description = "학년 구분", example = "HIGH",
+            allowableValues = {"MIDDLE", "HIGH", "RETAKE"})
     private Division division;
     
-    @Size(max = 100, message = "과목명은 100자 이하여야 합니다")
-    @Schema(description = "과목 (문자열)", example = "수학")
-    private String subject;
+    @Schema(description = "과목", example = "MATH",
+            allowableValues = {"ALL", "KOR", "ENG", "MATH", "SOC", "SCI"})
+    private Subject subject;
     
-    @Schema(description = "과목 열거형", example = "MATH",
-            allowableValues = {"KOREAN", "MATH", "ENGLISH", "SCIENCE", "SOCIAL", "KOREAN_HISTORY", "SECOND_LANGUAGE", "OTHER"})
-    private Subject subjectEnum;
+    @NotNull(message = "성적 구분을 선택해주세요")
+    @Schema(description = "성적 유형 (SCORE: 점수, GRADE: 등급)", example = "GRADE",
+            allowableValues = {"SCORE", "GRADE"},
+            requiredMode = Schema.RequiredMode.REQUIRED)
+    private GradeType gradeType;
     
-    @Size(max = 50, message = "이전 등급은 50자 이하여야 합니다")
-    @Schema(description = "이전 등급 (문자열)", example = "3등급")
-    private String prevGrade;
+    @NotBlank(message = "이전 성적을 입력해주세요")
+    @Size(max = 50, message = "이전 성적은 50자 이하여야 합니다")
+    @Schema(description = "이전 성적 (SCORE: 0~100 숫자, GRADE: 1~9 숫자)", example = "3")
+    private String prevResult;
     
-    @Schema(description = "이전 등급 열거형", example = "GRADE_3",
-            allowableValues = {"GRADE_1", "GRADE_2", "GRADE_3", "GRADE_4", "GRADE_5", "GRADE_6", "GRADE_7", "GRADE_8", "GRADE_9", 
-                              "SCORE_100", "SCORE_90S", "SCORE_80S", "SCORE_70S", "SCORE_60S", "SCORE_BELOW_60", "OTHER"})
-    private GradeType prevGradeType;
-    
-    @Size(max = 50, message = "이후 등급은 50자 이하여야 합니다")
-    @Schema(description = "이후 등급 (문자열)", example = "1등급")
-    private String nextGrade;
-    
-    @Schema(description = "이후 등급 열거형", example = "GRADE_1",
-            allowableValues = {"GRADE_1", "GRADE_2", "GRADE_3", "GRADE_4", "GRADE_5", "GRADE_6", "GRADE_7", "GRADE_8", "GRADE_9",
-                              "SCORE_100", "SCORE_90S", "SCORE_80S", "SCORE_70S", "SCORE_60S", "SCORE_BELOW_60", "OTHER"})
-    private GradeType nextGradeType;
+    @NotBlank(message = "이후 성적을 입력해주세요")
+    @Size(max = 50, message = "이후 성적은 50자 이하여야 합니다")
+    @Schema(description = "이후 성적 (SCORE: 0~100 숫자, GRADE: 1~9 숫자)", example = "1")
+    private String nextResult;
     
     @NotBlank(message = "내용을 입력해주세요")
     @Schema(description = "내용", example = "저는 수학이 너무 어려워서 3등급에 머물러 있었습니다...",

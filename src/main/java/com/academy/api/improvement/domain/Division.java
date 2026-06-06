@@ -12,15 +12,9 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum Division {
     
-    HIGH_1("고1", "고등학교 1학년"),
-    HIGH_2("고2", "고등학교 2학년"),
-    HIGH_3("고3", "고등학교 3학년"),
-    MIDDLE_1("중1", "중학교 1학년"),
-    MIDDLE_2("중2", "중학교 2학년"),
-    MIDDLE_3("중3", "중학교 3학년"),
-    ELEMENTARY("초등", "초등학생"),
-    REEXAM("재수", "재수생"),
-    OTHER("기타", "기타");
+    MIDDLE("중등", "중학교"),
+    HIGH("고등", "고등학교"),
+    RETAKE("재수", "재수생");
     
     private final String title;
     private final String description;
