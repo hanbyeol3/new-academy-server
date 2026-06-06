@@ -1,5 +1,6 @@
 package com.academy.api.qna.dto;
 
+import com.academy.api.common.validation.PhoneNumber;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
 import lombok.Getter;
@@ -21,9 +22,8 @@ public class RequestQnaQuestionCreate {
             requiredMode = Schema.RequiredMode.REQUIRED)
     private String authorName;
 
-    @NotBlank(message = "연락처를 입력해주세요")
-    @Pattern(regexp = "^[0-9]{10,11}$", message = "연락처는 10-11자리 숫자여야 합니다")
-    @Schema(description = "연락처 (숫자만)", example = "01012345678",
+    @PhoneNumber(required = true, message = "연락처를 입력해주세요")
+    @Schema(description = "연락처", example = "010-1234-5678",
             requiredMode = Schema.RequiredMode.REQUIRED)
     private String phoneNumber;
 

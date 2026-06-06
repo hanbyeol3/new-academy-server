@@ -7,7 +7,7 @@ import com.academy.api.improvement.domain.WriterType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
+import com.academy.api.common.validation.PhoneNumber;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -41,7 +41,7 @@ public class RequestImprovementCaseCreate {
             requiredMode = Schema.RequiredMode.REQUIRED)
     private String authorName;
     
-    @Pattern(regexp = "^010-\\d{4}-\\d{4}$", message = "휴대폰 번호 형식이 올바르지 않습니다 (예: 010-1234-5678)")
+    @PhoneNumber(required = false)
     @Schema(description = "연락처 (외부 작성자용)", example = "010-1234-5678")
     private String phoneNumber;
     

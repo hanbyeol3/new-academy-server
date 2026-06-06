@@ -1,11 +1,11 @@
 package com.academy.api.inquiry.dto;
 
+import com.academy.api.common.validation.PhoneNumber;
 import com.academy.api.inquiry.domain.InquirySourceType;
 import com.academy.api.inquiry.domain.InquiryStatus;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -29,9 +29,8 @@ public class RequestInquiryCreate {
             requiredMode = Schema.RequiredMode.REQUIRED)
     private String name;
 
-    @NotBlank(message = "연락처를 입력해주세요")
-    @Pattern(regexp = "^0[0-9]{8,10}$", message = "올바른 연락처 형식이 아닙니다 (예: 01012345678)")
-    @Schema(description = "정규화된 연락처 (숫자만)", example = "01012345678", 
+    @PhoneNumber(required = true, message = "연락처를 입력해주세요")
+    @Schema(description = "연락처", example = "010-1234-5678", 
             requiredMode = Schema.RequiredMode.REQUIRED)
     private String phoneNumber;
 

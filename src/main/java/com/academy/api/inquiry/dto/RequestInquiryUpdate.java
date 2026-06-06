@@ -1,9 +1,9 @@
 package com.academy.api.inquiry.dto;
 
+import com.academy.api.common.validation.PhoneNumber;
 import com.academy.api.inquiry.domain.InquirySourceType;
 import com.academy.api.inquiry.domain.InquiryStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -25,8 +25,8 @@ public class RequestInquiryUpdate {
     @Schema(description = "신청자 이름", example = "김학생")
     private String name;
 
-    @Pattern(regexp = "^0[0-9]{8,10}$", message = "올바른 연락처 형식이 아닙니다 (예: 01012345678)")
-    @Schema(description = "정규화된 연락처 (숫자만)", example = "01012345678")
+    @PhoneNumber(required = false)
+    @Schema(description = "연락처", example = "010-1234-5678")
     private String phoneNumber;
 
     @Size(max = 1000, message = "문의 내용은 1000자 이하여야 합니다")

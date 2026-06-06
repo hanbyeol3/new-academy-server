@@ -146,10 +146,11 @@ public class ImprovementCasePublicController {
                 
                 선택 입력:
                 - phoneNumber: 연락처
-                - division: 학년
-                - subject/subjectEnum: 과목
-                - prevGrade/prevGradeType: 이전 등급
-                - nextGrade/nextGradeType: 이후 등급
+                - division: 학년 (MIDDLE, HIGH, RETAKE)
+                - subject: 과목 (ALL, KOR, ENG, MATH, SOC, SCI)
+                - gradeType: 성적 유형 (SCORE: 점수, GRADE: 등급)
+                - prevResult: 이전 성적 (SCORE: 0~100 숫자, GRADE: 1~9 숫자)
+                - nextResult: 이후 성적 (SCORE: 0~100 숫자, GRADE: 1~9 숫자)
                 - isSecret: 비밀글 여부
                 - password: 비밀번호 (비밀글인 경우)
                 

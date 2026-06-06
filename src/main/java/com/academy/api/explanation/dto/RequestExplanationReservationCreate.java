@@ -4,7 +4,7 @@ import com.academy.api.explanation.domain.Gender;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
+import com.academy.api.common.validation.PhoneNumber;
 import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
@@ -34,8 +34,7 @@ public class RequestExplanationReservationCreate {
             requiredMode = Schema.RequiredMode.REQUIRED)
     private String applicantName;
 
-    @NotBlank(message = "신청자 휴대폰 번호를 입력해주세요")
-    @Pattern(regexp = "^010-\\d{4}-\\d{4}$", message = "휴대폰 번호 형식이 올바르지 않습니다 (예: 010-1234-5678)")
+    @PhoneNumber(required = true, message = "신청자 휴대폰 번호를 입력해주세요")
     @Schema(description = "신청자 휴대폰 번호", 
             example = "010-1234-5678",
             requiredMode = Schema.RequiredMode.REQUIRED)
@@ -46,7 +45,7 @@ public class RequestExplanationReservationCreate {
             example = "홍학생")
     private String studentName;
 
-    @Pattern(regexp = "^010-\\d{4}-\\d{4}$|^$", message = "휴대폰 번호 형식이 올바르지 않습니다 (예: 010-1234-5678)")
+    @PhoneNumber(required = false)
     @Schema(description = "학생 휴대폰 번호 (선택)", 
             example = "010-9876-5432")
     private String studentPhone;

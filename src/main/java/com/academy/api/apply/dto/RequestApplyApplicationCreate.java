@@ -4,6 +4,7 @@ import com.academy.api.apply.domain.ApplicationDivision;
 import com.academy.api.apply.domain.Gender;
 import com.academy.api.apply.domain.StudentGradeLevel;
 import com.academy.api.apply.domain.SubjectCode;
+import com.academy.api.common.validation.PhoneNumber;
 import com.academy.api.file.dto.FileReference;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -49,8 +50,7 @@ public class RequestApplyApplicationCreate {
             requiredMode = Schema.RequiredMode.REQUIRED)
     private LocalDate birthDate;
 
-    @NotBlank(message = "학생 휴대폰을 입력해주세요")
-    @Pattern(regexp = "^\\d{3}-\\d{4}-\\d{4}$", message = "휴대폰 형식이 올바르지 않습니다 (예: 010-1234-5678)")
+    @PhoneNumber(required = true, message = "학생 휴대폰을 입력해주세요")
     @Schema(description = "학생 휴대폰", example = "010-1234-5678", 
             requiredMode = Schema.RequiredMode.REQUIRED)
     private String studentPhone;
