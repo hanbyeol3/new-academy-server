@@ -26,7 +26,10 @@ public enum StudentGradeLevel {
     H2("고2"),
     
     /** 고등학교 3학년 */
-    H3("고3");
+    H3("고3"),
+    
+    /** 재수생 */
+    RETAKE("재수생");
     
     private final String description;
     

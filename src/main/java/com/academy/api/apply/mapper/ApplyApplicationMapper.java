@@ -29,7 +29,6 @@ public class ApplyApplicationMapper {
                 .birthDate(request.getBirthDate())
                 .studentPhone(request.getStudentPhone())
                 .schoolName(request.getSchoolName())
-                .schoolGrade(request.getSchoolGrade())
                 .studentGradeLevel(request.getStudentGradeLevel())
                 .email(request.getEmail())
                 .postalCode(request.getPostalCode())
@@ -63,7 +62,6 @@ public class ApplyApplicationMapper {
                 .birthDate(request.getBirthDate())
                 .studentPhone(request.getStudentPhone())
                 .schoolName(request.getSchoolName())
-                .schoolGrade(request.getSchoolGrade())
                 .studentGradeLevel(request.getStudentGradeLevel())
                 .email(request.getEmail())
                 .postalCode(request.getPostalCode())
@@ -96,7 +94,6 @@ public class ApplyApplicationMapper {
                 request.getBirthDate(),
                 request.getStudentPhone(),
                 request.getSchoolName(),
-                request.getSchoolGrade(),
                 request.getStudentGradeLevel(),
                 request.getEmail(),
                 request.getPostalCode(),

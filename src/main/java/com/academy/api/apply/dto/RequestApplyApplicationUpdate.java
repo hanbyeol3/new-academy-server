@@ -3,6 +3,7 @@ package com.academy.api.apply.dto;
 import com.academy.api.apply.domain.Gender;
 import com.academy.api.apply.domain.StudentGradeLevel;
 import com.academy.api.apply.domain.SubjectCode;
+import com.academy.api.common.validation.PhoneNumber;
 import com.academy.api.file.dto.FileReference;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -41,8 +42,7 @@ public class RequestApplyApplicationUpdate {
             requiredMode = Schema.RequiredMode.REQUIRED)
     private LocalDate birthDate;
 
-    @NotBlank(message = "학생 휴대폰을 입력해주세요")
-    @Pattern(regexp = "^\\d{3}-\\d{4}-\\d{4}$", message = "휴대폰 형식이 올바르지 않습니다")
+    @PhoneNumber(required = true, message = "학생 휴대폰을 입력해주세요")
     @Schema(description = "학생 휴대폰", example = "010-1234-5678", 
             requiredMode = Schema.RequiredMode.REQUIRED)
     private String studentPhone;
@@ -51,12 +51,8 @@ public class RequestApplyApplicationUpdate {
     @Schema(description = "학교명", example = "서울중학교")
     private String schoolName;
 
-    @Size(max = 50, message = "학교 학년/반은 50자 이하여야 합니다")
-    @Schema(description = "학교 학년/반", example = "3학년 2반")
-    private String schoolGrade;
-
     @Schema(description = "학년 레벨", example = "M3",
-            allowableValues = {"M1", "M2", "M3", "H1", "H2", "H3"})
+            allowableValues = {"M1", "M2", "M3", "H1", "H2", "H3", "RETAKE"})
     private StudentGradeLevel studentGradeLevel;
 
     @Email(message = "이메일 형식이 올바르지 않습니다")
@@ -106,8 +102,7 @@ public class RequestApplyApplicationUpdate {
             requiredMode = Schema.RequiredMode.REQUIRED)
     private String guardian1Name;
 
-    @NotBlank(message = "보호자1 휴대폰을 입력해주세요")
-    @Pattern(regexp = "^\\d{3}-\\d{4}-\\d{4}$", message = "보호자1 휴대폰 형식이 올바르지 않습니다")
+    @PhoneNumber(required = true, message = "보호자1 휴대폰을 입력해주세요")
     @Schema(description = "보호자1 휴대폰", example = "010-9876-5432", 
             requiredMode = Schema.RequiredMode.REQUIRED)
     private String guardian1Phone;
@@ -122,7 +117,7 @@ public class RequestApplyApplicationUpdate {
     @Schema(description = "보호자2 성명", example = "홍어머니")
     private String guardian2Name;
 
-    @Pattern(regexp = "^\\d{3}-\\d{4}-\\d{4}$|^$", message = "보호자2 휴대폰 형식이 올바르지 않습니다")
+    @PhoneNumber(required = false)
     @Schema(description = "보호자2 휴대폰", example = "010-1111-2222")
     private String guardian2Phone;
 

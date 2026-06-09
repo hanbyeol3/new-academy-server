@@ -122,6 +122,9 @@ public class ApplyApplicationServiceImpl implements ApplyApplicationService {
         // 파일 정보 조회
         List<ResponseFileInfo> transcriptFiles = getFilesByRole(id, FileRole.ATTACHMENT);
         List<ResponseFileInfo> photoFiles = getFilesByRole(id, FileRole.COVER);
+        
+        log.info("[ApplyApplicationService] 파일 조회 결과. ID={}, 성적표={}개, 증명사진={}개", 
+                id, transcriptFiles.size(), photoFiles.size());
 
         // 이전/다음글 조회
         ResponseApplyApplicationNavigation previousApp = applyApplicationRepository.findPreviousApplication(id)
@@ -483,8 +486,11 @@ public class ApplyApplicationServiceImpl implements ApplyApplicationService {
         return fileData.stream()
                 .map(data -> ResponseFileInfo.builder()
                         .fileId(data[0] != null ? data[0].toString() : null)
-                        .originalName((String) data[1])
-                        .size((Long) data[2])
+                        .fileName((String) data[1])
+                        .originalName((String) data[2])
+                        .ext((String) data[3])
+                        .size((Long) data[4])
+                        .url((String) data[5])
                         .build())
                 .toList();
     }

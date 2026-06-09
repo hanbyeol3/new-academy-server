@@ -663,6 +663,9 @@ public class FeatureConfig {
 #### 적용 도메인
 | 도메인 | 필드명 | 용도 | 필수여부 |
 |--------|--------|------|---------|
+| **원서접수** | `studentPhone` | 학생 연락처 | 필수 |
+| **원서접수** | `guardian1Phone` | 보호자1 연락처 | 필수 |
+| **원서접수** | `guardian2Phone` | 보호자2 연락처 | 선택 |
 | **설명회 예약** | `applicantPhone` | 신청자 연락처 | 필수 |
 | **설명회 예약** | `studentPhone` | 학생 연락처 | 선택 |
 | **상담 신청** | `phoneNumber` | 신청자 연락처 | 필수 |

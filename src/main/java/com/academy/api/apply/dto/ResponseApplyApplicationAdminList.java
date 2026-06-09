@@ -3,6 +3,7 @@ package com.academy.api.apply.dto;
 import com.academy.api.apply.domain.ApplicationDivision;
 import com.academy.api.apply.domain.ApplicationStatus;
 import com.academy.api.apply.domain.ApplyApplication;
+import com.academy.api.apply.domain.StudentGradeLevel;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -39,6 +40,12 @@ public class ResponseApplyApplicationAdminList {
 
     @Schema(description = "학생 휴대폰", example = "010-1234-5678")
     private String studentPhone;
+
+    @Schema(description = "학년", example = "M1")
+    private StudentGradeLevel studentGradeLevel;
+
+    @Schema(description = "학년 설명", example = "중1")
+    private String studentGradeLevelDescription;
 
     @Schema(description = "학교명", example = "서울중학교")
     private String schoolName;
@@ -87,6 +94,9 @@ public class ResponseApplyApplicationAdminList {
                 .divisionDescription(entity.getDivision().getDescription())
                 .studentName(entity.getStudentName())
                 .studentPhone(entity.getStudentPhone())
+                .studentGradeLevel(entity.getStudentGradeLevel())
+                .studentGradeLevelDescription(entity.getStudentGradeLevel() != null ? 
+                        entity.getStudentGradeLevel().getDescription() : null)
                 .schoolName(entity.getSchoolName())
                 .guardian1Name(entity.getGuardian1Name())
                 .guardian1Phone(entity.getGuardian1Phone())
@@ -114,6 +124,9 @@ public class ResponseApplyApplicationAdminList {
                 .divisionDescription(entity.getDivision().getDescription())
                 .studentName(entity.getStudentName())
                 .studentPhone(entity.getStudentPhone())
+                .studentGradeLevel(entity.getStudentGradeLevel())
+                .studentGradeLevelDescription(entity.getStudentGradeLevel() != null ? 
+                        entity.getStudentGradeLevel().getDescription() : null)
                 .schoolName(entity.getSchoolName())
                 .guardian1Name(entity.getGuardian1Name())
                 .guardian1Phone(entity.getGuardian1Phone())

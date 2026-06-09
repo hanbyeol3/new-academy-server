@@ -76,10 +76,6 @@ public class ApplyApplication {
     @Column(name = "school_name", length = 150)
     private String schoolName;
 
-    /** 학교 학년/반 (독학재수의 경우 NULL) */
-    @Column(name = "school_grade", length = 50)
-    private String schoolGrade;
-
     /** 학년 레벨 (독학재수의 경우 NULL) */
     @Enumerated(EnumType.STRING)
     @Column(name = "student_grade_level")
@@ -214,7 +210,7 @@ public class ApplyApplication {
     @Builder
     private ApplyApplication(ApplicationStatus status, ApplicationDivision division, String studentName,
                            Gender gender, LocalDate birthDate, String studentPhone, String schoolName,
-                           String schoolGrade, StudentGradeLevel studentGradeLevel, String email,
+                           StudentGradeLevel studentGradeLevel, String email,
                            String postalCode, String address, String addressDetail, BigDecimal latitude,
                            BigDecimal longitude, String parentOpinion, String mapParentOpinion,
                            String desiredUniversity, String desiredDepartment, String guardian1Name,
@@ -228,7 +224,6 @@ public class ApplyApplication {
         this.birthDate = birthDate;
         this.studentPhone = studentPhone;
         this.schoolName = schoolName;
-        this.schoolGrade = schoolGrade;
         this.studentGradeLevel = studentGradeLevel;
         this.email = email;
         this.postalCode = postalCode;
@@ -255,7 +250,7 @@ public class ApplyApplication {
      * 원서접수 정보 업데이트.
      */
     public void update(String studentName, Gender gender, LocalDate birthDate, String studentPhone,
-                      String schoolName, String schoolGrade, StudentGradeLevel studentGradeLevel,
+                      String schoolName, StudentGradeLevel studentGradeLevel,
                       String email, String postalCode, String address, String addressDetail,
                       BigDecimal latitude, BigDecimal longitude, String parentOpinion,
                       String mapParentOpinion, String desiredUniversity, String desiredDepartment,
@@ -267,7 +262,6 @@ public class ApplyApplication {
         this.birthDate = birthDate;
         this.studentPhone = studentPhone;
         this.schoolName = schoolName;
-        this.schoolGrade = schoolGrade;
         this.studentGradeLevel = studentGradeLevel;
         this.email = email;
         this.postalCode = postalCode;

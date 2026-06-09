@@ -54,9 +54,6 @@ public class ResponseApplyApplicationDetail {
     @Schema(description = "학교명", example = "서울중학교")
     private String schoolName;
 
-    @Schema(description = "학교 학년/반", example = "3학년 2반")
-    private String schoolGrade;
-
     @Schema(description = "학년 레벨", example = "M3")
     private StudentGradeLevel studentGradeLevel;
 
@@ -168,7 +165,6 @@ public class ResponseApplyApplicationDetail {
                 .birthDate(entity.getBirthDate())
                 .studentPhone(entity.getStudentPhone())
                 .schoolName(entity.getSchoolName())
-                .schoolGrade(entity.getSchoolGrade())
                 .studentGradeLevel(entity.getStudentGradeLevel())
                 .studentGradeLevelDescription(entity.getStudentGradeLevel() != null ? 
                         entity.getStudentGradeLevel().getDescription() : null)
