@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
@@ -838,9 +839,13 @@ public class ApplyApplicationServiceImpl implements ApplyApplicationService {
         // 헤더 행 생성
         Row headerRow = sheet.createRow(0);
         String[] headers = {
-            "번호", "학생명", "성별", "학년", "휴대폰", "구분", "상태",
-            "보호자1", "보호자1 연락처", "보호자2", "보호자2 연락처", 
-            "주소", "담당자", "접수일시", "수정일시"
+            "번호", "학생명", "성별", "생년월일", "학년", "학생 휴대폰", "학교명", 
+            "구분", "상태", "신청과목",
+            "보호자1 이름", "보호자1 연락처", "보호자1 관계",
+            "보호자2 이름", "보호자2 연락처", "보호자2 관계",
+            "이메일", "주소", "상세주소", 
+            "희망대학", "희망학과", "보호자 의견",
+            "담당자", "접수일시", "수정일시"
         };
 
         for (int i = 0; i < headers.length; i++) {
@@ -854,24 +859,42 @@ public class ApplyApplicationServiceImpl implements ApplyApplicationService {
         for (ApplyApplication app : applications) {
             Row dataRow = sheet.createRow(rowNum++);
 
+            // 신청과목 정보 조회
+            List<ApplyApplicationSubject> subjects = applyApplicationSubjectRepository.findByApplyId(app.getId());
+            String subjectNames = subjects.stream()
+                    .map(s -> s.getSubjectCode().getDescription())
+                    .collect(Collectors.joining(", "));
+
             // 데이터 설정
-            createCell(dataRow, 0, app.getId().toString(), cellStyle);
-            createCell(dataRow, 1, app.getStudentName(), cellStyle);
-            createCell(dataRow, 2, app.getGender() != null ? app.getGender().getDisplayName() : "", cellStyle);
-            createCell(dataRow, 3, app.getStudentGradeLevel() != null ? app.getStudentGradeLevel().getDisplayName() : "", cellStyle);
-            createCell(dataRow, 4, app.getStudentPhone(), cellStyle);
-            createCell(dataRow, 5, app.getDivision() != null ? app.getDivision().getDisplayName() : "", cellStyle);
-            createCell(dataRow, 6, app.getStatus() != null ? app.getStatus().getDisplayName() : "", cellStyle);
-            createCell(dataRow, 7, app.getGuardian1Name(), cellStyle);
-            createCell(dataRow, 8, app.getGuardian1Phone(), cellStyle);
-            createCell(dataRow, 9, app.getGuardian2Name(), cellStyle);
-            createCell(dataRow, 10, app.getGuardian2Phone(), cellStyle);
-            createCell(dataRow, 11, app.getAddress(), cellStyle);
-            createCell(dataRow, 12, app.getAssigneeName() != null ? app.getAssigneeName() : "미배정", cellStyle);
-            createCell(dataRow, 13, app.getCreatedAt() != null ? 
-                app.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "", cellStyle);
-            createCell(dataRow, 14, app.getUpdatedAt() != null ? 
-                app.getUpdatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "", cellStyle);
+            int col = 0;
+            createCell(dataRow, col++, app.getId().toString(), cellStyle);  // 번호
+            createCell(dataRow, col++, app.getStudentName(), cellStyle);  // 학생명
+            createCell(dataRow, col++, app.getGender() != null ? app.getGender().getDescription() : "", cellStyle);  // 성별
+            createCell(dataRow, col++, app.getBirthDate() != null ? 
+                app.getBirthDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : "", cellStyle);  // 생년월일
+            createCell(dataRow, col++, app.getStudentGradeLevel() != null ? app.getStudentGradeLevel().getDescription() : "", cellStyle);  // 학년
+            createCell(dataRow, col++, app.getStudentPhone(), cellStyle);  // 학생 휴대폰
+            createCell(dataRow, col++, app.getSchoolName(), cellStyle);  // 학교명
+            createCell(dataRow, col++, app.getDivision() != null ? app.getDivision().getDescription() : "", cellStyle);  // 구분
+            createCell(dataRow, col++, app.getStatus() != null ? app.getStatus().getDescription() : "", cellStyle);  // 상태
+            createCell(dataRow, col++, subjectNames, cellStyle);  // 신청과목
+            createCell(dataRow, col++, app.getGuardian1Name(), cellStyle);  // 보호자1 이름
+            createCell(dataRow, col++, app.getGuardian1Phone(), cellStyle);  // 보호자1 연락처
+            createCell(dataRow, col++, app.getGuardian1Relation(), cellStyle);  // 보호자1 관계
+            createCell(dataRow, col++, app.getGuardian2Name(), cellStyle);  // 보호자2 이름
+            createCell(dataRow, col++, app.getGuardian2Phone(), cellStyle);  // 보호자2 연락처
+            createCell(dataRow, col++, app.getGuardian2relation(), cellStyle);  // 보호자2 관계
+            createCell(dataRow, col++, app.getEmail(), cellStyle);  // 이메일
+            createCell(dataRow, col++, app.getAddress(), cellStyle);  // 주소
+            createCell(dataRow, col++, app.getAddressDetail(), cellStyle);  // 상세주소
+            createCell(dataRow, col++, app.getDesiredUniversity(), cellStyle);  // 희망대학
+            createCell(dataRow, col++, app.getDesiredDepartment(), cellStyle);  // 희망학과
+            createCell(dataRow, col++, app.getParentOpinion(), cellStyle);  // 보호자 의견
+            createCell(dataRow, col++, app.getAssigneeName() != null ? app.getAssigneeName() : "미배정", cellStyle);  // 담당자
+            createCell(dataRow, col++, app.getCreatedAt() != null ? 
+                app.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "", cellStyle);  // 접수일시
+            createCell(dataRow, col++, app.getUpdatedAt() != null ? 
+                app.getUpdatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "", cellStyle);  // 수정일시
         }
 
         // 열 너비 자동 조정
@@ -922,10 +945,14 @@ public class ApplyApplicationServiceImpl implements ApplyApplicationService {
                 .setMarginBottom(10));
             
             document.add(new Paragraph("학생명: " + application.getStudentName()).setFont(font));
-            document.add(new Paragraph("성별: " + (application.getGender() != null ? application.getGender().getDisplayName() : "")).setFont(font));
-            document.add(new Paragraph("학년: " + (application.getStudentGradeLevel() != null ? application.getStudentGradeLevel().getDisplayName() : "")).setFont(font));
+            document.add(new Paragraph("성별: " + (application.getGender() != null ? application.getGender().getDescription() : "")).setFont(font));
+            document.add(new Paragraph("생년월일: " + (application.getBirthDate() != null ? application.getBirthDate().toString() : "")).setFont(font));
+            document.add(new Paragraph("학년: " + (application.getStudentGradeLevel() != null ? application.getStudentGradeLevel().getDescription() : "")).setFont(font));
+            document.add(new Paragraph("학교명: " + (application.getSchoolName() != null ? application.getSchoolName() : "")).setFont(font));
             document.add(new Paragraph("휴대폰: " + application.getStudentPhone()).setFont(font));
+            document.add(new Paragraph("이메일: " + (application.getEmail() != null ? application.getEmail() : "")).setFont(font));
             document.add(new Paragraph("주소: " + (application.getAddress() != null ? application.getAddress() : "")).setFont(font));
+            document.add(new Paragraph("상세주소: " + (application.getAddressDetail() != null ? application.getAddressDetail() : "")).setFont(font));
             
             // 보호자 정보
             document.add(new Paragraph("보호자 정보")
@@ -935,9 +962,14 @@ public class ApplyApplicationServiceImpl implements ApplyApplicationService {
                 .setMarginTop(15)
                 .setMarginBottom(10));
             
-            document.add(new Paragraph("보호자1: " + application.getGuardian1Name() + " (" + application.getGuardian1Phone() + ")").setFont(font));
+            document.add(new Paragraph("보호자1 이름: " + application.getGuardian1Name()).setFont(font));
+            document.add(new Paragraph("보호자1 연락처: " + application.getGuardian1Phone()).setFont(font));
+            document.add(new Paragraph("보호자1 관계: " + (application.getGuardian1Relation() != null ? application.getGuardian1Relation() : "")).setFont(font));
+            
             if (application.getGuardian2Name() != null && !application.getGuardian2Name().trim().isEmpty()) {
-                document.add(new Paragraph("보호자2: " + application.getGuardian2Name() + " (" + application.getGuardian2Phone() + ")").setFont(font));
+                document.add(new Paragraph("보호자2 이름: " + application.getGuardian2Name()).setFont(font));
+                document.add(new Paragraph("보호자2 연락처: " + (application.getGuardian2Phone() != null ? application.getGuardian2Phone() : "")).setFont(font));
+                document.add(new Paragraph("보호자2 관계: " + (application.getGuardian2relation() != null ? application.getGuardian2relation() : "")).setFont(font));
             }
             
             // 신청 정보
@@ -948,25 +980,23 @@ public class ApplyApplicationServiceImpl implements ApplyApplicationService {
                 .setMarginTop(15)
                 .setMarginBottom(10));
             
-            document.add(new Paragraph("구분: " + (application.getDivision() != null ? application.getDivision().getDisplayName() : "")).setFont(font));
-            document.add(new Paragraph("상태: " + (application.getStatus() != null ? application.getStatus().getDisplayName() : "")).setFont(font));
+            document.add(new Paragraph("구분: " + (application.getDivision() != null ? application.getDivision().getDescription() : "")).setFont(font));
+            document.add(new Paragraph("상태: " + (application.getStatus() != null ? application.getStatus().getDescription() : "")).setFont(font));
             
             if (!subjects.isEmpty()) {
                 String subjectNames = subjects.stream()
-                        .map(s -> s.getSubjectCode().getDisplayName())
+                        .map(s -> s.getSubjectCode().getDescription())
                         .reduce((a, b) -> a + ", " + b)
                         .orElse("없음");
                 document.add(new Paragraph("신청과목: " + subjectNames).setFont(font));
             }
             
-            // 독학재수 희망대학/학과 정보
-            if (application.getDivision() == ApplicationDivision.SELF_STUDY_RETAKE) {
-                if (application.getDesiredUniversity() != null) {
-                    document.add(new Paragraph("희망대학: " + application.getDesiredUniversity()).setFont(font));
-                }
-                if (application.getDesiredDepartment() != null) {
-                    document.add(new Paragraph("희망학과: " + application.getDesiredDepartment()).setFont(font));
-                }
+            // 희망대학/학과 정보 (모든 구분에서 표시)
+            if (application.getDesiredUniversity() != null && !application.getDesiredUniversity().trim().isEmpty()) {
+                document.add(new Paragraph("희망대학: " + application.getDesiredUniversity()).setFont(font));
+            }
+            if (application.getDesiredDepartment() != null && !application.getDesiredDepartment().trim().isEmpty()) {
+                document.add(new Paragraph("희망학과: " + application.getDesiredDepartment()).setFont(font));
             }
             
             // 접수 정보
@@ -981,9 +1011,21 @@ public class ApplyApplicationServiceImpl implements ApplyApplicationService {
             document.add(new Paragraph("접수일시: " + 
                 (application.getCreatedAt() != null ? application.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : "")).setFont(font));
             
-            // 학부모 의견
+            // 보호자 의견
+            if (application.getParentOpinion() != null && !application.getParentOpinion().trim().isEmpty()) {
+                document.add(new Paragraph("보호자 의견")
+                    .setFont(font)
+                    .setFontSize(14)
+                    .setBold()
+                    .setMarginTop(15)
+                    .setMarginBottom(10));
+                
+                document.add(new Paragraph(application.getParentOpinion()).setFont(font));
+            }
+            
+            // 지도 상담 시 보호자 의견
             if (application.getMapParentOpinion() != null && !application.getMapParentOpinion().trim().isEmpty()) {
-                document.add(new Paragraph("학부모 의견")
+                document.add(new Paragraph("지도 상담 시 보호자 의견")
                     .setFont(font)
                     .setFontSize(14)
                     .setBold()

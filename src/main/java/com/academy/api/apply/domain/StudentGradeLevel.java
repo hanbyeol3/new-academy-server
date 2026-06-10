@@ -29,7 +29,7 @@ public enum StudentGradeLevel {
     H3("고3"),
     
     /** 재수생 */
-    RETAKE("재수생");
+    RETAKE("N수생");
     
     private final String description;
     

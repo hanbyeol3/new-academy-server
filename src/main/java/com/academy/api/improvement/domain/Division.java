@@ -14,7 +14,7 @@ public enum Division {
     
     MIDDLE("중등", "중학교"),
     HIGH("고등", "고등학교"),
-    RETAKE("재수", "재수생");
+    RETAKE("재수", "N수생");
     
     private final String title;
     private final String description;
