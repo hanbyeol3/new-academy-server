@@ -47,6 +47,7 @@ import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.kernel.font.PdfFont;
 import com.itextpdf.kernel.font.PdfFontFactory;
 import com.itextpdf.io.font.constants.StandardFonts;
+import com.itextpdf.io.font.PdfEncodings;
 
 /**
  * 원서접수 서비스 구현체.
@@ -925,8 +926,37 @@ public class ApplyApplicationServiceImpl implements ApplyApplicationService {
         PdfDocument pdfDoc = new PdfDocument(writer);
         Document document = new Document(pdfDoc);
         
-        // 기본 폰트 설정 (한글 지원)
-        PdfFont font = PdfFontFactory.createFont(StandardFonts.HELVETICA);
+        // 한글 폰트 설정 - 한글 지원을 위해 IDENTITY_H 인코딩 사용
+        PdfFont font;
+        try {
+            // 한글 지원을 위해 시스템 폰트 사용 시도
+            String[] fontPaths = {
+                "/System/Library/Fonts/AppleSDGothicNeo.ttc",  // macOS
+                "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",  // Linux
+                "C:/Windows/Fonts/malgun.ttf",  // Windows
+                "/System/Library/Fonts/Supplemental/AppleGothic.ttf"  // macOS alternative
+            };
+            
+            font = null;
+            for (String fontPath : fontPaths) {
+                try {
+                    font = PdfFontFactory.createFont(fontPath, PdfEncodings.IDENTITY_H, PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
+                    break;  // 폰트를 찾으면 중단
+                } catch (Exception ignored) {
+                    // 다음 폰트 시도
+                }
+            }
+            
+            // 모든 시스템 폰트 시도 실패 시 기본 폰트 사용
+            if (font == null) {
+                // 기본 폰트로 fallback - 한글이 깨질 수 있음
+                font = PdfFontFactory.createFont(StandardFonts.HELVETICA);
+                log.warn("한글 폰트를 찾을 수 없습니다. PDF에서 한글이 제대로 표시되지 않을 수 있습니다.");
+            }
+        } catch (Exception e) {
+            log.error("PDF 폰트 생성 실패", e);
+            throw new RuntimeException("PDF 폰트 생성 실패", e);
+        }
         
         try {
             // 제목

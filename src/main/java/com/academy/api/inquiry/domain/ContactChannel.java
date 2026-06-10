@@ -23,9 +23,6 @@ public enum ContactChannel {
     /** 인스타그램 DM */
     INSTAGRAM_DM,
     
-    /** 댓글 */
-    COMMENT,
-    
     /** 기타 */
     ETC
 }

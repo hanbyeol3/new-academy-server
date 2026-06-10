@@ -24,9 +24,6 @@ public enum InquiryChannel {
     /** 인스타그램 DM */
     INSTAGRAM_DM,
     
-    /** 댓글 문의 */
-    COMMENT,
-    
     /** 기타 */
     ETC
 }

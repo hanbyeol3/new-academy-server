@@ -27,7 +27,7 @@ public class ResponseInquiryLog {
     private String logType;
 
     @Schema(description = "상담 채널 (CONTACT 타입일 때)", example = "CALL",
-            allowableValues = {"CALL", "VISIT", "KAKAO", "NAVER_TALK", "INSTAGRAM_DM", "COMMENT", "ETC"})
+            allowableValues = {"CALL", "VISIT", "KAKAO", "NAVER_TALK", "INSTAGRAM_DM", "ETC"})
     private String contactChannel;
 
     @Schema(description = "이력 내용", example = "전화 상담 진행. 수학 기초반 등록 의향 확인.")

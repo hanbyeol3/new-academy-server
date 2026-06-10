@@ -267,12 +267,12 @@ public class InquiryMapper {
         if (channel == null) return "관리자 등록";
         
         switch (channel) {
+            case WEB_SIMPLE_FORM: return "웹 간편상담 접수";
             case CALL: return "전화 접수";
             case VISIT: return "방문 접수";
             case KAKAO: return "카카오톡 접수";
             case NAVER_TALK: return "네이버 톡톡 접수";
             case INSTAGRAM_DM: return "인스타그램 DM 접수";
-            case COMMENT: return "댓글 접수";
             case ETC: return "기타 경로 접수";
             default: return "관리자 등록";
         }
@@ -351,7 +351,7 @@ public class InquiryMapper {
      * @return ResponseInquiryStats DTO
      */
     public ResponseInquiryStats toStatsResponse(Long[] statusCounts) {
-        return ResponseInquiryStats.basic(
+        return ResponseInquiryStats.of(
             statusCounts[0], // NEW
             statusCounts[1], // IN_PROGRESS
             statusCounts[2], // DONE

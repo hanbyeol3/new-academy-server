@@ -30,7 +30,7 @@ public class RequestInquiryLogCreate {
     private String logType;
     
     @Schema(description = "상담 채널 (CONTACT 타입일 때 필수)", example = "CALL",
-            allowableValues = {"CALL", "VISIT", "KAKAO", "NAVER_TALK", "INSTAGRAM_DM", "COMMENT", "ETC"})
+            allowableValues = {"CALL", "VISIT", "KAKAO", "NAVER_TALK", "INSTAGRAM_DM", "ETC"})
     private String contactChannel;
 
     @NotBlank(message = "이력 내용을 입력해주세요")

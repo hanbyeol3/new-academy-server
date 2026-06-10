@@ -54,12 +54,12 @@ public class RequestInquiryCreate {
     private String adminMemo;
 
     @Schema(description = "문의접수 경로", example = "WEB_SIMPLE_FORM",
-            allowableValues = {"WEB_SIMPLE_FORM", "CALL", "VISIT", "KAKAO", "NAVER_TALK", "INSTAGRAM_DM", "COMMENT", "ETC"}, 
+            allowableValues = {"WEB_SIMPLE_FORM", "CALL", "VISIT", "KAKAO", "NAVER_TALK", "INSTAGRAM_DM", "ETC"}, 
             defaultValue = "WEB_SIMPLE_FORM")
     private String inquiryChannel;
 
     @Schema(description = "유입경로", example = "NAVER_SEARCH",
-            allowableValues = {"UNKNOWN", "NAVER_SEARCH", "NAVER_BLOG", "NAVER_CAFE", "MOM_CAFE", "INSTAGRAM", "YOUTUBE", "FRIEND_REFERRAL", "OFFLINE_AD", "ETC"},
+            allowableValues = {"UNKNOWN", "NAVER_SEARCH", "NAVER_BLOG", "NAVER_CAFE", "INSTAGRAM", "YOUTUBE", "FRIEND_REFERRAL", "OFFLINE_AD", "ETC"},
             defaultValue = "UNKNOWN")
     private String inflowSource;
 

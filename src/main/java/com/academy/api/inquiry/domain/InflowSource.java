@@ -18,9 +18,6 @@ public enum InflowSource {
     /** 네이버 카페 */
     NAVER_CAFE,
     
-    /** 맘카페 */
-    MOM_CAFE,
-    
     /** 인스타그램 */
     INSTAGRAM,
     

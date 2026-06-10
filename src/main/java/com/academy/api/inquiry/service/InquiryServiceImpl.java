@@ -507,7 +507,6 @@ public class InquiryServiceImpl implements InquiryService {
             case KAKAO -> "카카오톡";
             case NAVER_TALK -> "네이버 톡톡";
             case INSTAGRAM_DM -> "인스타그램 DM";
-            case COMMENT -> "댓글";
             case ETC -> "기타";
         };
     }
@@ -523,7 +522,6 @@ public class InquiryServiceImpl implements InquiryService {
             case NAVER_SEARCH -> "네이버 검색";
             case NAVER_BLOG -> "네이버 블로그";
             case NAVER_CAFE -> "네이버 카페";
-            case MOM_CAFE -> "맘카페";
             case INSTAGRAM -> "인스타그램";
             case YOUTUBE -> "유튜브";
             case FRIEND_REFERRAL -> "지인 추천";
