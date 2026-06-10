@@ -28,6 +28,11 @@ public interface InquiryRepository extends JpaRepository<Inquiry, Long>, Inquiry
     long countByStatus(InquiryStatus status);
 
     /**
+     * 특정 기간 내 상태별 개수 조회.
+     */
+    long countByStatusAndCreatedAtBetween(InquiryStatus status, LocalDateTime startDate, LocalDateTime endDate);
+
+    /**
      * 연락처로 상담신청 조회 (중복 신청 방지용).
      */
     Optional<Inquiry> findFirstByPhoneNumberOrderByCreatedAtDesc(String phoneNumber);
@@ -66,10 +71,10 @@ public interface InquiryRepository extends JpaRepository<Inquiry, Long>, Inquiry
     List<Object[]> findStatusStatistics();
 
     /**
-     * 접수 경로별 통계 조회.
+     * 문의접수 채널별 통계 조회.
      */
-    @Query("SELECT i.inquirySourceType, COUNT(i) FROM Inquiry i GROUP BY i.inquirySourceType")
-    List<Object[]> findSourceTypeStatistics();
+    @Query("SELECT i.inquiryChannel, COUNT(i) FROM Inquiry i GROUP BY i.inquiryChannel")
+    List<Object[]> findChannelStatistics();
 
     /**
      * 월별 접수 통계 조회 (최근 12개월).
@@ -120,9 +125,9 @@ public interface InquiryRepository extends JpaRepository<Inquiry, Long>, Inquiry
     Page<Inquiry> findByContentContaining(@Param("keyword") String keyword, Pageable pageable);
 
     /**
-     * 특정 접수 경로의 상담신청들.
+     * 특정 문의접수 채널의 상담신청들.
      */
-    Page<Inquiry> findByInquirySourceType(com.academy.api.inquiry.domain.InquirySourceType sourceType, Pageable pageable);
+    Page<Inquiry> findByInquiryChannel(com.academy.api.inquiry.domain.InquiryChannel inquiryChannel, Pageable pageable);
 
     /**
      * 담당자 이름으로 검색.

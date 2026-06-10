@@ -1,7 +1,8 @@
 package com.academy.api.inquiry.dto;
 
+import com.academy.api.inquiry.domain.ContactChannel;
+import com.academy.api.inquiry.domain.InquiryLogType;
 import com.academy.api.inquiry.domain.InquiryStatus;
-import com.academy.api.inquiry.domain.LogType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -23,10 +24,14 @@ import lombok.Setter;
 public class RequestInquiryLogCreate {
 
     @NotNull(message = "이력 유형을 선택해주세요")
-    @Schema(description = "이력 유형", example = "CALL",
-            allowableValues = {"CREATE", "CALL", "VISIT", "MEMO"},
+    @Schema(description = "이력 유형", example = "CONTACT",
+            allowableValues = {"CREATE", "CONTACT", "STATUS_CHANGE", "ASSIGNEE_CHANGE", "MEMO"},
             requiredMode = Schema.RequiredMode.REQUIRED)
     private String logType;
+    
+    @Schema(description = "상담 채널 (CONTACT 타입일 때 필수)", example = "CALL",
+            allowableValues = {"CALL", "VISIT", "KAKAO", "NAVER_TALK", "INSTAGRAM_DM", "COMMENT", "ETC"})
+    private String contactChannel;
 
     @NotBlank(message = "이력 내용을 입력해주세요")
     @Size(max = 1000, message = "이력 내용은 1000자 이하여야 합니다")
@@ -44,14 +49,28 @@ public class RequestInquiryLogCreate {
     /**
      * 이력 유형을 Enum으로 안전하게 변환.
      */
-    public LogType getLogTypeEnum() {
+    public InquiryLogType getLogTypeEnum() {
         if (logType == null) {
-            return LogType.CALL;
+            return InquiryLogType.CONTACT;
         }
         try {
-            return LogType.valueOf(logType.toUpperCase());
+            return InquiryLogType.valueOf(logType.toUpperCase());
         } catch (IllegalArgumentException e) {
-            return LogType.CALL;
+            return InquiryLogType.CONTACT;
+        }
+    }
+    
+    /**
+     * 상담 채널을 Enum으로 안전하게 변환.
+     */
+    public ContactChannel getContactChannelEnum() {
+        if (contactChannel == null) {
+            return null;
+        }
+        try {
+            return ContactChannel.valueOf(contactChannel.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return null;
         }
     }
 
@@ -87,28 +106,47 @@ public class RequestInquiryLogCreate {
      * CREATE 타입 이력인지 확인.
      */
     public boolean isCreateLog() {
-        return LogType.CREATE == getLogTypeEnum();
+        return InquiryLogType.CREATE == getLogTypeEnum();
+    }
+    
+    /**
+     * CONTACT 타입 이력인지 확인.
+     */
+    public boolean isContactLog() {
+        return InquiryLogType.CONTACT == getLogTypeEnum();
     }
 
     /**
-     * 통화 상담 기록용 생성자.
+     * 상담 접촉 이력 생성자.
      */
-    public static RequestInquiryLogCreate forCall(String logContent, String nextStatus) {
+    public static RequestInquiryLogCreate forContact(String contactChannel, String logContent, String nextStatus) {
         RequestInquiryLogCreate request = new RequestInquiryLogCreate();
-        request.logType = "CALL";
+        request.logType = "CONTACT";
+        request.contactChannel = contactChannel;
         request.logContent = logContent;
         request.nextStatus = nextStatus;
         return request;
     }
-
+    
     /**
-     * 방문 상담 기록용 생성자.
+     * 상태 변경 이력 생성자.
      */
-    public static RequestInquiryLogCreate forVisit(String logContent, String nextStatus) {
+    public static RequestInquiryLogCreate forStatusChange(String logContent, String nextStatus) {
         RequestInquiryLogCreate request = new RequestInquiryLogCreate();
-        request.logType = "VISIT";
+        request.logType = "STATUS_CHANGE";
         request.logContent = logContent;
         request.nextStatus = nextStatus;
+        return request;
+    }
+    
+    /**
+     * 담당자 변경 이력 생성자.
+     */
+    public static RequestInquiryLogCreate forAssigneeChange(String logContent, Long nextAssignee) {
+        RequestInquiryLogCreate request = new RequestInquiryLogCreate();
+        request.logType = "ASSIGNEE_CHANGE";
+        request.logContent = logContent;
+        request.nextAssignee = nextAssignee;
         return request;
     }
 

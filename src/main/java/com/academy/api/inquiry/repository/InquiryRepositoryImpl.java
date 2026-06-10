@@ -34,15 +34,15 @@ public class InquiryRepositoryImpl implements InquiryRepositoryCustom {
 
     @Override
     public Page<Inquiry> searchInquiriesForAdmin(String keyword, InquirySearchType searchType, InquiryStatus status,
-                                                InquirySourceType sourceType, String assigneeName,
+                                                InquiryChannel inquiryChannel, String assigneeName,
                                                 LocalDateTime startDate, LocalDateTime endDate,
                                                 Boolean isExternal, String sortBy, Pageable pageable) {
         
-        log.debug("[InquiryRepositoryImpl] QueryDSL 상담신청 검색 시작. keyword={}, searchType={}, status={}, sourceType={}, assigneeName={}, isExternal={}", 
-                 keyword, searchType, status, sourceType, assigneeName, isExternal);
+        log.debug("[InquiryRepositoryImpl] QueryDSL 상담신청 검색 시작. keyword={}, searchType={}, status={}, inquiryChannel={}, assigneeName={}, isExternal={}", 
+                 keyword, searchType, status, inquiryChannel, assigneeName, isExternal);
 
         // 동적 검색 조건 생성
-        BooleanBuilder predicate = createSearchPredicate(keyword, searchType, status, sourceType, assigneeName, startDate, endDate, isExternal);
+        BooleanBuilder predicate = createSearchPredicate(keyword, searchType, status, inquiryChannel, assigneeName, startDate, endDate, isExternal);
 
         // 메인 쿼리
         JPAQuery<Inquiry> query = queryFactory
@@ -72,7 +72,7 @@ public class InquiryRepositoryImpl implements InquiryRepositoryCustom {
     }
 
     @Override
-    public Page<Inquiry> searchNewInquiries(String keyword, InquirySourceType sourceType, Pageable pageable) {
+    public Page<Inquiry> searchNewInquiries(String keyword, InquiryChannel inquiryChannel, Pageable pageable) {
         
         BooleanBuilder predicate = new BooleanBuilder();
         predicate.and(inquiry.status.eq(InquiryStatus.NEW));
@@ -85,8 +85,8 @@ public class InquiryRepositoryImpl implements InquiryRepositoryCustom {
             predicate.and(keywordCondition);
         }
 
-        if (sourceType != null) {
-            predicate.and(inquiry.inquirySourceType.eq(sourceType));
+        if (inquiryChannel != null) {
+            predicate.and(inquiry.inquiryChannel.eq(inquiryChannel));
         }
 
         JPAQuery<Inquiry> query = queryFactory
@@ -179,17 +179,29 @@ public class InquiryRepositoryImpl implements InquiryRepositoryCustom {
                 .toList();
         stats.put("statusStats", statusStats);
 
-        // 접수 경로별 통계
-        List<Object[]> sourceStats = queryFactory
-                .select(inquiry.inquirySourceType, inquiry.count())
+        // 문의접수 채널별 통계
+        List<Object[]> channelStats = queryFactory
+                .select(inquiry.inquiryChannel, inquiry.count())
                 .from(inquiry)
                 .where(inquiry.createdAt.between(startDate, endDate))
-                .groupBy(inquiry.inquirySourceType)
+                .groupBy(inquiry.inquiryChannel)
                 .fetch()
                 .stream()
-                .map(tuple -> new Object[]{tuple.get(inquiry.inquirySourceType), tuple.get(inquiry.count())})
+                .map(tuple -> new Object[]{tuple.get(inquiry.inquiryChannel), tuple.get(inquiry.count())})
                 .toList();
-        stats.put("sourceStats", sourceStats);
+        stats.put("channelStats", channelStats);
+
+        // 유입경로별 통계
+        List<Object[]> inflowStats = queryFactory
+                .select(inquiry.inflowSource, inquiry.count())
+                .from(inquiry)
+                .where(inquiry.createdAt.between(startDate, endDate))
+                .groupBy(inquiry.inflowSource)
+                .fetch()
+                .stream()
+                .map(tuple -> new Object[]{tuple.get(inquiry.inflowSource), tuple.get(inquiry.count())})
+                .toList();
+        stats.put("inflowStats", inflowStats);
 
         // 담당자별 통계
         List<Object[]> assigneeStats = queryFactory
@@ -252,7 +264,7 @@ public class InquiryRepositoryImpl implements InquiryRepositoryCustom {
      * 동적 검색 조건 생성.
      */
     private BooleanBuilder createSearchPredicate(String keyword, InquirySearchType searchType, InquiryStatus status,
-                                               InquirySourceType sourceType, String assigneeName,
+                                               InquiryChannel inquiryChannel, String assigneeName,
                                                LocalDateTime startDate, LocalDateTime endDate, Boolean isExternal) {
         
         BooleanBuilder predicate = new BooleanBuilder();
@@ -270,9 +282,9 @@ public class InquiryRepositoryImpl implements InquiryRepositoryCustom {
             predicate.and(inquiry.status.eq(status));
         }
 
-        // 접수 경로 필터
-        if (sourceType != null) {
-            predicate.and(inquiry.inquirySourceType.eq(sourceType));
+        // 문의접수 채널 필터
+        if (inquiryChannel != null) {
+            predicate.and(inquiry.inquiryChannel.eq(inquiryChannel));
         }
 
         // 담당자명 필터

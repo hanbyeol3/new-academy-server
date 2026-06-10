@@ -160,4 +160,13 @@ public interface InquiryService {
      * @return 담당자의 상담신청 목록
      */
     ResponseList<ResponseInquiryListItem> getInquiriesByAssignee(String assigneeName, String status, Pageable pageable);
+
+    /**
+     * 문의접수 채널별 통계 조회.
+     * 
+     * @param startDate 시작일 (선택)
+     * @param endDate 종료일 (선택)
+     * @return 채널별 통계 및 유입경로별 통계
+     */
+    ResponseData<ResponseInquiryChannelStats> getChannelStatistics(LocalDateTime startDate, LocalDateTime endDate);
 }

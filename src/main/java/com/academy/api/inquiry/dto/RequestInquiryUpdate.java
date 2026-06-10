@@ -1,7 +1,8 @@
 package com.academy.api.inquiry.dto;
 
 import com.academy.api.common.validation.PhoneNumber;
-import com.academy.api.inquiry.domain.InquirySourceType;
+import com.academy.api.inquiry.domain.InquiryChannel;
+import com.academy.api.inquiry.domain.InflowSource;
 import com.academy.api.inquiry.domain.InquiryStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Size;
@@ -45,13 +46,21 @@ public class RequestInquiryUpdate {
     @Schema(description = "관리자 메모", example = "수학 기초 과정 안내 완료")
     private String adminMemo;
 
-    @Schema(description = "상담 경로 유형", example = "CALL",
-            allowableValues = {"WEB", "CALL", "VISIT"})
-    private String inquirySourceType;
+    @Schema(description = "문의접수 경로", example = "CALL",
+            allowableValues = {"WEB_SIMPLE_FORM", "CALL", "VISIT", "KAKAO", "NAVER_TALK", "INSTAGRAM_DM", "COMMENT", "ETC"})
+    private String inquiryChannel;
+
+    @Schema(description = "유입경로", example = "NAVER_SEARCH",
+            allowableValues = {"UNKNOWN", "NAVER_SEARCH", "NAVER_BLOG", "NAVER_CAFE", "MOM_CAFE", "INSTAGRAM", "YOUTUBE", "FRIEND_REFERRAL", "OFFLINE_AD", "ETC"})
+    private String inflowSource;
+
+    @Size(max = 100, message = "유입경로 기타는 100자 이하여야 합니다")
+    @Schema(description = "유입경로 기타 직접입력값 (inflowSource가 ETC일 때)", example = "지역 커뮤니티")
+    private String inflowSourceEtc;
 
     @Size(max = 200, message = "접수 페이지 경로는 200자 이하여야 합니다")
     @Schema(description = "접수 페이지 경로", example = "/admissions")
-    private String sourceType;
+    private String landingPath;
 
     @Size(max = 60, message = "UTM 소스는 60자 이하여야 합니다")
     @Schema(description = "UTM 소스", example = "google")
@@ -80,14 +89,28 @@ public class RequestInquiryUpdate {
     }
 
     /**
-     * 접수 경로를 Enum으로 안전하게 변환.
+     * 문의접수 경로를 Enum으로 안전하게 변환.
      */
-    public InquirySourceType getInquirySourceTypeEnum() {
-        if (inquirySourceType == null) {
+    public InquiryChannel getInquiryChannelEnum() {
+        if (inquiryChannel == null) {
             return null;
         }
         try {
-            return InquirySourceType.valueOf(inquirySourceType.toUpperCase());
+            return InquiryChannel.valueOf(inquiryChannel.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    /**
+     * 유입경로를 Enum으로 안전하게 변환.
+     */
+    public InflowSource getInflowSourceEnum() {
+        if (inflowSource == null) {
+            return null;
+        }
+        try {
+            return InflowSource.valueOf(inflowSource.toUpperCase());
         } catch (IllegalArgumentException e) {
             return null;
         }
@@ -99,8 +122,8 @@ public class RequestInquiryUpdate {
     public boolean hasAnyUpdate() {
         return name != null || phoneNumber != null || content != null ||
                status != null || assigneeName != null || adminMemo != null ||
-               inquirySourceType != null || sourceType != null ||
-               utmSource != null || utmMedium != null || utmCampaign != null;
+               inquiryChannel != null || inflowSource != null || inflowSourceEtc != null ||
+               landingPath != null || utmSource != null || utmMedium != null || utmCampaign != null;
     }
 
     /**

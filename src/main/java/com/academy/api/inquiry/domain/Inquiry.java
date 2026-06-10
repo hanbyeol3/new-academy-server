@@ -28,8 +28,10 @@ import java.time.LocalDateTime;
 @Table(name = "inquiry", indexes = {
     @Index(name = "idx_inquiry_created", columnList = "created_at desc"),
     @Index(name = "idx_inquiry_phone_number", columnList = "phone_number"),
-    @Index(name = "idx_inquiry_source_type", columnList = "inquiry_source_type"),
-    @Index(name = "idx_inquiry_status_processed", columnList = "status, processed_at")
+    @Index(name = "idx_inquiry_status_processed", columnList = "status, processed_at"),
+    @Index(name = "idx_inquiry_channel", columnList = "inquiry_channel"),
+    @Index(name = "idx_inquiry_inflow_source", columnList = "inflow_source"),
+    @Index(name = "idx_inquiry_channel_created", columnList = "inquiry_channel, created_at desc")
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -71,14 +73,23 @@ public class Inquiry {
     @Column(name = "processed_at")
     private LocalDateTime processedAt;
 
-    /** 상담 경로 유형 */
+    /** 문의접수 경로 */
     @Enumerated(EnumType.STRING)
-    @Column(name = "inquiry_source_type", nullable = false)
-    private InquirySourceType inquirySourceType = InquirySourceType.WEB;
+    @Column(name = "inquiry_channel", nullable = false)
+    private InquiryChannel inquiryChannel = InquiryChannel.WEB_SIMPLE_FORM;
 
-    /** 접수 페이지 경로 (웹일 때 예: /admissions) */
-    @Column(name = "source_type", length = 200)
-    private String sourceType;
+    /** 유입경로 */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "inflow_source", nullable = false)
+    private InflowSource inflowSource = InflowSource.UNKNOWN;
+
+    /** 유입경로 기타 직접입력값 */
+    @Column(name = "inflow_source_etc", length = 100)
+    private String inflowSourceEtc;
+
+    /** 접수 페이지 경로 (웹사이트 간편상담일 때 예: /admissions, /consulting) */
+    @Column(name = "landing_path", length = 200)
+    private String landingPath;
 
     /** UTM 소스 */
     @Column(name = "utm_source", length = 60)
@@ -119,8 +130,9 @@ public class Inquiry {
      */
     @Builder
     private Inquiry(String name, String phoneNumber, String content, InquiryStatus status,
-                   String assigneeName, String adminMemo, InquirySourceType inquirySourceType,
-                   String sourceType, String utmSource, String utmMedium, String utmCampaign,
+                   String assigneeName, String adminMemo, InquiryChannel inquiryChannel,
+                   InflowSource inflowSource, String inflowSourceEtc, String landingPath,
+                   String utmSource, String utmMedium, String utmCampaign,
                    byte[] clientIp, Long createdBy) {
         this.name = name;
         this.phoneNumber = phoneNumber;
@@ -128,8 +140,10 @@ public class Inquiry {
         this.status = status != null ? status : InquiryStatus.NEW;
         this.assigneeName = assigneeName;
         this.adminMemo = adminMemo;
-        this.inquirySourceType = inquirySourceType != null ? inquirySourceType : InquirySourceType.WEB;
-        this.sourceType = sourceType;
+        this.inquiryChannel = inquiryChannel != null ? inquiryChannel : InquiryChannel.WEB_SIMPLE_FORM;
+        this.inflowSource = inflowSource != null ? inflowSource : InflowSource.UNKNOWN;
+        this.inflowSourceEtc = inflowSourceEtc;
+        this.landingPath = landingPath;
         this.utmSource = utmSource;
         this.utmMedium = utmMedium;
         this.utmCampaign = utmCampaign;
@@ -141,8 +155,9 @@ public class Inquiry {
      * 상담신청 정보 업데이트.
      */
     public void update(String name, String phoneNumber, String content, InquiryStatus status,
-                      String assigneeName, String adminMemo, InquirySourceType inquirySourceType,
-                      String sourceType, String utmSource, String utmMedium, String utmCampaign,
+                      String assigneeName, String adminMemo, InquiryChannel inquiryChannel,
+                      InflowSource inflowSource, String inflowSourceEtc, String landingPath,
+                      String utmSource, String utmMedium, String utmCampaign,
                       Long updatedBy) {
         this.name = name;
         this.phoneNumber = phoneNumber;
@@ -150,8 +165,10 @@ public class Inquiry {
         this.status = status != null ? status : this.status;
         this.assigneeName = assigneeName;
         this.adminMemo = adminMemo;
-        this.inquirySourceType = inquirySourceType != null ? inquirySourceType : this.inquirySourceType;
-        this.sourceType = sourceType;
+        this.inquiryChannel = inquiryChannel != null ? inquiryChannel : this.inquiryChannel;
+        this.inflowSource = inflowSource != null ? inflowSource : this.inflowSource;
+        this.inflowSourceEtc = inflowSourceEtc;
+        this.landingPath = landingPath;
         this.utmSource = utmSource;
         this.utmMedium = utmMedium;
         this.utmCampaign = utmCampaign;
@@ -171,6 +188,9 @@ public class Inquiry {
         // 완료 또는 거절 상태로 변경 시 처리 시각 기록
         if (status == InquiryStatus.DONE || status == InquiryStatus.REJECTED || status == InquiryStatus.SPAM) {
             this.processedAt = LocalDateTime.now();
+        } else {
+            // 진행중이나 신규 상태로 변경 시 처리 시각 초기화
+            this.processedAt = null;
         }
     }
 

@@ -1,7 +1,8 @@
 package com.academy.api.inquiry.dto;
 
 import com.academy.api.common.validation.PhoneNumber;
-import com.academy.api.inquiry.domain.InquirySourceType;
+import com.academy.api.inquiry.domain.InquiryChannel;
+import com.academy.api.inquiry.domain.InflowSource;
 import com.academy.api.inquiry.domain.InquiryStatus;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -52,13 +53,23 @@ public class RequestInquiryCreate {
     @Schema(description = "관리자 메모 (관리자만 설정 가능)", example = "수학 기초 과정 안내 예정")
     private String adminMemo;
 
-    @Schema(description = "상담 경로 유형", example = "WEB",
-            allowableValues = {"WEB", "CALL", "VISIT"}, defaultValue = "WEB")
-    private String inquirySourceType;
+    @Schema(description = "문의접수 경로", example = "WEB_SIMPLE_FORM",
+            allowableValues = {"WEB_SIMPLE_FORM", "CALL", "VISIT", "KAKAO", "NAVER_TALK", "INSTAGRAM_DM", "COMMENT", "ETC"}, 
+            defaultValue = "WEB_SIMPLE_FORM")
+    private String inquiryChannel;
+
+    @Schema(description = "유입경로", example = "NAVER_SEARCH",
+            allowableValues = {"UNKNOWN", "NAVER_SEARCH", "NAVER_BLOG", "NAVER_CAFE", "MOM_CAFE", "INSTAGRAM", "YOUTUBE", "FRIEND_REFERRAL", "OFFLINE_AD", "ETC"},
+            defaultValue = "UNKNOWN")
+    private String inflowSource;
+
+    @Size(max = 100, message = "유입경로 기타는 100자 이하여야 합니다")
+    @Schema(description = "유입경로 기타 직접입력값 (inflowSource가 ETC일 때)", example = "지역 커뮤니티")
+    private String inflowSourceEtc;
 
     @Size(max = 200, message = "접수 페이지 경로는 200자 이하여야 합니다")
-    @Schema(description = "접수 페이지 경로", example = "/admissions")
-    private String sourceType;
+    @Schema(description = "접수 페이지 경로 (웹사이트 간편상담일 때)", example = "/admissions")
+    private String landingPath;
 
     @Size(max = 60, message = "UTM 소스는 60자 이하여야 합니다")
     @Schema(description = "UTM 소스", example = "google")
@@ -90,16 +101,30 @@ public class RequestInquiryCreate {
     }
 
     /**
-     * 접수 경로를 Enum으로 안전하게 변환.
+     * 문의접수 경로를 Enum으로 안전하게 변환.
      */
-    public InquirySourceType getInquirySourceTypeEnum() {
-        if (inquirySourceType == null) {
-            return InquirySourceType.WEB;
+    public InquiryChannel getInquiryChannelEnum() {
+        if (inquiryChannel == null) {
+            return InquiryChannel.WEB_SIMPLE_FORM;
         }
         try {
-            return InquirySourceType.valueOf(inquirySourceType.toUpperCase());
+            return InquiryChannel.valueOf(inquiryChannel.toUpperCase());
         } catch (IllegalArgumentException e) {
-            return InquirySourceType.WEB;
+            return InquiryChannel.WEB_SIMPLE_FORM;
+        }
+    }
+
+    /**
+     * 유입경로를 Enum으로 안전하게 변환.
+     */
+    public InflowSource getInflowSourceEnum() {
+        if (inflowSource == null) {
+            return InflowSource.UNKNOWN;
+        }
+        try {
+            return InflowSource.valueOf(inflowSource.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return InflowSource.UNKNOWN;
         }
     }
 
@@ -111,7 +136,8 @@ public class RequestInquiryCreate {
         request.name = name;
         request.phoneNumber = phoneNumber;
         request.content = content;
-        request.inquirySourceType = "WEB";
+        request.inquiryChannel = "WEB_SIMPLE_FORM";
+        request.inflowSource = "UNKNOWN";
         return request;
     }
 
@@ -120,7 +146,7 @@ public class RequestInquiryCreate {
      */
     public static RequestInquiryCreate forAdmin(String name, String phoneNumber, String content,
                                                String status, String assigneeName, String adminMemo,
-                                               String inquirySourceType) {
+                                               String inquiryChannel, String inflowSource, String inflowSourceEtc) {
         RequestInquiryCreate request = new RequestInquiryCreate();
         request.name = name;
         request.phoneNumber = phoneNumber;
@@ -128,7 +154,9 @@ public class RequestInquiryCreate {
         request.status = status;
         request.assigneeName = assigneeName;
         request.adminMemo = adminMemo;
-        request.inquirySourceType = inquirySourceType;
+        request.inquiryChannel = inquiryChannel;
+        request.inflowSource = inflowSource;
+        request.inflowSourceEtc = inflowSourceEtc;
         return request;
     }
 }

@@ -1,8 +1,7 @@
 package com.academy.api.inquiry.mapper;
 
 import com.academy.api.data.responses.common.ResponseList;
-import com.academy.api.inquiry.domain.Inquiry;
-import com.academy.api.inquiry.domain.InquiryLog;
+import com.academy.api.inquiry.domain.*;
 import com.academy.api.inquiry.dto.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,8 +37,10 @@ public class InquiryMapper {
                 .status(request.getStatusEnum())
                 .assigneeName(request.getAssigneeName())
                 .adminMemo(request.getAdminMemo())
-                .inquirySourceType(request.getInquirySourceTypeEnum())
-                .sourceType(request.getSourceType())
+                .inquiryChannel(request.getInquiryChannelEnum())
+                .inflowSource(request.getInflowSourceEnum())
+                .inflowSourceEtc(request.getInflowSourceEtc())
+                .landingPath(request.getLandingPath())
                 .utmSource(request.getUtmSource())
                 .utmMedium(request.getUtmMedium())
                 .utmCampaign(request.getUtmCampaign())
@@ -63,8 +64,10 @@ public class InquiryMapper {
                 .status(request.getStatusEnum())
                 .assigneeName(request.getAssigneeName())
                 .adminMemo(request.getAdminMemo())
-                .inquirySourceType(request.getInquirySourceTypeEnum())
-                .sourceType(request.getSourceType())
+                .inquiryChannel(request.getInquiryChannelEnum())
+                .inflowSource(request.getInflowSourceEnum())
+                .inflowSourceEtc(request.getInflowSourceEtc())
+                .landingPath(request.getLandingPath())
                 .utmSource(request.getUtmSource())
                 .utmMedium(request.getUtmMedium())
                 .utmCampaign(request.getUtmCampaign())
@@ -152,6 +155,7 @@ public class InquiryMapper {
         return InquiryLog.builder()
                 .inquiry(inquiry)
                 .logType(request.getLogTypeEnum())
+                .contactChannel(request.getContactChannelEnum())
                 .logContent(request.getLogContent())
                 .nextStatus(request.getNextStatusEnum())
                 .nextAssignee(request.getNextAssignee())
@@ -198,9 +202,22 @@ public class InquiryMapper {
      * @return InquiryLog Entity
      */
     public InquiryLog createSystemCreateLog(Inquiry inquiry) {
+        // 웹 간편상담은 contactChannel 없이, 다른 채널은 contactChannel 설정
+        ContactChannel contactChannel = null;
+        if (inquiry.getInquiryChannel() != null && 
+            inquiry.getInquiryChannel() != InquiryChannel.WEB_SIMPLE_FORM) {
+            // inquiry_channel이 CALL, VISIT, KAKAO 등인 경우 동일한 contact_channel 설정
+            try {
+                contactChannel = ContactChannel.valueOf(inquiry.getInquiryChannel().name());
+            } catch (IllegalArgumentException e) {
+                // 매칭되지 않는 경우 null 유지
+            }
+        }
+        
         return InquiryLog.builder()
                 .inquiry(inquiry)
-                .logType(com.academy.api.inquiry.domain.LogType.CREATE)
+                .logType(InquiryLogType.CREATE)
+                .contactChannel(contactChannel)
                 .logContent("외부 등록")
                 .createdBy(null) // 시스템 생성
                 .build();
@@ -215,13 +232,50 @@ public class InquiryMapper {
      * @return InquiryLog Entity
      */
     public InquiryLog createAdminCreateLog(Inquiry inquiry, String adminName, Long adminId) {
-        String logContent = adminName + " 생성 : 관리자 등록";
+        // inquiry_channel에 따라 logContent와 contactChannel 설정
+        String logContent;
+        ContactChannel contactChannel = null;
+        
+        if (inquiry.getInquiryChannel() == InquiryChannel.WEB_SIMPLE_FORM) {
+            // 웹 간편상담으로 관리자가 직접 등록한 경우
+            logContent = adminName + " 생성 : 관리자 등록";
+        } else {
+            // 전화, 방문, 카카오톡 등으로 직접 접수한 경우
+            logContent = adminName + " 생성 : " + getChannelDescription(inquiry.getInquiryChannel());
+            
+            // contact_channel 설정 (CALL, VISIT, KAKAO 등)
+            try {
+                contactChannel = ContactChannel.valueOf(inquiry.getInquiryChannel().name());
+            } catch (IllegalArgumentException e) {
+                // 매칭되지 않는 경우 null 유지
+            }
+        }
+        
         return InquiryLog.builder()
                 .inquiry(inquiry)
-                .logType(com.academy.api.inquiry.domain.LogType.CREATE)
+                .logType(InquiryLogType.CREATE)
+                .contactChannel(contactChannel)
                 .logContent(logContent)
                 .createdBy(adminId)
                 .build();
+    }
+    
+    /**
+     * InquiryChannel에 대한 한글 설명 반환.
+     */
+    private String getChannelDescription(InquiryChannel channel) {
+        if (channel == null) return "관리자 등록";
+        
+        switch (channel) {
+            case CALL: return "전화 접수";
+            case VISIT: return "방문 접수";
+            case KAKAO: return "카카오톡 접수";
+            case NAVER_TALK: return "네이버 톡톡 접수";
+            case INSTAGRAM_DM: return "인스타그램 DM 접수";
+            case COMMENT: return "댓글 접수";
+            case ETC: return "기타 경로 접수";
+            default: return "관리자 등록";
+        }
     }
 
     /**
@@ -279,8 +333,10 @@ public class InquiryMapper {
             request.getStatusEnum() != null ? request.getStatusEnum() : entity.getStatus(),
             request.getAssigneeName() != null ? request.getAssigneeName() : entity.getAssigneeName(),
             request.getAdminMemo() != null ? request.getAdminMemo() : entity.getAdminMemo(),
-            request.getInquirySourceTypeEnum() != null ? request.getInquirySourceTypeEnum() : entity.getInquirySourceType(),
-            request.getSourceType() != null ? request.getSourceType() : entity.getSourceType(),
+            request.getInquiryChannelEnum() != null ? request.getInquiryChannelEnum() : entity.getInquiryChannel(),
+            request.getInflowSourceEnum() != null ? request.getInflowSourceEnum() : entity.getInflowSource(),
+            request.getInflowSourceEtc() != null ? request.getInflowSourceEtc() : entity.getInflowSourceEtc(),
+            request.getLandingPath() != null ? request.getLandingPath() : entity.getLandingPath(),
             request.getUtmSource() != null ? request.getUtmSource() : entity.getUtmSource(),
             request.getUtmMedium() != null ? request.getUtmMedium() : entity.getUtmMedium(),
             request.getUtmCampaign() != null ? request.getUtmCampaign() : entity.getUtmCampaign(),

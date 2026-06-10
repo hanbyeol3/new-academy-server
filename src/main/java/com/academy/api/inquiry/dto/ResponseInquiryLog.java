@@ -22,8 +22,13 @@ public class ResponseInquiryLog {
     @Schema(description = "이력 ID", example = "1")
     private Long id;
 
-    @Schema(description = "이력 유형", example = "CALL")
+    @Schema(description = "이력 유형", example = "CONTACT",
+            allowableValues = {"CREATE", "CONTACT", "STATUS_CHANGE", "ASSIGNEE_CHANGE", "MEMO"})
     private String logType;
+
+    @Schema(description = "상담 채널 (CONTACT 타입일 때)", example = "CALL",
+            allowableValues = {"CALL", "VISIT", "KAKAO", "NAVER_TALK", "INSTAGRAM_DM", "COMMENT", "ETC"})
+    private String contactChannel;
 
     @Schema(description = "이력 내용", example = "전화 상담 진행. 수학 기초반 등록 의향 확인.")
     private String logContent;
@@ -61,6 +66,7 @@ public class ResponseInquiryLog {
         return ResponseInquiryLog.builder()
                 .id(entity.getId())
                 .logType(entity.getLogType().name())
+                .contactChannel(entity.getContactChannel() != null ? entity.getContactChannel().name() : null)
                 .logContent(entity.getLogContent())
                 .nextStatus(entity.getNextStatus() != null ? entity.getNextStatus().name() : null)
                 .nextAssignee(entity.getNextAssignee())
@@ -80,6 +86,7 @@ public class ResponseInquiryLog {
         return ResponseInquiryLog.builder()
                 .id(entity.getId())
                 .logType(entity.getLogType().name())
+                .contactChannel(entity.getContactChannel() != null ? entity.getContactChannel().name() : null)
                 .logContent(entity.getLogContent())
                 .nextStatus(entity.getNextStatus() != null ? entity.getNextStatus().name() : null)
                 .nextAssignee(entity.getNextAssignee())

@@ -44,11 +44,17 @@ public class ResponseInquiry {
     @Schema(description = "처리 완료 시각", example = "2024-01-15 14:30:00")
     private LocalDateTime processedAt;
 
-    @Schema(description = "접수 경로 유형", example = "WEB")
-    private String inquirySourceType;
+    @Schema(description = "문의접수 경로", example = "WEB_SIMPLE_FORM")
+    private String inquiryChannel;
 
-    @Schema(description = "접수 페이지 경로", example = "/admissions")
-    private String sourceType;
+    @Schema(description = "유입경로", example = "NAVER_SEARCH")
+    private String inflowSource;
+
+    @Schema(description = "유입경로 기타", example = "지역 커뮤니티")
+    private String inflowSourceEtc;
+
+    @Schema(description = "랜딩 페이지 경로", example = "/admissions")
+    private String landingPath;
 
     @Schema(description = "UTM 소스", example = "google")
     private String utmSource;
@@ -98,8 +104,10 @@ public class ResponseInquiry {
                 .assigneeName(entity.getAssigneeName())
                 .adminMemo(entity.getAdminMemo())
                 .processedAt(entity.getProcessedAt())
-                .inquirySourceType(entity.getInquirySourceType().name())
-                .sourceType(entity.getSourceType())
+                .inquiryChannel(entity.getInquiryChannel() != null ? entity.getInquiryChannel().name() : null)
+                .inflowSource(entity.getInflowSource() != null ? entity.getInflowSource().name() : null)
+                .inflowSourceEtc(entity.getInflowSourceEtc())
+                .landingPath(entity.getLandingPath())
                 .utmSource(entity.getUtmSource())
                 .utmMedium(entity.getUtmMedium())
                 .utmCampaign(entity.getUtmCampaign())
@@ -128,8 +136,10 @@ public class ResponseInquiry {
                 .assigneeName(entity.getAssigneeName())
                 .adminMemo(entity.getAdminMemo())
                 .processedAt(entity.getProcessedAt())
-                .inquirySourceType(entity.getInquirySourceType().name())
-                .sourceType(entity.getSourceType())
+                .inquiryChannel(entity.getInquiryChannel() != null ? entity.getInquiryChannel().name() : null)
+                .inflowSource(entity.getInflowSource() != null ? entity.getInflowSource().name() : null)
+                .inflowSourceEtc(entity.getInflowSourceEtc())
+                .landingPath(entity.getLandingPath())
                 .utmSource(entity.getUtmSource())
                 .utmMedium(entity.getUtmMedium())
                 .utmCampaign(entity.getUtmCampaign())

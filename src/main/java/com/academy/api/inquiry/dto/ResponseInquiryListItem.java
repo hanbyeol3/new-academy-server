@@ -41,8 +41,14 @@ public class ResponseInquiryListItem {
     @Schema(description = "처리 완료 시각", example = "2024-01-15 14:30:00")
     private LocalDateTime processedAt;
 
-    @Schema(description = "접수 경로 유형", example = "WEB")
-    private String inquirySourceType;
+    @Schema(description = "문의접수 경로", example = "WEB_SIMPLE_FORM")
+    private String inquiryChannel;
+
+    @Schema(description = "유입경로", example = "NAVER_SEARCH")
+    private String inflowSource;
+
+    @Schema(description = "유입경로 기타", example = "지역 커뮤니티")
+    private String inflowSourceEtc;
 
     @Schema(description = "등록자 사용자 ID", example = "1")
     private Long createdBy;
@@ -76,7 +82,9 @@ public class ResponseInquiryListItem {
                 .status(entity.getStatus().name())
                 .assigneeName(entity.getAssigneeName())
                 .processedAt(entity.getProcessedAt())
-                .inquirySourceType(entity.getInquirySourceType().name())
+                .inquiryChannel(entity.getInquiryChannel() != null ? entity.getInquiryChannel().name() : null)
+                .inflowSource(entity.getInflowSource() != null ? entity.getInflowSource().name() : null)
+                .inflowSourceEtc(entity.getInflowSourceEtc())
                 .createdBy(entity.getCreatedBy())
                 .createdByName(null) // 서비스에서 별도 설정
                 .createdAt(entity.getCreatedAt())
@@ -98,7 +106,9 @@ public class ResponseInquiryListItem {
                 .status(entity.getStatus().name())
                 .assigneeName(entity.getAssigneeName())
                 .processedAt(entity.getProcessedAt())
-                .inquirySourceType(entity.getInquirySourceType().name())
+                .inquiryChannel(entity.getInquiryChannel() != null ? entity.getInquiryChannel().name() : null)
+                .inflowSource(entity.getInflowSource() != null ? entity.getInflowSource().name() : null)
+                .inflowSourceEtc(entity.getInflowSourceEtc())
                 .createdBy(entity.getCreatedBy())
                 .createdByName(createdByName)
                 .createdAt(entity.getCreatedAt())

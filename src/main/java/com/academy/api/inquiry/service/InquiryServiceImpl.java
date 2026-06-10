@@ -19,7 +19,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -60,11 +62,11 @@ public class InquiryServiceImpl implements InquiryService {
         // Enum 안전 변환
         InquirySearchType searchTypeEnum = safeParseSearchType(searchType);
         InquiryStatus statusEnum = safeParseStatus(status);
-        InquirySourceType sourceTypeEnum = safeParseSourceType(sourceType);
+        InquiryChannel channelEnum = safeParseInquiryChannel(sourceType);
 
         // Repository 호출 (QueryDSL 동적 쿼리)
         Page<Inquiry> inquiryPage = inquiryRepository.searchInquiriesForAdmin(
-            keyword, searchTypeEnum, statusEnum, sourceTypeEnum, assigneeName, startDate, endDate, isExternal, sortBy, pageable);
+            keyword, searchTypeEnum, statusEnum, channelEnum, assigneeName, startDate, endDate, isExternal, sortBy, pageable);
 
         log.debug("[InquiryService] 상담신청 목록 조회 완료. 총 {}건, 현재 페이지 {}개", 
                  inquiryPage.getTotalElements(), inquiryPage.getNumberOfElements());
@@ -78,8 +80,8 @@ public class InquiryServiceImpl implements InquiryService {
         
         log.info("[InquiryService] 신규 상담신청 조회 시작. keyword={}, sourceType={}", keyword, sourceType);
 
-        InquirySourceType sourceTypeEnum = safeParseSourceType(sourceType);
-        Page<Inquiry> inquiryPage = inquiryRepository.searchNewInquiries(keyword, sourceTypeEnum, pageable);
+        InquiryChannel channelEnum = safeParseInquiryChannel(sourceType);
+        Page<Inquiry> inquiryPage = inquiryRepository.searchNewInquiries(keyword, channelEnum, pageable);
 
         log.debug("[InquiryService] 신규 상담신청 조회 완료. {}건", inquiryPage.getTotalElements());
 
@@ -200,7 +202,7 @@ public class InquiryServiceImpl implements InquiryService {
             String logContent = createUpdateLogContent(request);
             InquiryLog updateLog = InquiryLog.builder()
                     .inquiry(inquiry)
-                    .logType(LogType.MEMO)
+                    .logType(InquiryLogType.STATUS_CHANGE)
                     .logContent(logContent)
                     .nextStatus(request.getStatusEnum())
                     .nextAssignee(null) // 담당자 변경은 별도 메서드에서
@@ -248,7 +250,7 @@ public class InquiryServiceImpl implements InquiryService {
         Long rejectedCount = inquiryRepository.countByStatus(InquiryStatus.REJECTED);
         Long spamCount = inquiryRepository.countByStatus(InquiryStatus.SPAM);
 
-        ResponseInquiryStats stats = ResponseInquiryStats.basic(
+        ResponseInquiryStats stats = ResponseInquiryStats.of(
             newCount, inProgressCount, doneCount, rejectedCount, spamCount);
 
         log.debug("[InquiryService] 상담신청 통계 조회 완료. 전체={}", stats.getTotalCount());
@@ -259,17 +261,34 @@ public class InquiryServiceImpl implements InquiryService {
     @Override
     public ResponseData<ResponseInquiryStats> getDetailedStats(LocalDateTime startDate, LocalDateTime endDate) {
         
-        log.info("[InquiryService] 상세 통계 조회 시작. 기간={} ~ {}", startDate, endDate);
+        log.info("[InquiryService] 기간별 통계 조회 시작. 기간={} ~ {}", startDate, endDate);
 
-        // 복합 통계 조회
-        java.util.Map<String, Object> complexStats = inquiryRepository.getComplexStatistics(startDate, endDate);
+        // 기간 설정 (null이면 전체 기간)
+        if (startDate == null) {
+            startDate = LocalDateTime.of(2000, 1, 1, 0, 0);
+        }
+        if (endDate == null) {
+            endDate = LocalDateTime.now();
+        }
 
-        // 기본 통계로 변환 (실제로는 더 상세한 변환 로직 필요)
-        ResponseInquiryStats stats = ResponseInquiryStats.basic(0L, 0L, 0L, 0L, 0L);
+        // 기간별 상태별 건수 조회
+        Long newCount = inquiryRepository.countByStatusAndCreatedAtBetween(
+                InquiryStatus.NEW, startDate, endDate);
+        Long inProgressCount = inquiryRepository.countByStatusAndCreatedAtBetween(
+                InquiryStatus.IN_PROGRESS, startDate, endDate);
+        Long doneCount = inquiryRepository.countByStatusAndCreatedAtBetween(
+                InquiryStatus.DONE, startDate, endDate);
+        Long rejectedCount = inquiryRepository.countByStatusAndCreatedAtBetween(
+                InquiryStatus.REJECTED, startDate, endDate);
+        Long spamCount = inquiryRepository.countByStatusAndCreatedAtBetween(
+                InquiryStatus.SPAM, startDate, endDate);
 
-        log.debug("[InquiryService] 상세 통계 조회 완료");
+        ResponseInquiryStats stats = ResponseInquiryStats.of(
+                newCount, inProgressCount, doneCount, rejectedCount, spamCount);
 
-        return ResponseData.ok("0000", "상세 통계 조회 성공", stats);
+        log.debug("[InquiryService] 기간별 통계 조회 완료. 전체={}", stats.getTotalCount());
+
+        return ResponseData.ok("0000", "기간별 통계 조회 성공", stats);
     }
 
     @Override
@@ -411,6 +430,108 @@ public class InquiryServiceImpl implements InquiryService {
         return toListItemResponseListWithNames(inquiryPage);
     }
 
+    @Override
+    public ResponseData<ResponseInquiryChannelStats> getChannelStatistics(LocalDateTime startDate, LocalDateTime endDate) {
+        
+        log.info("[InquiryService] 문의접수 채널별 통계 조회 시작. 기간={} ~ {}", startDate, endDate);
+
+        // 기간 설정 (기본값: 최근 30일)
+        if (endDate == null) {
+            endDate = LocalDateTime.now();
+        }
+        if (startDate == null) {
+            startDate = endDate.minusDays(30);
+        }
+
+        // 전체 건수 조회
+        long totalCount = inquiryRepository.count();
+
+        // 채널별 통계 조회
+        List<Object[]> channelData = inquiryRepository.findChannelStatistics();
+        List<ResponseInquiryChannelStats.ChannelStat> channelStats = channelData.stream()
+                .map(data -> {
+                    InquiryChannel channel = (InquiryChannel) data[0];
+                    Long count = (Long) data[1];
+                    double percentage = totalCount > 0 ? (count * 100.0) / totalCount : 0;
+                    
+                    return ResponseInquiryChannelStats.ChannelStat.builder()
+                            .channel(channel != null ? channel.name() : "UNKNOWN")
+                            .channelName(getChannelName(channel))
+                            .count(count)
+                            .percentage(Math.round(percentage * 10) / 10.0)
+                            .build();
+                })
+                .toList();
+
+        // 유입경로별 통계 조회 (QueryDSL 사용)
+        Map<String, Object> complexStats = inquiryRepository.getComplexStatistics(startDate, endDate);
+        
+        // 유입경로 통계 처리
+        List<ResponseInquiryChannelStats.InflowStat> inflowStats = new ArrayList<>();
+        if (complexStats.containsKey("inflowStats")) {
+            List<Object[]> inflowData = (List<Object[]>) complexStats.get("inflowStats");
+            inflowStats = inflowData.stream()
+                    .map(data -> {
+                        InflowSource source = (InflowSource) data[0];
+                        Long count = (Long) data[1];
+                        double percentage = totalCount > 0 ? (count * 100.0) / totalCount : 0;
+                        
+                        return ResponseInquiryChannelStats.InflowStat.builder()
+                                .inflowSource(source != null ? source.name() : "UNKNOWN")
+                                .inflowSourceName(getInflowSourceName(source))
+                                .count(count)
+                                .percentage(Math.round(percentage * 10) / 10.0)
+                                .build();
+                    })
+                    .toList();
+        }
+
+        ResponseInquiryChannelStats stats = ResponseInquiryChannelStats.of(totalCount, channelStats, inflowStats);
+
+        log.debug("[InquiryService] 문의접수 채널별 통계 조회 완료. 전체={}, 채널수={}, 유입경로수={}", 
+                 totalCount, channelStats.size(), inflowStats.size());
+
+        return ResponseData.ok("0000", "통계 조회 성공", stats);
+    }
+
+    /**
+     * InquiryChannel 한글명 변환.
+     */
+    private String getChannelName(InquiryChannel channel) {
+        if (channel == null) return "알 수 없음";
+        
+        return switch (channel) {
+            case WEB_SIMPLE_FORM -> "웹 간편상담";
+            case CALL -> "전화";
+            case VISIT -> "방문";
+            case KAKAO -> "카카오톡";
+            case NAVER_TALK -> "네이버 톡톡";
+            case INSTAGRAM_DM -> "인스타그램 DM";
+            case COMMENT -> "댓글";
+            case ETC -> "기타";
+        };
+    }
+
+    /**
+     * InflowSource 한글명 변환.
+     */
+    private String getInflowSourceName(InflowSource source) {
+        if (source == null) return "알 수 없음";
+        
+        return switch (source) {
+            case UNKNOWN -> "알 수 없음";
+            case NAVER_SEARCH -> "네이버 검색";
+            case NAVER_BLOG -> "네이버 블로그";
+            case NAVER_CAFE -> "네이버 카페";
+            case MOM_CAFE -> "맘카페";
+            case INSTAGRAM -> "인스타그램";
+            case YOUTUBE -> "유튜브";
+            case FRIEND_REFERRAL -> "지인 추천";
+            case OFFLINE_AD -> "오프라인 광고";
+            case ETC -> "기타";
+        };
+    }
+
     /**
      * 회원 이름을 포함한 목록 응답 변환.
      */
@@ -470,16 +591,16 @@ public class InquiryServiceImpl implements InquiryService {
     }
 
     /**
-     * 접수 경로 안전 변환.
+     * 문의접수 채널 안전 변환.
      */
-    private InquirySourceType safeParseSourceType(String sourceType) {
-        if (sourceType == null) {
+    private InquiryChannel safeParseInquiryChannel(String channel) {
+        if (channel == null) {
             return null;
         }
         try {
-            return InquirySourceType.valueOf(sourceType.toUpperCase());
+            return InquiryChannel.valueOf(channel.toUpperCase());
         } catch (IllegalArgumentException e) {
-            log.warn("[InquiryService] 유효하지 않은 접수 경로: {}", sourceType);
+            log.warn("[InquiryService] 유효하지 않은 문의접수 채널: {}", channel);
             return null;
         }
     }

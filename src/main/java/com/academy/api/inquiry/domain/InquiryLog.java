@@ -25,7 +25,9 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "inquiry_log", indexes = {
-    @Index(name = "idx_inquiry_log_inquiry_created", columnList = "inquiry_id, created_at")
+    @Index(name = "idx_inquiry_log_inquiry_created", columnList = "inquiry_id, created_at"),
+    @Index(name = "idx_inquiry_log_type_created", columnList = "log_type, created_at desc"),
+    @Index(name = "idx_inquiry_log_contact_channel", columnList = "contact_channel")
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -46,7 +48,12 @@ public class InquiryLog {
     /** 이력 유형 */
     @Enumerated(EnumType.STRING)
     @Column(name = "log_type", nullable = false)
-    private LogType logType = LogType.CALL;
+    private InquiryLogType logType = InquiryLogType.CONTACT;
+
+    /** 상담 채널 (CONTACT 타입일 때 사용) */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "contact_channel")
+    private ContactChannel contactChannel;
 
     /** 이력 내용 (통화 요약/후속조치 등) */
     @Lob
@@ -84,10 +91,11 @@ public class InquiryLog {
      * 상담이력 생성자.
      */
     @Builder
-    private InquiryLog(Inquiry inquiry, LogType logType, String logContent, 
-                      InquiryStatus nextStatus, Long nextAssignee, Long createdBy) {
+    private InquiryLog(Inquiry inquiry, InquiryLogType logType, ContactChannel contactChannel,
+                      String logContent, InquiryStatus nextStatus, Long nextAssignee, Long createdBy) {
         this.inquiry = inquiry;
-        this.logType = logType != null ? logType : LogType.CALL;
+        this.logType = logType != null ? logType : InquiryLogType.CONTACT;
+        this.contactChannel = contactChannel;
         this.logContent = logContent;
         this.nextStatus = nextStatus;
         this.nextAssignee = nextAssignee;
@@ -122,28 +130,35 @@ public class InquiryLog {
      * 생성 이력인지 확인.
      */
     public boolean isCreateLog() {
-        return this.logType == LogType.CREATE;
+        return this.logType == InquiryLogType.CREATE;
     }
 
     /**
-     * 통화 이력인지 확인.
+     * 상담 접촉 이력인지 확인.
      */
-    public boolean isCallLog() {
-        return this.logType == LogType.CALL;
+    public boolean isContactLog() {
+        return this.logType == InquiryLogType.CONTACT;
     }
 
     /**
-     * 방문 이력인지 확인.
+     * 상태 변경 이력인지 확인.
      */
-    public boolean isVisitLog() {
-        return this.logType == LogType.VISIT;
+    public boolean isStatusChangeLog() {
+        return this.logType == InquiryLogType.STATUS_CHANGE;
+    }
+
+    /**
+     * 담당자 변경 이력인지 확인.
+     */
+    public boolean isAssigneeChangeLog() {
+        return this.logType == InquiryLogType.ASSIGNEE_CHANGE;
     }
 
     /**
      * 메모 이력인지 확인.
      */
     public boolean isMemoLog() {
-        return this.logType == LogType.MEMO;
+        return this.logType == InquiryLogType.MEMO;
     }
 
     /**

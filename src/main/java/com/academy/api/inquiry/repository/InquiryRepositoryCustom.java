@@ -2,7 +2,7 @@ package com.academy.api.inquiry.repository;
 
 import com.academy.api.inquiry.domain.Inquiry;
 import com.academy.api.inquiry.domain.InquiryStatus;
-import com.academy.api.inquiry.domain.InquirySourceType;
+import com.academy.api.inquiry.domain.InquiryChannel;
 import com.academy.api.inquiry.domain.InquirySearchType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,7 +23,7 @@ public interface InquiryRepositoryCustom {
      * @param keyword 검색 키워드
      * @param searchType 검색 타입 (ALL, NAME, PHONE, CONTENT)
      * @param status 상담 상태 필터
-     * @param sourceType 접수 경로 필터
+     * @param inquiryChannel 문의접수 채널 필터
      * @param assigneeName 담당자명 필터
      * @param startDate 접수일 시작 필터
      * @param endDate 접수일 종료 필터
@@ -33,7 +33,7 @@ public interface InquiryRepositoryCustom {
      * @return 검색 결과
      */
     Page<Inquiry> searchInquiriesForAdmin(String keyword, InquirySearchType searchType, InquiryStatus status, 
-                                         InquirySourceType sourceType, String assigneeName,
+                                         InquiryChannel inquiryChannel, String assigneeName,
                                          LocalDateTime startDate, LocalDateTime endDate,
                                          Boolean isExternal, String sortBy, Pageable pageable);
 
@@ -41,11 +41,11 @@ public interface InquiryRepositoryCustom {
      * 신규 상담신청만 조회 (NEW 상태).
      * 
      * @param keyword 검색 키워드
-     * @param sourceType 접수 경로 필터
+     * @param inquiryChannel 문의접수 채널 필터
      * @param pageable 페이징 정보
      * @return 신규 상담신청 목록
      */
-    Page<Inquiry> searchNewInquiries(String keyword, InquirySourceType sourceType, Pageable pageable);
+    Page<Inquiry> searchNewInquiries(String keyword, InquiryChannel inquiryChannel, Pageable pageable);
 
     /**
      * 담당자별 상담신청 조회.

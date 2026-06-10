@@ -337,6 +337,90 @@ public class InquiryAdminController {
     }
 
     /**
+     * 기간별 상담신청 상태 통계.
+     *
+     * @param startDate 시작일 (선택)
+     * @param endDate 종료일 (선택)
+     * @return 기간 내 상태별 통계
+     */
+    @Operation(
+        summary = "기간별 상담신청 상태 통계",
+        description = """
+                지정한 기간 내의 상담신청 상태별 통계를 조회합니다.
+                
+                반환 데이터:
+                - newCount: 신규 건수
+                - inProgressCount: 진행중 건수
+                - doneCount: 완료 건수
+                - rejectedCount: 거절 건수
+                - spamCount: 스팸 건수
+                - totalCount: 전체 건수
+                
+                기간 필터:
+                - startDate: 시작일 (미입력 시 전체)
+                - endDate: 종료일 (미입력 시 현재까지)
+                
+                활용 예시:
+                - 월별/분기별 상담 현황 분석
+                - 특정 캠페인 기간 성과 측정
+                - 처리율 및 완료율 추이 분석
+                """
+    )
+    @GetMapping("/stats/period")
+    public ResponseData<ResponseInquiryStats> getDetailedStats(
+            @Parameter(description = "시작일시", example = "2024-01-01T00:00:00")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            
+            @Parameter(description = "종료일시", example = "2024-12-31T23:59:59")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
+        
+        log.info("[InquiryAdminController] 기간별 상담신청 통계 조회. 기간={} ~ {}", startDate, endDate);
+        return inquiryService.getDetailedStats(startDate, endDate);
+    }
+
+    /**
+     * 문의접수 채널별 통계.
+     *
+     * @param startDate 시작일
+     * @param endDate 종료일
+     * @return 채널별 및 유입경로별 통계
+     */
+    @Operation(
+        summary = "문의접수 채널별 통계",
+        description = """
+                문의접수 채널별 통계와 유입경로별 통계를 조회합니다.
+                
+                반환 데이터:
+                - 전체 상담신청 건수
+                - 채널별 통계 (WEB_SIMPLE_FORM, CALL, VISIT 등)
+                  - 각 채널별 건수
+                  - 각 채널별 비율 (%)
+                - 유입경로별 통계 (NAVER_SEARCH, INSTAGRAM 등)
+                  - 각 유입경로별 건수
+                  - 각 유입경로별 비율 (%)
+                
+                기간 필터:
+                - startDate: 시작일 (선택, 기본값: 30일 전)
+                - endDate: 종료일 (선택, 기본값: 오늘)
+                
+                용도:
+                - 마케팅 채널 효과 분석
+                - 고객 접점 분석
+                - 유입경로별 ROI 측정
+                """
+    )
+    @GetMapping("/stats/channel")
+    public ResponseData<ResponseInquiryChannelStats> getChannelStatistics(
+            @Parameter(description = "시작일", example = "2024-01-01T00:00:00") 
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @Parameter(description = "종료일", example = "2024-01-31T23:59:59") 
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
+        
+        log.info("[InquiryAdminController] 문의접수 채널별 통계 조회 요청. 기간={} ~ {}", startDate, endDate);
+        return inquiryService.getChannelStatistics(startDate, endDate);
+    }
+
+    /**
      * 상담이력 추가.
      *
      * @param id 상담신청 ID
