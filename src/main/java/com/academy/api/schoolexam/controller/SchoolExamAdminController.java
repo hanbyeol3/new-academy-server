@@ -125,10 +125,12 @@ public class SchoolExamAdminController {
     )
     @GetMapping("/{id}")
     public ResponseData<ResponseSchoolExamDetail> getSchoolExamForAdmin(
-            @Parameter(description = "시험분석 ID", example = "1") @PathVariable Long id) {
+            @Parameter(description = "시험분석 ID", example = "1") @PathVariable Long id,
+            @Parameter(description = "학교급 필터 (네비게이션 필터링용)", example = "HIGH") 
+            @RequestParam(required = false) String schoolLevel) {
         
-        log.info("[SchoolExamAdminController] 시험분석 상세 조회 요청. ID={}", id);
-        return schoolExamService.getSchoolExamForAdmin(id);
+        log.info("[SchoolExamAdminController] 시험분석 상세 조회 요청. ID={}, schoolLevel={}", id, schoolLevel);
+        return schoolExamService.getSchoolExamForAdmin(id, schoolLevel);
     }
 
     /**

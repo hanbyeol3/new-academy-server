@@ -97,6 +97,19 @@ public class QnaQuestion {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    /** 삭제 여부 (논리 삭제) */
+    @Column(name = "is_deleted", nullable = false)
+    private Boolean isDeleted = false;
+
+    /** 삭제 일시 */
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    /** 삭제자 구분 (작성자/관리자) */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "deleted_by_type", length = 10)
+    private DeletedByType deletedByType;
+
     /** 연관된 답변 (1:1 관계, LAZY 로딩) */
     @OneToOne(mappedBy = "question", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private QnaAnswer answer;
@@ -182,5 +195,23 @@ public class QnaQuestion {
      */
     public boolean hasPrivacyConsent() {
         return Boolean.TRUE.equals(this.privacyConsent);
+    }
+
+    /**
+     * 논리 삭제 처리.
+     * 
+     * @param deletedByType 삭제자 구분 (AUTHOR 또는 ADMIN)
+     */
+    public void markAsDeleted(DeletedByType deletedByType) {
+        this.isDeleted = true;
+        this.deletedAt = LocalDateTime.now();
+        this.deletedByType = deletedByType;
+    }
+
+    /**
+     * 삭제 여부 확인.
+     */
+    public boolean isDeleted() {
+        return Boolean.TRUE.equals(this.isDeleted);
     }
 }

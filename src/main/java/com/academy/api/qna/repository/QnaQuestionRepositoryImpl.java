@@ -90,6 +90,9 @@ public class QnaQuestionRepositoryImpl implements QnaQuestionRepositoryCustom {
     private BooleanBuilder createPublicSearchPredicate(Boolean isAnswered, String searchType, String keyword) {
         BooleanBuilder predicate = new BooleanBuilder();
 
+        // 삭제되지 않은 질문만 조회 (공개용 필수 조건)
+        predicate.and(question.isDeleted.eq(false));
+
         // 답변 완료 여부 필터
         if (isAnswered != null) {
             predicate.and(question.isAnswered.eq(isAnswered));

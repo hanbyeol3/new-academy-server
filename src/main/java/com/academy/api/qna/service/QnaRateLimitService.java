@@ -47,8 +47,8 @@ public class QnaRateLimitService {
             return true;
         }
         
-        // 차단 시간이 지났는지 확인
-        if (info.isLockoutExpired()) {
+        // 차단 시간이 지났는지 확인 (차단된 경우에만)
+        if (info.getLockoutTime() != null && info.isLockoutExpired()) {
             log.info("[QnaRateLimit] 차단 시간 만료로 접근 허용. IP={}", ipAddress);
             attemptMap.remove(ipAddress);
             return true;
@@ -76,6 +76,7 @@ public class QnaRateLimitService {
         AttemptInfo info = attemptMap.computeIfAbsent(ipAddress, k -> new AttemptInfo());
         info.incrementAttempt();
         
+        System.out.println("[QnaRateLimit] 실패 시도 기록. IP=" + ipAddress + ", attempts=" + info.getAttemptCount() + "/" + MAX_ATTEMPTS);
         log.info("[QnaRateLimit] 실패 시도 기록. IP={}, attempts={}/{}", 
                 ipAddress, info.getAttemptCount(), MAX_ATTEMPTS);
         
@@ -114,7 +115,12 @@ public class QnaRateLimitService {
         }
         
         AttemptInfo info = attemptMap.get(ipAddress);
-        if (info == null || info.isLockoutExpired()) {
+        if (info == null) {
+            return MAX_ATTEMPTS;
+        }
+        
+        // 차단이 만료된 경우
+        if (info.getLockoutTime() != null && info.isLockoutExpired()) {
             return MAX_ATTEMPTS;
         }
         

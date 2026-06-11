@@ -148,6 +148,7 @@ public class QnaPublicController {
             HttpServletRequest httpRequest) {
 
         String clientIp = getClientIp(httpRequest);
+        System.out.println("[QnaPublicController] 비밀번호 검증 요청. id=" + id + ", clientIp=" + clientIp);
         log.info("비밀번호 검증 요청. id={}, clientIp={}", id, clientIp);
         return qnaService.verifyPassword(id, request, clientIp);
     }

@@ -66,9 +66,6 @@ public class ResponsePopupPublic {
     @Schema(description = "다시 보지 않기(일)", example = "7")
     private Integer dismissForDays;
 
-    @Schema(description = "정렬순서", example = "1000")
-    private Integer sortOrder;
-
     /**
      * Entity에서 DTO로 변환 (공개용).
      */
@@ -88,7 +85,6 @@ public class ResponsePopupPublic {
                 .pcLinkUrl(popup.getPcLinkUrl())
                 .mobileLinkUrl(popup.getMobileLinkUrl())
                 .dismissForDays(popup.getDismissForDays())
-                .sortOrder(popup.getSortOrder())
                 .build();
     }
 

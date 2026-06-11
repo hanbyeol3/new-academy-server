@@ -104,11 +104,13 @@ public class SchoolExamPublicController {
     )
     @GetMapping("/{id}")
     public ResponseData<ResponseSchoolExamDetail> getSchoolExam(
-            @Parameter(description = "시험분석 ID", example = "1") @PathVariable Long id) {
+            @Parameter(description = "시험분석 ID", example = "1") @PathVariable Long id,
+            @Parameter(description = "학교급 필터 (네비게이션 필터링용)", example = "HIGH") 
+            @RequestParam(required = false) String schoolLevel) {
         
-        log.info("[SchoolExamPublicController] 공개 시험분석 상세 조회 요청. ID={}", id);
+        log.info("[SchoolExamPublicController] 공개 시험분석 상세 조회 요청. ID={}, schoolLevel={}", id, schoolLevel);
         
         // 공개용은 조회수 자동 증가
-        return schoolExamService.getSchoolExamForPublic(id);
+        return schoolExamService.getSchoolExamForPublic(id, schoolLevel);
     }
 }

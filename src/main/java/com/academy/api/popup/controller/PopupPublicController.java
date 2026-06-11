@@ -43,8 +43,7 @@ public class PopupPublicController {
                   * PERIOD: 현재 시간이 exposureStartAt ~ exposureEndAt 범위 내
                 
                 정렬:
-                - 정렬순서 (sortOrder) 오름차순
-                - 동일 순서 시 생성일 내림차순
+                - 생성일 (createdAt) 내림차순 (최신 등록 순)
                 
                 반환 정보:
                 - 팝업 기본 정보 (ID, 제목, 타입)
@@ -63,7 +62,7 @@ public class PopupPublicController {
                 
                 프론트엔드 활용:
                 - 페이지 로드 시 자동 호출
-                - 정렬순서에 따른 레이어 순서 적용
+                - 최신 등록 팝업이 상위에 표시
                 - 다시 보지 않기 쿠키 처리
                 - PC/모바일 분기 처리
                 
@@ -89,8 +88,7 @@ public class PopupPublicController {
                         "positionLeftPx": 100,
                         "pcLinkUrl": "https://example.com/pc",
                         "mobileLinkUrl": "https://example.com/mobile",
-                        "dismissForDays": 7,
-                        "sortOrder": 1000
+                        "dismissForDays": 7
                       }
                     ],
                     "total": 1

@@ -114,4 +114,62 @@ public interface SchoolExamRepository extends JpaRepository<SchoolExam, Long>, S
         ORDER BY se.id ASC
         """)
     List<SchoolExam> findNextPublicSchoolExam(@Param("currentId") Long currentId, Pageable pageable);
+    
+    /**
+     * 이전글 조회 (관리자용, 학교급 필터).
+     */
+    @Query("""
+        SELECT se FROM SchoolExam se 
+        WHERE se.id < :currentId 
+        AND se.schoolLevel = :schoolLevel 
+        ORDER BY se.id DESC
+        """)
+    List<SchoolExam> findPreviousSchoolExamBySchoolLevel(
+            @Param("currentId") Long currentId, 
+            @Param("schoolLevel") SchoolLevel schoolLevel, 
+            Pageable pageable);
+    
+    /**
+     * 다음글 조회 (관리자용, 학교급 필터).
+     */
+    @Query("""
+        SELECT se FROM SchoolExam se 
+        WHERE se.id > :currentId 
+        AND se.schoolLevel = :schoolLevel 
+        ORDER BY se.id ASC
+        """)
+    List<SchoolExam> findNextSchoolExamBySchoolLevel(
+            @Param("currentId") Long currentId, 
+            @Param("schoolLevel") SchoolLevel schoolLevel, 
+            Pageable pageable);
+    
+    /**
+     * 이전글 조회 (공개용, 학교급 필터).
+     */
+    @Query("""
+        SELECT se FROM SchoolExam se 
+        WHERE se.id < :currentId 
+        AND se.isPublished = true 
+        AND se.schoolLevel = :schoolLevel 
+        ORDER BY se.id DESC
+        """)
+    List<SchoolExam> findPreviousPublicSchoolExamBySchoolLevel(
+            @Param("currentId") Long currentId, 
+            @Param("schoolLevel") SchoolLevel schoolLevel, 
+            Pageable pageable);
+    
+    /**
+     * 다음글 조회 (공개용, 학교급 필터).
+     */
+    @Query("""
+        SELECT se FROM SchoolExam se 
+        WHERE se.id > :currentId 
+        AND se.isPublished = true 
+        AND se.schoolLevel = :schoolLevel 
+        ORDER BY se.id ASC
+        """)
+    List<SchoolExam> findNextPublicSchoolExamBySchoolLevel(
+            @Param("currentId") Long currentId, 
+            @Param("schoolLevel") SchoolLevel schoolLevel, 
+            Pageable pageable);
 }

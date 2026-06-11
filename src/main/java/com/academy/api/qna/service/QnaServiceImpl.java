@@ -8,6 +8,7 @@ import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
 import com.academy.api.member.domain.Member;
 import com.academy.api.member.repository.MemberRepository;
+import com.academy.api.qna.domain.DeletedByType;
 import com.academy.api.qna.domain.QnaAnswer;
 import com.academy.api.qna.domain.QnaQuestion;
 import com.academy.api.qna.dto.*;
@@ -88,7 +89,7 @@ public class QnaServiceImpl implements QnaService {
                     return null;
                 });
 
-        if (question == null) {
+        if (question == null || question.isDeleted()) {
             return ResponseData.error("Q404", "질문을 찾을 수 없습니다.");
         }
 
@@ -146,6 +147,12 @@ public class QnaServiceImpl implements QnaService {
     @Override
     public ResponseData<ResponseQnaPasswordVerify> verifyPassword(Long id, RequestQnaPasswordVerify request, String clientIp) {
         log.info("[QnaService] 비밀번호 검증 시작. id={}, clientIp={}", id, clientIp);
+        
+        // clientIp가 null이거나 "unknown"인 경우 기본값 처리
+        if (clientIp == null || "unknown".equalsIgnoreCase(clientIp)) {
+            clientIp = "127.0.0.1"; // 로컬 테스트용 기본 IP
+            log.warn("[QnaService] clientIp가 null 또는 unknown. 기본값 사용: {}", clientIp);
+        }
         
         // Rate Limiting 확인
         if (!rateLimitService.isAttemptAllowed(clientIp)) {
@@ -287,10 +294,11 @@ public class QnaServiceImpl implements QnaService {
         }
 
         try {
-            // 연관된 답변도 CASCADE로 자동 삭제됨
-            questionRepository.delete(question);
+            // 논리 삭제 처리 (작성자가 삭제)
+            question.markAsDeleted(DeletedByType.AUTHOR);
+            questionRepository.save(question);
             
-            log.info("[QnaService] 질문 삭제 완료. id={}", id);
+            log.info("[QnaService] 질문 논리 삭제 완료. id={}, deletedBy=AUTHOR", id);
             return Response.ok("0000", "질문이 삭제되었습니다.");
             
         } catch (Exception e) {
@@ -541,10 +549,11 @@ public class QnaServiceImpl implements QnaService {
         log.debug("[QnaService] 삭제 대상 질문 확인 완료. title={}, hasAnswer={}", 
                 question.getTitle(), question.getIsAnswered());
         
-        // 질문 삭제 (연관된 답변은 CASCADE DELETE로 자동 삭제)
-        questionRepository.delete(question);
+        // 논리 삭제 처리 (관리자가 삭제)
+        question.markAsDeleted(DeletedByType.ADMIN);
+        questionRepository.save(question);
         
-        log.info("[QnaService] 관리자 질문 삭제 완료. questionId={}", id);
+        log.info("[QnaService] 관리자 질문 논리 삭제 완료. questionId={}, deletedBy=ADMIN", id);
         return Response.ok("0000", "질문이 삭제되었습니다.");
     }
 

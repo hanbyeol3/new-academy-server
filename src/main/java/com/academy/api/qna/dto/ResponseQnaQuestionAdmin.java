@@ -64,6 +64,16 @@ public class ResponseQnaQuestionAdmin {
     @Schema(description = "이전글/다음글 네비게이션 정보")
     private ResponseQnaNavigation navigation;
 
+    @Schema(description = "삭제 여부", example = "false")
+    private Boolean isDeleted;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @Schema(description = "삭제 일시", example = "2024-01-01 15:00:00")
+    private LocalDateTime deletedAt;
+
+    @Schema(description = "삭제자 구분", example = "ADMIN", allowableValues = {"AUTHOR", "ADMIN"})
+    private String deletedByType;
+
     /**
      * Entity에서 DTO로 변환 (관리자용).
      */
@@ -84,6 +94,9 @@ public class ResponseQnaQuestionAdmin {
                 .viewCount(entity.getViewCount())
                 .answer(answer)
                 .navigation(navigation)
+                .isDeleted(entity.getIsDeleted())
+                .deletedAt(entity.getDeletedAt())
+                .deletedByType(entity.getDeletedByType() != null ? entity.getDeletedByType().name() : null)
                 .build();
     }
 }

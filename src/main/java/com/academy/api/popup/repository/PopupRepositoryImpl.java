@@ -82,7 +82,7 @@ public class PopupRepositoryImpl implements PopupRepositoryCustom {
                         )
                     )
                 )
-                .orderBy(popup.sortOrder.asc(), popup.createdAt.desc())
+                .orderBy(popup.createdAt.desc())
                 .fetch();
 
         log.debug("[PopupRepositoryImpl] 노출중인 팝업 조회 완료. 조회수={}", activePopups.size());

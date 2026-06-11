@@ -104,4 +104,61 @@ public interface QnaQuestionRepository extends JpaRepository<QnaQuestion, Long>,
      */
     @Query("SELECT COUNT(q) FROM QnaQuestion q WHERE q.isAnswered = false")
     Long countUnansweredQuestions();
+
+    // ========== 논리 삭제 관련 쿼리 메서드 ==========
+
+    /**
+     * 삭제되지 않은 질문 전체 조회 (공개용).
+     */
+    @Query("SELECT q FROM QnaQuestion q WHERE q.isDeleted = false ORDER BY q.createdAt DESC")
+    Page<QnaQuestion> findAllNotDeleted(Pageable pageable);
+
+    /**
+     * 삭제되지 않은 질문 중 답변 상태별 조회 (공개용).
+     */
+    @Query("SELECT q FROM QnaQuestion q WHERE q.isDeleted = false AND q.isAnswered = :isAnswered")
+    Page<QnaQuestion> findNotDeletedByIsAnswered(@Param("isAnswered") Boolean isAnswered, Pageable pageable);
+
+    /**
+     * 삭제되지 않은 질문 중 비밀글 여부별 조회 (공개용).
+     */
+    @Query("SELECT q FROM QnaQuestion q WHERE q.isDeleted = false AND q.secret = :secret")
+    Page<QnaQuestion> findNotDeletedBySecret(@Param("secret") Boolean secret, Pageable pageable);
+
+    /**
+     * 삭제되지 않은 질문 중 답변 상태와 비밀글 여부별 조회 (공개용).
+     */
+    @Query("SELECT q FROM QnaQuestion q WHERE q.isDeleted = false AND q.isAnswered = :isAnswered AND q.secret = :secret")
+    Page<QnaQuestion> findNotDeletedByIsAnsweredAndSecret(@Param("isAnswered") Boolean isAnswered, 
+                                                          @Param("secret") Boolean secret, Pageable pageable);
+
+    /**
+     * ID로 삭제되지 않은 질문 조회 (공개용).
+     */
+    @Query("SELECT q FROM QnaQuestion q WHERE q.id = :id AND q.isDeleted = false")
+    Optional<QnaQuestion> findByIdAndNotDeleted(@Param("id") Long id);
+
+    /**
+     * 삭제된 질문만 조회 (관리자용).
+     */
+    @Query("SELECT q FROM QnaQuestion q WHERE q.isDeleted = true ORDER BY q.deletedAt DESC")
+    Page<QnaQuestion> findAllDeleted(Pageable pageable);
+
+    /**
+     * 전체 질문 개수 조회 (삭제되지 않은 것만).
+     */
+    @Query("SELECT COUNT(q) FROM QnaQuestion q WHERE q.isDeleted = false")
+    Long countNotDeletedQuestions();
+
+    /**
+     * 답변 완료된 질문 개수 조회 (삭제되지 않은 것만).
+     */
+    @Query("SELECT COUNT(q) FROM QnaQuestion q WHERE q.isDeleted = false AND q.isAnswered = true")
+    Long countNotDeletedAnsweredQuestions();
+
+    /**
+     * 답변 대기 중인 질문 개수 조회 (삭제되지 않은 것만).
+     */
+    @Query("SELECT COUNT(q) FROM QnaQuestion q WHERE q.isDeleted = false AND q.isAnswered = false")
+    Long countNotDeletedUnansweredQuestions();
 }

@@ -141,6 +141,33 @@ public class SchoolExamServiceImpl implements SchoolExamService, CategoryUsageCh
     }
 
     /**
+     * [관리자] 시험분석 상세 조회 (학교급 필터 적용).
+     */
+    @Override
+    public ResponseData<ResponseSchoolExamDetail> getSchoolExamForAdmin(Long id, String schoolLevelParam) {
+        log.info("[SchoolExamService] 관리자용 시험분석 상세 조회 시작. ID={}, schoolLevel={}", id, schoolLevelParam);
+
+        SchoolExam schoolExam = findSchoolExamById(id);
+
+        // SchoolLevel enum 변환
+        SchoolLevel schoolLevel = null;
+        if (schoolLevelParam != null) {
+            schoolLevel = SchoolLevel.fromString(schoolLevelParam);
+            if (schoolLevel == null) {
+                log.warn("[SchoolExamService] 유효하지 않은 학교급: {}. 필터링 없이 진행", schoolLevelParam);
+            }
+        }
+
+        // 관리자용 네비게이션 (모든 시험분석 포함, 학교급 필터 적용)
+        ResponseSchoolExamDetail response = buildDetailResponseWithSchoolLevel(schoolExam, false, schoolLevel);
+        
+        log.debug("[SchoolExamService] 관리자용 상세 조회 완료. ID={}, 제목={}, schoolLevel={}", 
+                id, schoolExam.getTitle(), schoolLevel);
+
+        return ResponseData.ok(response);
+    }
+
+    /**
      * [공개] 시험분석 상세 조회 (조회수 증가).
      */
     @Override
@@ -164,6 +191,43 @@ public class SchoolExamServiceImpl implements SchoolExamService, CategoryUsageCh
         
         log.debug("[SchoolExamService] 공개용 상세 조회 완료. ID={}, 제목={}, 조회수={}", 
                 id, schoolExam.getTitle(), schoolExam.getViewCount());
+
+        return ResponseData.ok(response);
+    }
+
+    /**
+     * [공개] 시험분석 상세 조회 (조회수 증가, 학교급 필터 적용).
+     */
+    @Override
+    @Transactional
+    public ResponseData<ResponseSchoolExamDetail> getSchoolExamForPublic(Long id, String schoolLevelParam) {
+        log.info("[SchoolExamService] 공개용 시험분석 상세 조회 시작. ID={}, schoolLevel={}", id, schoolLevelParam);
+
+        SchoolExam schoolExam = findSchoolExamById(id);
+
+        // 공개 여부 확인
+        if (!schoolExam.getIsPublished()) {
+            log.warn("[SchoolExamService] 비공개 시험분석 접근 시도. ID={}", id);
+            throw new BusinessException(ErrorCode.SCHOOL_EXAM_NOT_FOUND);
+        }
+
+        // 조회수 증가
+        schoolExam.incrementViewCount();
+
+        // SchoolLevel enum 변환
+        SchoolLevel schoolLevel = null;
+        if (schoolLevelParam != null) {
+            schoolLevel = SchoolLevel.fromString(schoolLevelParam);
+            if (schoolLevel == null) {
+                log.warn("[SchoolExamService] 유효하지 않은 학교급: {}. 필터링 없이 진행", schoolLevelParam);
+            }
+        }
+
+        // 공개용 네비게이션 (공개된 것만, 학교급 필터 적용)
+        ResponseSchoolExamDetail response = buildDetailResponseWithSchoolLevel(schoolExam, true, schoolLevel);
+        
+        log.debug("[SchoolExamService] 공개용 상세 조회 완료. ID={}, 제목={}, 조회수={}, schoolLevel={}", 
+                id, schoolExam.getTitle(), schoolExam.getViewCount(), schoolLevel);
 
         return ResponseData.ok(response);
     }
@@ -499,6 +563,124 @@ public class SchoolExamServiceImpl implements SchoolExamService, CategoryUsageCh
     private ResponseSchoolExamNavigation buildPublicNavigation(Long currentId) {
         List<SchoolExam> previousList = schoolExamRepository.findPreviousPublicSchoolExam(currentId, PageRequest.of(0, 1));
         List<SchoolExam> nextList = schoolExamRepository.findNextPublicSchoolExam(currentId, PageRequest.of(0, 1));
+
+        if (previousList.isEmpty() && nextList.isEmpty()) {
+            return ResponseSchoolExamNavigation.empty();
+        }
+
+        if (!previousList.isEmpty() && nextList.isEmpty()) {
+            SchoolExam previous = previousList.get(0);
+            return ResponseSchoolExamNavigation.withPrevious(previous.getId(), previous.getTitle());
+        }
+
+        if (previousList.isEmpty() && !nextList.isEmpty()) {
+            SchoolExam next = nextList.get(0);
+            return ResponseSchoolExamNavigation.withNext(next.getId(), next.getTitle());
+        }
+
+        SchoolExam previous = previousList.get(0);
+        SchoolExam next = nextList.get(0);
+        return ResponseSchoolExamNavigation.withBoth(
+                previous.getId(), previous.getTitle(),
+                next.getId(), next.getTitle()
+        );
+    }
+
+    /**
+     * 상세 응답 DTO 생성 (학교급 필터 적용).
+     */
+    private ResponseSchoolExamDetail buildDetailResponseWithSchoolLevel(SchoolExam schoolExam, boolean isPublicApi, SchoolLevel schoolLevel) {
+        ResponseSchoolExamDetail response = schoolExamMapper.toDetailResponse(schoolExam);
+
+        // 파일 정보 조회 (첨부파일과 본문 이미지)
+        List<Object[]> attachmentData = uploadFileLinkRepository.findFileInfosByOwnerAndRole("school_exams", schoolExam.getId(), FileRole.ATTACHMENT);
+        List<Object[]> inlineImageData = uploadFileLinkRepository.findFileInfosByOwnerAndRole("school_exams", schoolExam.getId(), FileRole.INLINE);
+        
+        List<ResponseFileInfo> attachments = attachmentData.stream()
+                .map(this::mapToResponseFileInfo)
+                .collect(Collectors.toList());
+        
+        List<ResponseFileInfo> inlineImages = inlineImageData.stream()
+                .map(this::mapToResponseFileInfo)
+                .collect(Collectors.toList());
+
+        // 네비게이션 정보 조회 - 공개 API와 관리자 API 구분, 학교급 필터 적용
+        ResponseSchoolExamNavigation navigation = isPublicApi ? 
+                buildPublicNavigationWithSchoolLevel(schoolExam.getId(), schoolLevel) : 
+                buildNavigationWithSchoolLevel(schoolExam.getId(), schoolLevel);
+
+        return ResponseSchoolExamDetail.builder()
+                .id(response.getId())
+                .title(response.getTitle())
+                .content(response.getContent())
+                .schoolLevel(response.getSchoolLevel())
+                .isPublished(response.getIsPublished())
+                .categoryId(response.getCategoryId())
+                .categoryName(response.getCategoryName())
+                .viewCount(response.getViewCount())
+                .attachments(attachments)
+                .inlineImages(inlineImages)
+                .navigation(navigation)
+                .createdBy(response.getCreatedBy())
+                .createdByName(response.getCreatedByName())
+                .createdAt(response.getCreatedAt())
+                .updatedBy(response.getUpdatedBy())
+                .updatedByName(response.getUpdatedByName())
+                .updatedAt(response.getUpdatedAt())
+                .build();
+    }
+
+    /**
+     * 네비게이션 정보 생성 (관리자용, 학교급 필터 적용).
+     */
+    private ResponseSchoolExamNavigation buildNavigationWithSchoolLevel(Long currentId, SchoolLevel schoolLevel) {
+        List<SchoolExam> previousList;
+        List<SchoolExam> nextList;
+        
+        if (schoolLevel != null) {
+            previousList = schoolExamRepository.findPreviousSchoolExamBySchoolLevel(currentId, schoolLevel, PageRequest.of(0, 1));
+            nextList = schoolExamRepository.findNextSchoolExamBySchoolLevel(currentId, schoolLevel, PageRequest.of(0, 1));
+        } else {
+            previousList = schoolExamRepository.findPreviousSchoolExam(currentId, PageRequest.of(0, 1));
+            nextList = schoolExamRepository.findNextSchoolExam(currentId, PageRequest.of(0, 1));
+        }
+
+        if (previousList.isEmpty() && nextList.isEmpty()) {
+            return ResponseSchoolExamNavigation.empty();
+        }
+
+        if (!previousList.isEmpty() && nextList.isEmpty()) {
+            SchoolExam previous = previousList.get(0);
+            return ResponseSchoolExamNavigation.withPrevious(previous.getId(), previous.getTitle());
+        }
+
+        if (previousList.isEmpty() && !nextList.isEmpty()) {
+            SchoolExam next = nextList.get(0);
+            return ResponseSchoolExamNavigation.withNext(next.getId(), next.getTitle());
+        }
+
+        SchoolExam previous = previousList.get(0);
+        SchoolExam next = nextList.get(0);
+        return ResponseSchoolExamNavigation.withBoth(
+                previous.getId(), previous.getTitle(),
+                next.getId(), next.getTitle()
+        );
+    }
+
+    /**
+     * 네비게이션 정보 생성 (공개용, 학교급 필터 적용).
+     */
+    private ResponseSchoolExamNavigation buildPublicNavigationWithSchoolLevel(Long currentId, SchoolLevel schoolLevel) {
+        List<SchoolExam> previousList;
+        List<SchoolExam> nextList;
+        
+        if (schoolLevel != null) {
+            previousList = schoolExamRepository.findPreviousPublicSchoolExamBySchoolLevel(currentId, schoolLevel, PageRequest.of(0, 1));
+            nextList = schoolExamRepository.findNextPublicSchoolExamBySchoolLevel(currentId, schoolLevel, PageRequest.of(0, 1));
+        } else {
+            previousList = schoolExamRepository.findPreviousPublicSchoolExam(currentId, PageRequest.of(0, 1));
+            nextList = schoolExamRepository.findNextPublicSchoolExam(currentId, PageRequest.of(0, 1));
+        }
 
         if (previousList.isEmpty() && nextList.isEmpty()) {
             return ResponseSchoolExamNavigation.empty();

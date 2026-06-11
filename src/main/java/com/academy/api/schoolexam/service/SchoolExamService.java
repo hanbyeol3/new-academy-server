@@ -44,9 +44,19 @@ public interface SchoolExamService {
     ResponseData<ResponseSchoolExamDetail> getSchoolExamForAdmin(Long id);
 
     /**
+     * 관리자용 시험분석 상세 조회 (학교급 필터 적용).
+     */
+    ResponseData<ResponseSchoolExamDetail> getSchoolExamForAdmin(Long id, String schoolLevel);
+
+    /**
      * 공개용 시험분석 상세 조회 (조회수 증가).
      */
     ResponseData<ResponseSchoolExamDetail> getSchoolExamForPublic(Long id);
+
+    /**
+     * 공개용 시험분석 상세 조회 (조회수 증가, 학교급 필터 적용).
+     */
+    ResponseData<ResponseSchoolExamDetail> getSchoolExamForPublic(Long id, String schoolLevel);
 
     /**
      * 시험분석 생성.
