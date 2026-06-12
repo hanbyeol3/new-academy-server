@@ -4,6 +4,7 @@ import com.academy.api.category.service.CategoryUsageChecker;
 import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.teacher.dto.RequestMainTeacherOrder;
 import com.academy.api.teacher.dto.RequestTeacherCreate;
 import com.academy.api.teacher.dto.RequestTeacherUpdate;
 import com.academy.api.teacher.dto.ResponseTeacher;
@@ -103,5 +104,32 @@ public interface TeacherService extends CategoryUsageChecker {
      * @return 순서 변경 결과
      */
     Response updateCategoryTeacherOrder(Long categoryId, com.academy.api.category.dto.RequestTeacherOrderUpdate request);
+
+    /**
+     * 메인 강사 여부 변경.
+     * 메인 해제 시 mainSortOrder를 0으로 초기화합니다.
+     * 
+     * @param id 강사 ID
+     * @param isMain 메인 노출 여부
+     * @return 상태 변경 결과
+     */
+    Response updateMainStatus(Long id, Boolean isMain);
+
+    /**
+     * 메인 강사 순서 일괄 변경.
+     * is_main = 1인 강사만 순서 변경 가능합니다.
+     * 
+     * @param request 강사별 순서 정보
+     * @return 순서 변경 결과
+     */
+    Response updateMainTeacherOrder(RequestMainTeacherOrder request);
+
+    /**
+     * 메인 강사 목록 조회.
+     * 공개되고 메인 노출 설정된 강사 목록을 조회합니다.
+     * 
+     * @return 메인 강사 목록 (main_sort_order ASC, id DESC)
+     */
+    ResponseList<ResponseTeacherListItem> getMainTeacherList();
 
 }

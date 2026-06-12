@@ -3,6 +3,7 @@ package com.academy.api.teacher.controller;
 import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.teacher.dto.RequestMainTeacherOrder;
 import com.academy.api.teacher.dto.RequestTeacherCreate;
 import com.academy.api.teacher.dto.RequestTeacherUpdate;
 import com.academy.api.teacher.dto.ResponseTeacher;
@@ -306,6 +307,97 @@ public class TeacherAdminController {
         
         log.info("[TeacherAdminController] 강사 공개상태 변경 요청. id={}, isPublished={}", id, isPublished);
         return teacherService.updatePublishedStatus(id, isPublished);
+    }
+
+    /**
+     * 강사 메인 노출 여부 변경.
+     *
+     * @param id 강사 ID
+     * @param isMain 메인 노출 여부
+     * @return 상태 변경 결과
+     */
+    @Operation(
+        summary = "강사 메인 노출 여부 변경",
+        description = """
+                강사의 메인 노출 여부를 변경합니다.
+                
+                기능:
+                - 개별 강사의 메인 노출 상태만 변경
+                - 다른 정보는 그대로 유지
+                
+                상태 변경:
+                - true: 메인 노출 (메인 페이지에 표시)
+                - false: 메인 노출 해제 (메인 페이지에서 제외)
+                
+                특별 처리:
+                - isMain이 false로 설정될 때 mainSortOrder는 자동으로 0으로 초기화
+                
+                용도:
+                - 메인 페이지에 노출할 주요 강사 설정
+                - 특정 강사를 메인에서 제외
+                
+                권한:
+                - ADMIN 권한 필수
+                """
+    )
+    @PatchMapping("/{id}/main")
+    public Response updateMainStatus(
+            @Parameter(description = "강사 ID", example = "1") 
+            @PathVariable Long id,
+            @Parameter(description = "메인 노출 여부", example = "true") 
+            @RequestParam Boolean isMain) {
+        
+        log.info("[TeacherAdminController] 강사 메인 노출 상태 변경 요청. id={}, isMain={}", id, isMain);
+        return teacherService.updateMainStatus(id, isMain);
+    }
+
+    /**
+     * 메인 강사 순서 일괄 변경.
+     *
+     * @param request 강사별 순서 정보
+     * @return 순서 변경 결과
+     */
+    @Operation(
+        summary = "메인 강사 순서 일괄 변경",
+        description = """
+                메인 노출 강사들의 표시 순서를 일괄 변경합니다.
+                
+                기능:
+                - 여러 강사의 순서를 한 번에 변경
+                - 드래그 앤 드롭 UI 지원을 위한 배열 형식
+                
+                요청 형식:
+                ```json
+                {
+                  "orders": [
+                    {"teacherId": 1, "mainSortOrder": 1},
+                    {"teacherId": 3, "mainSortOrder": 2},
+                    {"teacherId": 5, "mainSortOrder": 3}
+                  ]
+                }
+                ```
+                
+                제약사항:
+                - isMain = true인 강사만 순서 변경 가능
+                - 목록에 없는 강사 ID 포함 시 에러 발생
+                - mainSortOrder는 1부터 시작하는 양수
+                
+                용도:
+                - 관리자 페이지에서 드래그 앤 드롭으로 순서 조정
+                - 메인 페이지 강사 표시 순서 관리
+                
+                권한:
+                - ADMIN 권한 필수
+                """
+    )
+    @PatchMapping("/main-order")
+    public Response updateMainTeacherOrder(
+            @Parameter(description = "강사 순서 변경 요청") 
+            @RequestBody @Valid RequestMainTeacherOrder request) {
+        
+        log.info("[TeacherAdminController] 메인 강사 순서 변경 요청. 강사 수={}", 
+                 request.getOrders() != null ? request.getOrders().size() : 0);
+        return teacherService.updateMainTeacherOrder(request);
     }
 
 }

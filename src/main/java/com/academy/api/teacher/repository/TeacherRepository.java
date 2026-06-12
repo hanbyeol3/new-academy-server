@@ -335,4 +335,37 @@ public interface TeacherRepository extends JpaRepository<Teacher, Long>, Teacher
         ORDER BY t.createdAt ASC
         """)
     List<Teacher> findAllPublishedWithSubjectsOrderByCreatedAt();
+
+    /**
+     * 메인 노출 강사 목록 조회.
+     * 공개되고 메인 노출 설정된 강사만 조회합니다.
+     * 
+     * @return 메인 강사 목록 (main_sort_order ASC, id DESC 정렬)
+     */
+    @Query("""
+        SELECT DISTINCT t 
+        FROM Teacher t 
+        LEFT JOIN FETCH t.subjects ts 
+        LEFT JOIN FETCH ts.category c
+        LEFT JOIN FETCH c.categoryGroup
+        WHERE t.isPublished = true 
+        AND t.isMain = true
+        ORDER BY t.mainSortOrder ASC, t.id DESC
+        """)
+    List<Teacher> findMainTeachers();
+
+    /**
+     * ID 목록으로 메인 강사 조회.
+     * 메인 강사 순서 변경 시 유효성 검증용.
+     * 
+     * @param ids 강사 ID 목록
+     * @return 메인 강사 목록
+     */
+    @Query("""
+        SELECT t 
+        FROM Teacher t 
+        WHERE t.id IN :ids 
+        AND t.isMain = true
+        """)
+    List<Teacher> findMainTeachersByIds(@Param("ids") List<Long> ids);
 }

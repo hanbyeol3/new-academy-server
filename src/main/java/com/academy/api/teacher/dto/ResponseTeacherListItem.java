@@ -43,6 +43,12 @@ public class ResponseTeacherListItem {
     @Schema(description = "공개 여부", example = "true")
     private Boolean isPublished;
 
+    @Schema(description = "메인 노출 여부", example = "false")
+    private Boolean isMain;
+
+    @Schema(description = "메인 노출 순서", example = "0")
+    private Integer mainSortOrder;
+
     @Schema(description = "담당 과목")
     private CategoryInfo category;
     

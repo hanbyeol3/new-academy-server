@@ -237,4 +237,69 @@ public class TeacherPublicController {
         
         return teacherService.getTeachersByCategory();
     }
+
+    /**
+     * 메인 강사 목록 조회.
+     * 
+     * @return 메인 노출 설정된 강사 목록
+     */
+    @Operation(
+        summary = "메인 강사 목록 조회",
+        description = """
+                메인 페이지에 노출할 강사 목록을 조회합니다.
+                
+                특징:
+                - 인증 없이 접근 가능
+                - 공개 상태(isPublished=true)이면서 메인 노출(isMain=true)인 강사만 조회
+                - 관리자가 설정한 순서대로 정렬
+                
+                정렬 기준:
+                - 1차: mainSortOrder 오름차순 (낮은 값이 먼저)
+                - 2차: id 내림차순 (같은 순서일 경우 최신 강사 우선)
+                
+                반환 정보:
+                - 강사 기본 정보 (ID, 이름, 경력, 한 줄 소개)
+                - 강사 이미지
+                - 담당 과목 상세 목록
+                - 메인 노출 여부 (isMain)
+                - 메인 노출 순서 (mainSortOrder)
+                
+                용도:
+                - 메인 페이지의 대표 강사 섹션
+                - 강사 하이라이트 영역
+                - 추천 강사 표시
+                
+                예시 응답:
+                {
+                  "success": true,
+                  "data": [
+                    {
+                      "id": 5,
+                      "teacherName": "김교수",
+                      "career": "서울대 수학과 박사",
+                      "introText": "수학의 즐거움을 알려드립니다",
+                      "isMain": true,
+                      "mainSortOrder": 1,
+                      "subjects": [...]
+                    },
+                    {
+                      "id": 3,
+                      "teacherName": "이선생",
+                      "career": "연세대 영문과 석사",
+                      "introText": "영어 실력 향상의 지름길",
+                      "isMain": true,
+                      "mainSortOrder": 2,
+                      "subjects": [...]
+                    }
+                  ]
+                }
+                """
+    )
+    @GetMapping("/main")
+    public ResponseList<ResponseTeacherListItem> getMainTeacherList() {
+        
+        log.info("[TeacherPublicController] 메인 강사 목록 조회 요청");
+        
+        return teacherService.getMainTeacherList();
+    }
 }

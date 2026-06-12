@@ -324,7 +324,7 @@ public class QnaServiceImpl implements QnaService {
         log.debug("[QnaService] 관리자 질문 목록 조회 완료. 총 {}개, 현재 페이지 {}개", 
                 questionPage.getTotalElements(), questionPage.getNumberOfElements());
         
-        return qnaMapper.toListItemResponseList(questionPage);
+        return qnaMapper.toListItemResponseListForAdmin(questionPage);
     }
 
     /**

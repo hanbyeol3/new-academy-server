@@ -158,7 +158,6 @@ public class PopupMapper {
                 .pcLinkUrl(popup.getPcLinkUrl())
                 .mobileLinkUrl(popup.getMobileLinkUrl())
                 .dismissForDays(popup.getDismissForDays())
-                .sortOrder(popup.getSortOrder())
                 .build();
     }
 

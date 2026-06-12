@@ -55,6 +55,14 @@ public class Teacher {
     @Column(name = "is_published", nullable = false)
     private Boolean isPublished = true;
 
+    /** 메인 노출 여부 (1=메인 노출, 0=일반) */
+    @Column(name = "is_main", nullable = false)
+    private Boolean isMain = false;
+
+    /** 메인 노출 순서 */
+    @Column(name = "main_sort_order", nullable = false)
+    private Integer mainSortOrder = 0;
+
     /** 메모 */
     @Lob
     @Column(name = "memo", columnDefinition = "TEXT")
@@ -90,7 +98,8 @@ public class Teacher {
 
     @Builder
     private Teacher(String teacherName, String roleName, String imagePath, String introText,
-                   String memo, Boolean isPublished, Boolean isComingSoon, Long createdBy) {
+                   String memo, Boolean isPublished, Boolean isComingSoon, Boolean isMain, 
+                   Integer mainSortOrder, Long createdBy) {
         this.teacherName = teacherName;
         this.roleName = roleName;
         this.imagePath = imagePath;
@@ -98,11 +107,14 @@ public class Teacher {
         this.memo = memo;
         this.isPublished = isPublished != null ? isPublished : true;
         this.isComingSoon = isComingSoon != null ? isComingSoon : false;
+        this.isMain = isMain != null ? isMain : false;
+        this.mainSortOrder = mainSortOrder != null ? mainSortOrder : 0;
         this.createdBy = createdBy;
     }
 
     public void update(String teacherName, String roleName, String imagePath, String introText,
-                      String memo, Boolean isPublished, Boolean isComingSoon, Long updatedBy) {
+                      String memo, Boolean isPublished, Boolean isComingSoon, Boolean isMain,
+                      Integer mainSortOrder, Long updatedBy) {
         this.teacherName = teacherName;
         this.roleName = roleName;
         this.imagePath = imagePath;
@@ -110,6 +122,31 @@ public class Teacher {
         this.memo = memo;
         this.isPublished = isPublished != null ? isPublished : true;
         this.isComingSoon = isComingSoon != null ? isComingSoon : false;
+        this.isMain = isMain != null ? isMain : false;
+        this.mainSortOrder = mainSortOrder != null ? mainSortOrder : 0;
         this.updatedBy = updatedBy;
+    }
+
+    /**
+     * 메인 강사 설정/해제.
+     * 
+     * @param isMain 메인 여부
+     */
+    public void updateMainStatus(Boolean isMain) {
+        this.isMain = isMain;
+        if (!isMain) {
+            this.mainSortOrder = 0; // 메인 해제 시 순서 초기화
+        }
+    }
+
+    /**
+     * 메인 강사 순서 변경.
+     * 
+     * @param mainSortOrder 메인 노출 순서
+     */
+    public void updateMainSortOrder(Integer mainSortOrder) {
+        if (this.isMain) {
+            this.mainSortOrder = mainSortOrder;
+        }
     }
 }

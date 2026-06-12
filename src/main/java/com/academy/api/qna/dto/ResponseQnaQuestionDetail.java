@@ -32,6 +32,10 @@ public class ResponseQnaQuestionDetail {
     @Schema(description = "작성 시각", example = "2024-01-01 10:00:00")
     private LocalDateTime createdAt;
 
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @Schema(description = "수정 시각", example = "2024-01-01 10:30:00")
+    private LocalDateTime updatedAt;
+
     @Schema(description = "조회수", example = "15")
     private Long viewCount;
 
@@ -61,6 +65,7 @@ public class ResponseQnaQuestionDetail {
                 .authorName(entity.getAuthorName())
                 .content(entity.getContent())
                 .createdAt(entity.getCreatedAt())
+                .updatedAt(entity.getUpdatedAt())
                 .viewCount(entity.getViewCount())
                 .secret(entity.getSecret())
                 .isAnswered(entity.getIsAnswered())
@@ -82,6 +87,7 @@ public class ResponseQnaQuestionDetail {
                 .authorName(entity.getAuthorName())
                 .content(entity.getContent())
                 .createdAt(entity.getCreatedAt())
+                .updatedAt(entity.getUpdatedAt())
                 .viewCount(entity.getViewCount())
                 .secret(entity.getSecret())
                 .isAnswered(entity.getIsAnswered())
@@ -101,6 +107,7 @@ public class ResponseQnaQuestionDetail {
                 .authorName(entity.getAuthorName())
                 .content("비밀글입니다. 비밀번호를 입력해주세요.")
                 .createdAt(entity.getCreatedAt())
+                .updatedAt(entity.getUpdatedAt())
                 .viewCount(entity.getViewCount())
                 .secret(entity.getSecret())
                 .isAnswered(entity.getIsAnswered())

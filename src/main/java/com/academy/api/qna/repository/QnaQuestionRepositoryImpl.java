@@ -174,6 +174,7 @@ public class QnaQuestionRepositoryImpl implements QnaQuestionRepositoryCustom {
     /**
      * 이전 질문 조회 (목록에서 위에 있는 글).
      * createdAt > current.createdAt OR (createdAt = current.createdAt AND id > current.id)
+     * 삭제되지 않은 글만 조회
      */
     @Override
     public QnaQuestion findPreviousQuestion(Long currentId) {
@@ -190,10 +191,13 @@ public class QnaQuestionRepositoryImpl implements QnaQuestionRepositoryCustom {
         return queryFactory
                 .selectFrom(question)
                 .where(
-                    question.createdAt.gt(current.getCreatedAt())
-                    .or(
-                        question.createdAt.eq(current.getCreatedAt())
-                        .and(question.id.gt(currentId))
+                    question.isDeleted.eq(false)  // 삭제되지 않은 글만
+                    .and(
+                        question.createdAt.gt(current.getCreatedAt())
+                        .or(
+                            question.createdAt.eq(current.getCreatedAt())
+                            .and(question.id.gt(currentId))
+                        )
                     )
                 )
                 .orderBy(question.createdAt.asc(), question.id.asc())
@@ -203,6 +207,7 @@ public class QnaQuestionRepositoryImpl implements QnaQuestionRepositoryCustom {
     /**
      * 다음 질문 조회 (목록에서 아래에 있는 글).
      * createdAt < current.createdAt OR (createdAt = current.createdAt AND id < current.id)
+     * 삭제되지 않은 글만 조회
      */
     @Override
     public QnaQuestion findNextQuestion(Long currentId) {
@@ -219,10 +224,13 @@ public class QnaQuestionRepositoryImpl implements QnaQuestionRepositoryCustom {
         return queryFactory
                 .selectFrom(question)
                 .where(
-                    question.createdAt.lt(current.getCreatedAt())
-                    .or(
-                        question.createdAt.eq(current.getCreatedAt())
-                        .and(question.id.lt(currentId))
+                    question.isDeleted.eq(false)  // 삭제되지 않은 글만
+                    .and(
+                        question.createdAt.lt(current.getCreatedAt())
+                        .or(
+                            question.createdAt.eq(current.getCreatedAt())
+                            .and(question.id.lt(currentId))
+                        )
                     )
                 )
                 .orderBy(question.createdAt.desc(), question.id.desc())

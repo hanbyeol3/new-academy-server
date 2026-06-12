@@ -304,7 +304,7 @@ public class PopupServiceImpl implements PopupService {
             List<Popup> activePopups = popupRepository.findActivePopupsWithConditions(now);
             
             List<ResponsePopupPublic> items = activePopups.stream()
-                    .map(ResponsePopupPublic::from)
+                    .map(popup -> popupMapper.toPublicResponse(popup))
                     .toList();
 
             log.debug("[PopupService] 노출중인 팝업 목록 조회 완료. 노출중 팝업 수={}", items.size());

@@ -13,12 +13,7 @@ import com.academy.api.file.repository.UploadFileLinkRepository;
 import com.academy.api.teacher.domain.Teacher;
 import com.academy.api.teacher.domain.TeacherCareer;
 import com.academy.api.teacher.domain.TeacherSubject;
-import com.academy.api.teacher.dto.RequestTeacherCreate;
-import com.academy.api.teacher.dto.RequestTeacherUpdate;
-import com.academy.api.teacher.dto.ResponseTeacher;
-import com.academy.api.teacher.dto.ResponseTeacherByCategory;
-import com.academy.api.teacher.dto.ResponseTeacherListItem;
-import com.academy.api.teacher.dto.TeacherSimple;
+import com.academy.api.teacher.dto.*;
 import com.academy.api.teacher.mapper.TeacherMapper;
 import com.academy.api.teacher.repository.TeacherRepository;
 import com.academy.api.teacher.repository.TeacherCareerRepository;
@@ -226,6 +221,8 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
                     savedTeacher.getMemo(),
                     savedTeacher.getIsPublished(),
                     savedTeacher.getIsComingSoon(),
+                    savedTeacher.getIsMain(),
+                    savedTeacher.getMainSortOrder(),
                     savedTeacher.getUpdatedBy()
                 );
                 log.debug("[TeacherService] 이미지 경로 설정 완료. imagePath={}, teacherId={}", 
@@ -286,6 +283,8 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
                 getValueOrDefault(request.getMemo(), teacher.getMemo()),
                 getValueOrDefault(request.getIsPublished(), teacher.getIsPublished()),
                 getValueOrDefault(request.getIsComingSoon(), teacher.getIsComingSoon()),
+                getValueOrDefault(request.getIsMain(), teacher.getIsMain()),
+                getValueOrDefault(request.getMainSortOrder(), teacher.getMainSortOrder()),
                 SecurityUtils.getCurrentUserId()
         );
         log.debug("[TeacherService] 기본 정보 업데이트 완료");
@@ -371,6 +370,8 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
                 teacher.getMemo(),
                 isPublished,
                 teacher.getIsComingSoon(),
+                teacher.getIsMain(),
+                teacher.getMainSortOrder(),
                 SecurityUtils.getCurrentUserId()
         );
 
@@ -722,5 +723,87 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
                 categoryId, teacherSubjects.size());
         
         return Response.ok("0000", "강사 순서가 성공적으로 변경되었습니다.");
+    }
+
+    /**
+     * 메인 강사 여부 변경.
+     */
+    @Override
+    @Transactional
+    public Response updateMainStatus(Long id, Boolean isMain) {
+        log.info("[TeacherService] 메인 강사 여부 변경 시작. id={}, isMain={}", id, isMain);
+
+        Teacher teacher = teacherRepository.findById(id)
+                .orElseThrow(() -> {
+                    log.warn("[TeacherService] 강사를 찾을 수 없음. id={}", id);
+                    return new BusinessException(ErrorCode.TEACHER_NOT_FOUND);
+                });
+
+        // 메인 강사 설정/해제
+        teacher.updateMainStatus(isMain);
+
+        String statusText = isMain ? "메인 강사로 설정" : "메인 강사 해제";
+        log.info("[TeacherService] {} 완료. id={}, mainSortOrder={}", statusText, id, teacher.getMainSortOrder());
+        
+        return Response.ok("0000", statusText + "되었습니다.");
+    }
+
+    /**
+     * 메인 강사 순서 일괄 변경.
+     */
+    @Override
+    @Transactional
+    public Response updateMainTeacherOrder(RequestMainTeacherOrder request) {
+        log.info("[TeacherService] 메인 강사 순서 일괄 변경 시작. orderCount={}", request.getOrders().size());
+
+        // 1. 요청된 강사 ID 추출
+        List<Long> teacherIds = request.getOrders().stream()
+                .map(RequestMainTeacherOrder.TeacherOrder::getTeacherId)
+                .toList();
+
+        // 2. 메인 강사인지 확인
+        List<Teacher> mainTeachers = teacherRepository.findMainTeachersByIds(teacherIds);
+        
+        if (mainTeachers.size() != teacherIds.size()) {
+            log.warn("[TeacherService] 일부 강사가 메인 강사가 아님. requestedCount={}, mainCount={}", 
+                    teacherIds.size(), mainTeachers.size());
+            return Response.error("NOT_MAIN_TEACHER", "메인 강사가 아닌 강사가 포함되어 있습니다.");
+        }
+
+        // 3. 순서 업데이트
+        Map<Long, Teacher> teacherMap = mainTeachers.stream()
+                .collect(Collectors.toMap(Teacher::getId, t -> t));
+
+        for (RequestMainTeacherOrder.TeacherOrder order : request.getOrders()) {
+            Teacher teacher = teacherMap.get(order.getTeacherId());
+            if (teacher != null) {
+                teacher.updateMainSortOrder(order.getMainSortOrder());
+                log.debug("[TeacherService] 메인 강사 순서 업데이트. teacherId={}, newOrder={}", 
+                        order.getTeacherId(), order.getMainSortOrder());
+            }
+        }
+
+        log.info("[TeacherService] 메인 강사 순서 일괄 변경 완료. updatedCount={}", mainTeachers.size());
+        
+        return Response.ok("0000", "메인 강사 순서가 변경되었습니다.");
+    }
+
+    /**
+     * 메인 강사 목록 조회.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public ResponseList<ResponseTeacherListItem> getMainTeacherList() {
+        log.info("[TeacherService] 메인 강사 목록 조회 시작");
+
+        List<Teacher> mainTeachers = teacherRepository.findMainTeachers();
+        
+        List<ResponseTeacherListItem> items = mainTeachers.stream()
+                .map(teacherMapper::toListItemResponse)
+                .toList();
+
+        log.info("[TeacherService] 메인 강사 목록 조회 완료. count={}", items.size());
+        
+        return ResponseList.ok(items, (long) items.size(), 0, items.size());
     }
 }

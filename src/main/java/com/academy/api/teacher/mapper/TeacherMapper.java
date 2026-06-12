@@ -53,6 +53,8 @@ public class TeacherMapper {
                 .memo(request.getMemo())
                 .isPublished(request.getIsPublished() != null ? request.getIsPublished() : true)
                 .isComingSoon(request.getIsComingSoon() != null ? request.getIsComingSoon() : false)
+                .isMain(request.getIsMain() != null ? request.getIsMain() : false)
+                .mainSortOrder(request.getMainSortOrder() != null ? request.getMainSortOrder() : 0)
                 .createdBy(SecurityUtils.getCurrentUserId())
                 .build();
     }
@@ -101,6 +103,8 @@ public class TeacherMapper {
                 .introText(teacher.getIntroText())
                 .memo(teacher.getMemo())
                 .isPublished(teacher.getIsPublished())
+                .isMain(teacher.getIsMain())
+                .mainSortOrder(teacher.getMainSortOrder())
                 .category(categoryInfo)
                 .sortOrder(sortOrder)
                 .createdBy(teacher.getCreatedBy())
@@ -154,6 +158,8 @@ public class TeacherMapper {
                 .image(getImageFromPath(teacher.getImagePath()))
                 .introText(teacher.getIntroText())
                 .isPublished(teacher.getIsPublished())
+                .isMain(teacher.getIsMain())
+                .mainSortOrder(teacher.getMainSortOrder())
                 .category(categoryInfo)
                 .sortOrder(sortOrder)
                 .createdAt(teacher.getCreatedAt())
@@ -220,6 +226,8 @@ public class TeacherMapper {
                 getValueOrDefault(request.getMemo(), teacher.getMemo()),
                 getValueOrDefault(request.getIsPublished(), teacher.getIsPublished()),
                 getValueOrDefault(request.getIsComingSoon(), teacher.getIsComingSoon()),
+                getValueOrDefault(request.getIsMain(), teacher.getIsMain()),
+                getValueOrDefault(request.getMainSortOrder(), teacher.getMainSortOrder()),
                 SecurityUtils.getCurrentUserId() // 수정자 ID
         );
     }
