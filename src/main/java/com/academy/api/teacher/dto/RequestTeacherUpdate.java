@@ -60,14 +60,6 @@ public class RequestTeacherUpdate {
             example = "true")
     private Boolean isPublished;
 
-    @Schema(description = "메인 노출 여부", 
-            example = "false")
-    private Boolean isMain;
-
-    @Schema(description = "메인 노출 순서 (메인 노출인 경우에만 의미있음)", 
-            example = "1")
-    private Integer mainSortOrder;
-
     @Schema(description = "담당 과목 카테고리 ID (단일 과목)", 
             example = "12")
     private Long categoryId;

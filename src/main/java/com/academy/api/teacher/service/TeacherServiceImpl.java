@@ -8,6 +8,8 @@ import com.academy.api.common.exception.ErrorCode;
 import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.file.dto.UploadFileDto;
+import com.academy.api.file.repository.UploadFileRepository;
 import com.academy.api.file.service.FileService;
 import com.academy.api.file.repository.UploadFileLinkRepository;
 import com.academy.api.teacher.domain.Teacher;
@@ -62,6 +64,7 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
     private final CategoryRepository categoryRepository;
     private final TeacherMapper teacherMapper;
     private final FileService fileService;
+    private final UploadFileRepository uploadFileRepository;
 
     // ================== CategoryUsageChecker 구현 ==================
     
@@ -283,8 +286,8 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
                 getValueOrDefault(request.getMemo(), teacher.getMemo()),
                 getValueOrDefault(request.getIsPublished(), teacher.getIsPublished()),
                 getValueOrDefault(request.getIsComingSoon(), teacher.getIsComingSoon()),
-                getValueOrDefault(request.getIsMain(), teacher.getIsMain()),
-                getValueOrDefault(request.getMainSortOrder(), teacher.getMainSortOrder()),
+                teacher.getIsMain(),  // 메인 관련 필드는 변경하지 않음
+                teacher.getMainSortOrder(),  // 메인 관련 필드는 변경하지 않음
                 SecurityUtils.getCurrentUserId()
         );
         log.debug("[TeacherService] 기본 정보 업데이트 완료");
@@ -805,5 +808,210 @@ public class TeacherServiceImpl implements TeacherService, CategoryUsageChecker 
         log.info("[TeacherService] 메인 강사 목록 조회 완료. count={}", items.size());
         
         return ResponseList.ok(items, (long) items.size(), 0, items.size());
+    }
+    
+    /**
+     * 메인 강사 관리 화면용 데이터 조회.
+     * 
+     * @param categoryId 과목 ID (null이면 전체)
+     * @return 메인 강사 관리 데이터
+     */
+    @Override
+    public ResponseData<ResponseMainManagementData> getMainManagementData(Long categoryId) {
+        log.info("[TeacherService] 메인 강사 관리 데이터 조회 시작. categoryId={}", categoryId);
+        
+        // 강사 목록 조회 (과목별 또는 전체)
+        List<Teacher> teachers = categoryId != null 
+                ? teacherRepository.findForMainManagementByCategory(categoryId)
+                : teacherRepository.findAllForMainManagement();
+        
+        // 메인 강사와 일반 강사 분리
+        List<ResponseMainManagementData.ManagementTeacher> availableTeachers = new ArrayList<>();
+        List<ResponseMainManagementData.ManagementTeacher> mainTeachers = new ArrayList<>();
+        
+        for (Teacher teacher : teachers) {
+            ResponseMainManagementData.ManagementTeacher dto = buildManagementTeacher(teacher);
+            
+            if (teacher.getIsMain()) {
+                mainTeachers.add(dto);
+            } else {
+                availableTeachers.add(dto);
+            }
+        }
+        
+        // 과목 카테고리 목록 조회 (필터링용)
+        List<ResponseMainManagementData.CategoryOption> categories = getCategoryOptions();
+        
+        ResponseMainManagementData data = ResponseMainManagementData.builder()
+                .availableTeachers(availableTeachers)
+                .mainTeachers(mainTeachers)
+                .categories(categories)
+                .build();
+        
+        log.info("[TeacherService] 메인 강사 관리 데이터 조회 완료. available={}, main={}", 
+                availableTeachers.size(), mainTeachers.size());
+        
+        return ResponseData.ok(data);
+    }
+    
+    /**
+     * 메인 강사 일괄 처리.
+     * 
+     * @param request 일괄 처리 요청
+     * @return 처리 결과
+     */
+    @Override
+    @Transactional
+    public Response updateMainTeachersBatch(RequestMainTeacherBatch request) {
+        log.info("[TeacherService] 메인 강사 일괄 처리 시작. add={}, remove={}, update={}", 
+                request.getAddTeacherIds().size(),
+                request.getRemoveTeacherIds().size(),
+                request.getUpdates().size());
+        
+        try {
+            // 1. 메인 강사 추가
+            for (Long teacherId : request.getAddTeacherIds()) {
+                Teacher teacher = teacherRepository.findById(teacherId)
+                        .orElseThrow(() -> new BusinessException(ErrorCode.TEACHER_NOT_FOUND, "강사를 찾을 수 없습니다. ID=" + teacherId));
+                
+                if (teacher.getIsMain()) {
+                    log.warn("[TeacherService] 이미 메인 강사입니다. ID={}", teacherId);
+                    continue;
+                }
+                
+                // 메인 설정 시 자동으로 순서 할당 (최대값 + 1)
+                Integer maxOrder = teacherRepository.findMainTeachers().stream()
+                        .map(Teacher::getMainSortOrder)
+                        .filter(order -> order != null)  // null 제외
+                        .mapToInt(Integer::intValue)
+                        .max()
+                        .orElse(0);
+                
+                teacher.updateMainStatus(true);
+                teacher.updateMainSortOrder(maxOrder + 1);
+                
+                log.debug("[TeacherService] 메인 강사 추가. ID={}, order={}", teacherId, maxOrder + 1);
+            }
+            
+            // 2. 메인 강사 제거
+            for (Long teacherId : request.getRemoveTeacherIds()) {
+                Teacher teacher = teacherRepository.findById(teacherId)
+                        .orElseThrow(() -> new BusinessException(ErrorCode.TEACHER_NOT_FOUND, "강사를 찾을 수 없습니다. ID=" + teacherId));
+                
+                if (!teacher.getIsMain()) {
+                    log.warn("[TeacherService] 메인 강사가 아닙니다. ID={}", teacherId);
+                    continue;
+                }
+                
+                teacher.updateMainStatus(false);  // mainSortOrder는 자동으로 null로 초기화됨
+                
+                log.debug("[TeacherService] 메인 강사 제거. ID={}", teacherId);
+            }
+            
+            // 3. 메인 강사 정보 업데이트 (순서 및 소개글)
+            for (RequestMainTeacherBatch.MainTeacherUpdate update : request.getUpdates()) {
+                Teacher teacher = teacherRepository.findById(update.getTeacherId())
+                        .orElseThrow(() -> new BusinessException(ErrorCode.TEACHER_NOT_FOUND, "강사를 찾을 수 없습니다. ID=" + update.getTeacherId()));
+                
+                if (!teacher.getIsMain()) {
+                    throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "메인 강사가 아닙니다. ID=" + update.getTeacherId());
+                }
+                
+                // 순서 업데이트
+                teacher.updateMainSortOrder(update.getMainSortOrder());
+                
+                // 소개글 업데이트 (null이 아닐 때만)
+                if (update.getIntroText() != null) {
+                    teacher.updateIntroText(update.getIntroText());
+                    log.debug("[TeacherService] 소개글 업데이트. ID={}", update.getTeacherId());
+                }
+                
+                log.debug("[TeacherService] 메인 강사 업데이트. ID={}, order={}", 
+                        update.getTeacherId(), update.getMainSortOrder());
+            }
+            
+            log.info("[TeacherService] 메인 강사 일괄 처리 완료");
+            return Response.ok("0000", "메인 강사 정보가 일괄 수정되었습니다.");
+            
+        } catch (Exception e) {
+            log.error("[TeacherService] 메인 강사 일괄 처리 실패", e);
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "메인 강사 일괄 처리 중 오류가 발생했습니다.");
+        }
+    }
+    
+    /**
+     * 관리 화면용 강사 DTO 생성.
+     * 
+     * @param teacher 강사 엔티티
+     * @return 관리 화면용 강사 DTO
+     */
+    private ResponseMainManagementData.ManagementTeacher buildManagementTeacher(Teacher teacher) {
+        // 과목 정보 추출
+        List<String> subjects = new ArrayList<>();
+        List<Long> subjectIds = new ArrayList<>();
+        
+        for (TeacherSubject ts : teacher.getSubjects()) {
+            subjects.add(ts.getCategory().getName());
+            subjectIds.add(ts.getCategory().getId());
+        }
+        
+        // 이미지 정보 추출
+        UploadFileDto image = null;
+        if (teacher.getImagePath() != null && teacher.getImagePath().startsWith("formal/")) {
+            try {
+                Long fileId = Long.parseLong(teacher.getImagePath().substring("formal/".length()));
+                image = uploadFileRepository.findById(fileId)
+                        .map(file -> UploadFileDto.builder()
+                                .id(file.getId().toString())
+                                .fileName(file.getFileName())
+                                .ext(file.getExt())
+                                .size(file.getSize())
+                                .downloadUrl("/api/public/files/download/" + file.getId())
+                                .build())
+                        .orElse(null);
+            } catch (NumberFormatException e) {
+                log.warn("[TeacherService] 잘못된 이미지 경로. path={}", teacher.getImagePath());
+            }
+        }
+        
+        return ResponseMainManagementData.ManagementTeacher.builder()
+                .id(teacher.getId())
+                .teacherName(teacher.getTeacherName())
+                .roleName(teacher.getRoleName())
+                .introText(teacher.getIntroText())
+                .image(image)
+                .subjects(subjects)
+                .subjectIds(subjectIds)
+                .isComingSoon(teacher.getIsComingSoon())
+                .isPublished(teacher.getIsPublished())
+                .isMain(teacher.getIsMain())
+                .mainSortOrder(teacher.getMainSortOrder())
+                .createdAt(teacher.getCreatedAt())
+                .updatedAt(teacher.getUpdatedAt())
+                .build();
+    }
+    
+    /**
+     * 과목 카테고리 옵션 목록 조회.
+     * 
+     * @return 과목 카테고리 옵션 목록
+     */
+    private List<ResponseMainManagementData.CategoryOption> getCategoryOptions() {
+        // 과목 카테고리 그룹 (ID=4)의 모든 카테고리 조회
+        List<Category> categories = categoryRepository.findByCategoryGroupIdOrderBySortOrder(4L);
+        
+        return categories.stream()
+                .map(category -> {
+                    // 해당 과목을 담당하는 강사 수 계산
+                    int teacherCount = teacherRepository.findBySubjectCategoryId(category.getId()).size();
+                    
+                    return ResponseMainManagementData.CategoryOption.builder()
+                            .id(category.getId())
+                            .name(category.getName())
+                            .slug(category.getSlug())
+                            .teacherCount(teacherCount)
+                            .build();
+                })
+                .toList();
     }
 }

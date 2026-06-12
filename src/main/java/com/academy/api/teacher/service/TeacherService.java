@@ -4,9 +4,11 @@ import com.academy.api.category.service.CategoryUsageChecker;
 import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.teacher.dto.RequestMainTeacherBatch;
 import com.academy.api.teacher.dto.RequestMainTeacherOrder;
 import com.academy.api.teacher.dto.RequestTeacherCreate;
 import com.academy.api.teacher.dto.RequestTeacherUpdate;
+import com.academy.api.teacher.dto.ResponseMainManagementData;
 import com.academy.api.teacher.dto.ResponseTeacher;
 import com.academy.api.teacher.dto.ResponseTeacherByCategory;
 import com.academy.api.teacher.dto.ResponseTeacherListItem;
@@ -131,5 +133,23 @@ public interface TeacherService extends CategoryUsageChecker {
      * @return 메인 강사 목록 (main_sort_order ASC, id DESC)
      */
     ResponseList<ResponseTeacherListItem> getMainTeacherList();
+    
+    /**
+     * 메인 강사 관리 화면용 데이터 조회.
+     * 메인으로 설정 가능한 강사와 현재 메인 강사 목록을 함께 제공합니다.
+     * 
+     * @param categoryId 과목 ID (null이면 전체)
+     * @return 메인 강사 관리 데이터
+     */
+    ResponseData<ResponseMainManagementData> getMainManagementData(Long categoryId);
+    
+    /**
+     * 메인 강사 일괄 처리.
+     * 메인 강사 추가/제거/순서 변경/소개글 수정을 한 번에 처리합니다.
+     * 
+     * @param request 일괄 처리 요청
+     * @return 처리 결과
+     */
+    Response updateMainTeachersBatch(RequestMainTeacherBatch request);
 
 }

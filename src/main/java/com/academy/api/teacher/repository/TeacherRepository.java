@@ -368,4 +368,43 @@ public interface TeacherRepository extends JpaRepository<Teacher, Long>, Teacher
         AND t.isMain = true
         """)
     List<Teacher> findMainTeachersByIds(@Param("ids") List<Long> ids);
+    
+    /**
+     * 메인 강사 관리 화면용 전체 강사 조회.
+     * 공개된 강사를 메인 여부로 정렬하여 조회합니다.
+     * 
+     * @return 전체 공개 강사 목록 (메인 강사 → 일반 강사 순)
+     */
+    @Query("""
+        SELECT DISTINCT t 
+        FROM Teacher t 
+        LEFT JOIN FETCH t.subjects ts 
+        LEFT JOIN FETCH ts.category c
+        LEFT JOIN FETCH c.categoryGroup
+        WHERE t.isPublished = true
+        ORDER BY t.isMain DESC, t.mainSortOrder ASC, t.id DESC
+        """)
+    List<Teacher> findAllForMainManagement();
+    
+    /**
+     * 특정 과목별 메인 강사 관리용 조회.
+     * 
+     * @param categoryId 과목 카테고리 ID
+     * @return 해당 과목을 담당하는 공개 강사 목록
+     */
+    @Query("""
+        SELECT DISTINCT t 
+        FROM Teacher t 
+        LEFT JOIN FETCH t.subjects ts 
+        LEFT JOIN FETCH ts.category c
+        LEFT JOIN FETCH c.categoryGroup
+        WHERE t.isPublished = true
+        AND EXISTS (
+            SELECT 1 FROM TeacherSubject ts2 
+            WHERE ts2.teacher.id = t.id 
+            AND ts2.category.id = :categoryId
+        )
+        ORDER BY t.isMain DESC, t.mainSortOrder ASC, t.id DESC
+        """)
+    List<Teacher> findForMainManagementByCategory(@Param("categoryId") Long categoryId);
 }

@@ -60,8 +60,8 @@ public class Teacher {
     private Boolean isMain = false;
 
     /** 메인 노출 순서 */
-    @Column(name = "main_sort_order", nullable = false)
-    private Integer mainSortOrder = 0;
+    @Column(name = "main_sort_order")
+    private Integer mainSortOrder;
 
     /** 메모 */
     @Lob
@@ -108,7 +108,7 @@ public class Teacher {
         this.isPublished = isPublished != null ? isPublished : true;
         this.isComingSoon = isComingSoon != null ? isComingSoon : false;
         this.isMain = isMain != null ? isMain : false;
-        this.mainSortOrder = mainSortOrder != null ? mainSortOrder : 0;
+        this.mainSortOrder = mainSortOrder;  // null 허용
         this.createdBy = createdBy;
     }
 
@@ -123,7 +123,7 @@ public class Teacher {
         this.isPublished = isPublished != null ? isPublished : true;
         this.isComingSoon = isComingSoon != null ? isComingSoon : false;
         this.isMain = isMain != null ? isMain : false;
-        this.mainSortOrder = mainSortOrder != null ? mainSortOrder : 0;
+        this.mainSortOrder = mainSortOrder;  // null 허용
         this.updatedBy = updatedBy;
     }
 
@@ -135,7 +135,7 @@ public class Teacher {
     public void updateMainStatus(Boolean isMain) {
         this.isMain = isMain;
         if (!isMain) {
-            this.mainSortOrder = 0; // 메인 해제 시 순서 초기화
+            this.mainSortOrder = null; // 메인 해제 시 순서 null로 초기화
         }
     }
 
@@ -148,5 +148,14 @@ public class Teacher {
         if (this.isMain) {
             this.mainSortOrder = mainSortOrder;
         }
+    }
+    
+    /**
+     * 한 줄 소개 텍스트 수정.
+     * 
+     * @param introText 한 줄 소개
+     */
+    public void updateIntroText(String introText) {
+        this.introText = introText;
     }
 }

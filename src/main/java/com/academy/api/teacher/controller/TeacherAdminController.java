@@ -3,9 +3,11 @@ package com.academy.api.teacher.controller;
 import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.teacher.dto.RequestMainTeacherBatch;
 import com.academy.api.teacher.dto.RequestMainTeacherOrder;
 import com.academy.api.teacher.dto.RequestTeacherCreate;
 import com.academy.api.teacher.dto.RequestTeacherUpdate;
+import com.academy.api.teacher.dto.ResponseMainManagementData;
 import com.academy.api.teacher.dto.ResponseTeacher;
 import com.academy.api.teacher.dto.ResponseTeacherListItem;
 import com.academy.api.teacher.service.TeacherService;
@@ -398,6 +400,119 @@ public class TeacherAdminController {
         log.info("[TeacherAdminController] 메인 강사 순서 변경 요청. 강사 수={}", 
                  request.getOrders() != null ? request.getOrders().size() : 0);
         return teacherService.updateMainTeacherOrder(request);
+    }
+    
+    /**
+     * 메인 강사 관리 화면용 데이터 조회.
+     * 
+     * @param categoryId 과목 ID (선택)
+     * @return 메인 강사 관리 데이터
+     */
+    @Operation(
+        summary = "메인 강사 관리 데이터 조회",
+        description = """
+                메인 강사 관리 화면용 데이터를 조회합니다.
+                
+                반환 데이터:
+                - availableTeachers: 메인으로 설정 가능한 강사 목록 (isMain=false)
+                - mainTeachers: 현재 메인 강사 목록 (isMain=true, 순서대로 정렬)
+                - categories: 과목 필터링용 카테고리 목록
+                
+                과목별 필터링:
+                - categoryId 파라미터로 특정 과목 담당 강사만 조회 가능
+                - 생략 시 전체 강사 조회
+                
+                강사 정보 포함 내용:
+                - 기본 정보 (ID, 이름, 역할, 소개)
+                - 강사 이미지
+                - 담당 과목 목록
+                - 메인 설정 여부 및 순서
+                - Coming Soon 상태
+                - 등록/수정 일시
+                
+                용도:
+                - 메인 강사 관리 팝업 화면
+                - 드래그 앤 드롭 순서 변경 UI
+                - 메인 강사 추가/제거 인터페이스
+                
+                권한:
+                - ADMIN 권한 필수
+                """
+    )
+    @GetMapping("/main-management")
+    public ResponseData<ResponseMainManagementData> getMainManagementData(
+            @Parameter(description = "과목 카테고리 ID (선택)", example = "12") 
+            @RequestParam(required = false) Long categoryId) {
+        
+        log.info("[TeacherAdminController] 메인 강사 관리 데이터 조회. categoryId={}", categoryId);
+        return teacherService.getMainManagementData(categoryId);
+    }
+    
+    /**
+     * 메인 강사 일괄 처리.
+     * 
+     * @param request 일괄 처리 요청
+     * @return 처리 결과
+     */
+    @Operation(
+        summary = "메인 강사 일괄 처리",
+        description = """
+                메인 강사 추가/제거/순서 변경/소개글 수정을 일괄 처리합니다.
+                
+                요청 구조:
+                - addTeacherIds: 메인으로 추가할 강사 ID 목록
+                - removeTeacherIds: 메인에서 제거할 강사 ID 목록
+                - updates: 메인 강사 정보 업데이트 (순서 및 소개글)
+                
+                처리 순서:
+                1. 메인 강사 추가 (자동으로 마지막 순서 할당)
+                2. 메인 강사 제거 (mainSortOrder 자동 0 초기화)
+                3. 순서 및 소개글 업데이트
+                
+                요청 예시:
+                ```json
+                {
+                  "addTeacherIds": [1, 3],
+                  "removeTeacherIds": [2],
+                  "updates": [
+                    {
+                      "teacherId": 5,
+                      "mainSortOrder": 1,
+                      "introText": "새로운 소개글"
+                    },
+                    {
+                      "teacherId": 3,
+                      "mainSortOrder": 2,
+                      "introText": null  // null이면 기존 값 유지
+                    }
+                  ]
+                }
+                ```
+                
+                검증 사항:
+                - addTeacherIds와 removeTeacherIds에 중복 ID 불가
+                - updates의 teacherId는 중복 불가
+                - mainSortOrder는 1부터 연속적이어야 함
+                - updates의 강사는 모두 메인 강사여야 함
+                
+                트랜잭션:
+                - 모든 처리가 하나의 트랜잭션으로 실행
+                - 실패 시 전체 롤백
+                
+                권한:
+                - ADMIN 권한 필수
+                """
+    )
+    @PostMapping("/main-batch")
+    public Response updateMainTeachersBatch(
+            @Parameter(description = "메인 강사 일괄 처리 요청") 
+            @RequestBody @Valid RequestMainTeacherBatch request) {
+        
+        log.info("[TeacherAdminController] 메인 강사 일괄 처리 요청. add={}, remove={}, update={}", 
+                 request.getAddTeacherIds() != null ? request.getAddTeacherIds().size() : 0,
+                 request.getRemoveTeacherIds() != null ? request.getRemoveTeacherIds().size() : 0,
+                 request.getUpdates() != null ? request.getUpdates().size() : 0);
+        return teacherService.updateMainTeachersBatch(request);
     }
 
 }

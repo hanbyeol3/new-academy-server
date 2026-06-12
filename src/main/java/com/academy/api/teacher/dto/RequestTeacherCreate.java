@@ -61,16 +61,6 @@ public class RequestTeacherCreate {
             defaultValue = "true")
     private Boolean isPublished = true;
 
-    @Schema(description = "메인 노출 여부", 
-            example = "false", 
-            defaultValue = "false")
-    private Boolean isMain = false;
-
-    @Schema(description = "메인 노출 순서 (메인 노출인 경우에만 의미있음)", 
-            example = "1", 
-            defaultValue = "0")
-    private Integer mainSortOrder = 0;
-
     @Schema(description = "담당 과목 카테고리 ID (단일 과목)", 
             example = "12",
             requiredMode = Schema.RequiredMode.REQUIRED)
