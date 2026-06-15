@@ -443,6 +443,50 @@ public class SchoolExamServiceImpl implements SchoolExamService, CategoryUsageCh
 
         return ResponseData.ok(stats);
     }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public ResponseData<ResponseSchoolExamLatest> getLatestSchoolExams() {
+        log.info("[SchoolExamService] 중등부/고등부별 최신 시험분석 조회 시작");
+        
+        // 중등부 최신 3개 조회
+        PageRequest pageRequest = PageRequest.of(0, 3);
+        List<SchoolExam> middleExams = schoolExamRepository.findLatestBySchoolLevel(
+                SchoolLevel.MIDDLE, pageRequest);
+        
+        // 고등부 최신 3개 조회
+        List<SchoolExam> highExams = schoolExamRepository.findLatestBySchoolLevel(
+                SchoolLevel.HIGH, pageRequest);
+        
+        // DTO 변환
+        List<ResponseSchoolExamSummary> middleList = middleExams.stream()
+                .map(exam -> ResponseSchoolExamSummary.builder()
+                        .id(exam.getId())
+                        .title(exam.getTitle())
+                        .categoryName(exam.getCategory() != null ? exam.getCategory().getName() : null)
+                        .createdAt(exam.getCreatedAt())
+                        .build())
+                .toList();
+        
+        List<ResponseSchoolExamSummary> highList = highExams.stream()
+                .map(exam -> ResponseSchoolExamSummary.builder()
+                        .id(exam.getId())
+                        .title(exam.getTitle())
+                        .categoryName(exam.getCategory() != null ? exam.getCategory().getName() : null)
+                        .createdAt(exam.getCreatedAt())
+                        .build())
+                .toList();
+        
+        ResponseSchoolExamLatest response = ResponseSchoolExamLatest.builder()
+                .middle(middleList)
+                .high(highList)
+                .build();
+        
+        log.debug("[SchoolExamService] 최신 시험분석 조회 완료. 중등부={}, 고등부={}", 
+                middleList.size(), highList.size());
+        
+        return ResponseData.ok("0000", "최신 시험분석 조회 성공", response);
+    }
 
     /**
      * 카테고리 사용 여부 체크 (CategoryUsageChecker 구현).

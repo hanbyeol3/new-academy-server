@@ -3,6 +3,7 @@ package com.academy.api.schoolexam.controller;
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
 import com.academy.api.schoolexam.dto.ResponseSchoolExamDetail;
+import com.academy.api.schoolexam.dto.ResponseSchoolExamLatest;
 import com.academy.api.schoolexam.dto.ResponseSchoolExamPublicList;
 import com.academy.api.schoolexam.service.SchoolExamService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -112,5 +113,34 @@ public class SchoolExamPublicController {
         
         // 공개용은 조회수 자동 증가
         return schoolExamService.getSchoolExamForPublic(id, schoolLevel);
+    }
+    
+    @Operation(
+        summary = "최신 시험분석 조회 (중등부/고등부별)",
+        description = """
+                중등부와 고등부별로 최신 시험분석 3개씩을 조회합니다.
+                
+                특징:
+                - 인증 없이 접근 가능
+                - 공개된 시험분석만 표시
+                - 각 학교급별로 최신 3개씩 제공
+                - 생성일 기준 내림차순 정렬
+                
+                응답 구조:
+                - middle: 중등부 최신 시험분석 목록 (최대 3개)
+                - high: 고등부 최신 시험분석 목록 (최대 3개)
+                
+                각 항목 정보:
+                - id: 시험분석 ID
+                - title: 제목
+                - categoryName: 카테고리명
+                - createdAt: 생성일시
+                """
+    )
+    @GetMapping("/latest")
+    public ResponseData<ResponseSchoolExamLatest> getLatestSchoolExams() {
+        log.info("[SchoolExamPublicController] 중등부/고등부별 최신 시험분석 조회 요청");
+        
+        return schoolExamService.getLatestSchoolExams();
     }
 }

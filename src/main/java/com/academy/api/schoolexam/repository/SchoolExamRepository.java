@@ -172,4 +172,19 @@ public interface SchoolExamRepository extends JpaRepository<SchoolExam, Long>, S
             @Param("currentId") Long currentId, 
             @Param("schoolLevel") SchoolLevel schoolLevel, 
             Pageable pageable);
+    
+    /**
+     * 학교급별 최신 공개 시험분석 조회.
+     * 공개된 시험분석 중 학교급별로 최신 N개를 조회합니다.
+     */
+    @Query("""
+        SELECT se FROM SchoolExam se 
+        LEFT JOIN FETCH se.category 
+        WHERE se.schoolLevel = :schoolLevel 
+        AND se.isPublished = true 
+        ORDER BY se.createdAt DESC
+        """)
+    List<SchoolExam> findLatestBySchoolLevel(
+            @Param("schoolLevel") SchoolLevel schoolLevel, 
+            Pageable pageable);
 }

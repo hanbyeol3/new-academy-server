@@ -92,4 +92,10 @@ public interface SchoolExamService {
      * 학교급별 통계 조회.
      */
     ResponseData<List<Object[]>> getSchoolExamStatsBySchoolLevel();
+    
+    /**
+     * 중등부/고등부별 최신 시험분석 3개씩 조회.
+     * 공개된 시험분석만 조회하며, 각 학교급별로 최신 3개를 반환합니다.
+     */
+    ResponseData<ResponseSchoolExamLatest> getLatestSchoolExams();
 }
