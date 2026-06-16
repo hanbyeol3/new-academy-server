@@ -134,12 +134,13 @@ public class AcademicSchedule {
      * @param isRepeat 반복 여부
      * @param weekdayMask 주간 반복 요일
      * @param excludeWeekends 주말 제외 여부
+     * @param isPublished 공개 여부
      * @param updatedBy 수정자
      */
     public void update(String title, String description,
                       LocalDateTime startAt, LocalDateTime endAt, Boolean isAllDay,
                       Boolean isRepeat, Integer weekdayMask, Boolean excludeWeekends,
-                      Long updatedBy) {
+                      Boolean isPublished, Long updatedBy) {
         this.title = title;
         this.description = description;
         this.startAt = startAt;
@@ -148,6 +149,7 @@ public class AcademicSchedule {
         this.isRepeat = isRepeat != null ? isRepeat : false;
         this.weekdayMask = weekdayMask != null ? weekdayMask : 0;
         this.excludeWeekends = excludeWeekends != null ? excludeWeekends : false;
+        this.isPublished = isPublished != null ? isPublished : true;
         this.updatedBy = updatedBy;
     }
 

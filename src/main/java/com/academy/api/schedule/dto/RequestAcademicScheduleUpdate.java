@@ -70,5 +70,9 @@ public class RequestAcademicScheduleUpdate {
             defaultValue = "0")
     private Integer weekdayMask = 0;
 
+    @Schema(description = "공개 여부", 
+            example = "true",
+            defaultValue = "true")
+    private Boolean isPublished = true;
 
 }

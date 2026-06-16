@@ -244,6 +244,7 @@ public class AcademicScheduleServiceImpl implements AcademicScheduleService {
                                 request.getIsRepeat(),
                                 request.getWeekdayMask(),
                                 request.getExcludeWeekends(),
+                                request.getIsPublished(),
                                 SecurityUtils.getCurrentUserId()
                         );
 
