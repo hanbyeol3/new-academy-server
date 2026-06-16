@@ -42,15 +42,17 @@ public interface AcademicScheduleRepository extends JpaRepository<AcademicSchedu
 
 
     /**
-     * 특정 월의 일정 조회 (단일 일정 + 반복 일정 모두 포함).
+     * 특정 월의 공개 일정 조회 (단일 일정 + 반복 일정 모두 포함).
      * 
      * 조회 조건:
-     * 1. 단일 일정: 시작일 또는 종료일이 해당 월에 포함
-     * 2. 반복 일정: 시작일이 해당 월 이전이거나 포함
+     * 1. 공개된 일정만 조회 (isPublished = true)
+     * 2. 단일 일정: 시작일 또는 종료일이 해당 월에 포함
+     * 3. 반복 일정: 시작일이 해당 월 이전이거나 포함
      */
     @Query("""
         SELECT DISTINCT a FROM AcademicSchedule a 
-        WHERE (
+        WHERE a.isPublished = true
+        AND (
             (a.isRepeat = false 
              AND ((DATE(a.startAt) BETWEEN :monthStart AND :monthEnd)
                   OR (a.endAt IS NOT NULL AND DATE(a.endAt) BETWEEN :monthStart AND :monthEnd)
