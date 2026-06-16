@@ -4,6 +4,8 @@ import com.academy.api.common.util.SecurityUtils;
 import com.academy.api.data.responses.common.Response;
 import com.academy.api.data.responses.common.ResponseData;
 import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.holiday.domain.Holiday;
+import com.academy.api.holiday.repository.HolidayRepository;
 import com.academy.api.member.domain.Member;
 import com.academy.api.member.repository.MemberRepository;
 import com.academy.api.schedule.domain.AcademicSchedule;
@@ -19,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -44,10 +48,11 @@ import java.util.List;
 public class AcademicScheduleServiceImpl implements AcademicScheduleService {
 
     private final AcademicScheduleRepository scheduleRepository;
+    private final HolidayRepository holidayRepository;
     private final MemberRepository memberRepository;
 
     /**
-     * 월별 학사일정 조회.
+     * 월별 학사일정 조회 (공휴일 포함).
      */
     @Override
     public ResponseList<ResponseAcademicScheduleListItem> getMonthlySchedules(RequestAcademicScheduleSearch searchRequest) {
@@ -59,18 +64,36 @@ public class AcademicScheduleServiceImpl implements AcademicScheduleService {
             LocalDate monthStart = LocalDate.of(searchRequest.getYear(), searchRequest.getMonth(), 1);
             LocalDate monthEnd = monthStart.withDayOfMonth(monthStart.lengthOfMonth());
 
+            // 1. 학사일정 조회
             List<AcademicSchedule> schedules = scheduleRepository.findSchedulesInMonth(monthStart, monthEnd);
+            
+            // 2. 공휴일 조회
+            List<Holiday> holidays = holidayRepository.findByHolidayDateBetweenOrderByHolidayDate(monthStart, monthEnd);
+            
+            // 3. 통합 리스트 생성
+            List<ResponseAcademicScheduleListItem> items = new ArrayList<>();
+            
+            // 학사일정 추가 (회원 이름 포함)
+            for (AcademicSchedule schedule : schedules) {
+                String createdByName = getMemberName(schedule.getCreatedBy());
+                String updatedByName = getMemberName(schedule.getUpdatedBy());
+                ResponseAcademicScheduleListItem item = ResponseAcademicScheduleListItem.fromWithNames(
+                    schedule, createdByName, updatedByName
+                );
+                items.add(item);
+            }
+            
+            // 공휴일 추가
+            for (Holiday holiday : holidays) {
+                ResponseAcademicScheduleListItem item = ResponseAcademicScheduleListItem.fromHoliday(holiday);
+                items.add(item);
+            }
+            
+            // 4. 날짜순 정렬
+            items.sort(Comparator.comparing(ResponseAcademicScheduleListItem::getStartAt));
 
-            // 회원 이름을 포함한 DTO 변환
-            List<ResponseAcademicScheduleListItem> items = schedules.stream()
-                    .map(schedule -> {
-                        String createdByName = getMemberName(schedule.getCreatedBy());
-                        String updatedByName = getMemberName(schedule.getUpdatedBy());
-                        return ResponseAcademicScheduleListItem.fromWithNames(schedule, createdByName, updatedByName);
-                    })
-                    .toList();
-
-            log.debug("[AcademicScheduleService] 월별 일정 조회 완료. 조회된 항목 수={}", items.size());
+            log.debug("[AcademicScheduleService] 월별 일정 조회 완료. 학사일정={}건, 공휴일={}건, 총={}건", 
+                    schedules.size(), holidays.size(), items.size());
             
             return ResponseList.ok(items, (long) items.size(), 0, items.size());
 

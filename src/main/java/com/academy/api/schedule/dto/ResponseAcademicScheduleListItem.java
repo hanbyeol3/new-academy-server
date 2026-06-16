@@ -1,26 +1,30 @@
 package com.academy.api.schedule.dto;
 
+import com.academy.api.holiday.domain.Holiday;
 import com.academy.api.schedule.domain.AcademicSchedule;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Setter;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 /**
  * 학사일정 목록 항목 응답 DTO.
  * 
  * 월별 목록 조회에서 사용되는 간소화된 일정 정보입니다.
+ * 학사일정과 공휴일을 통합하여 표시합니다.
  */
 @Getter
+@Setter
 @Builder
 @Schema(description = "학사일정 목록 항목 응답")
 public class ResponseAcademicScheduleListItem {
 
-    @Schema(description = "학사일정 ID", example = "1")
+    @Schema(description = "일정 ID (공휴일의 경우 null)", example = "1")
     private Long id;
 
     @Schema(description = "일정 제목", example = "2025학년도 1학기 개강일")
@@ -51,6 +55,12 @@ public class ResponseAcademicScheduleListItem {
 
     @Schema(description = "공개 여부", example = "true")
     private Boolean isPublished;
+    
+    @Schema(description = "이벤트 타입 (ACADEMIC: 학사일정, HOLIDAY: 공휴일)", example = "ACADEMIC")
+    private CalendarEventType eventType;
+    
+    @Schema(description = "공휴일 여부", example = "false")
+    private Boolean isHoliday;
 
     @Schema(description = "등록자 이름", example = "관리자")
     private String createdByName;
@@ -81,6 +91,8 @@ public class ResponseAcademicScheduleListItem {
                 .excludeWeekends(schedule.getExcludeWeekends())
                 .weekdayMask(schedule.getWeekdayMask())
                 .isPublished(schedule.getIsPublished())
+                .eventType(CalendarEventType.ACADEMIC)  // 학사일정 타입
+                .isHoliday(false)
                 .createdByName(null) // 서비스에서 별도 설정
                 .createdAt(schedule.getCreatedAt())
                 .updatedByName(null) // 서비스에서 별도 설정
@@ -105,6 +117,8 @@ public class ResponseAcademicScheduleListItem {
                 .excludeWeekends(schedule.getExcludeWeekends())
                 .weekdayMask(schedule.getWeekdayMask())
                 .isPublished(schedule.getIsPublished())
+                .eventType(CalendarEventType.ACADEMIC)  // 학사일정 타입
+                .isHoliday(false)
                 .createdByName(createdByName)
                 .createdAt(schedule.getCreatedAt())
                 .updatedByName(updatedByName)
@@ -119,5 +133,33 @@ public class ResponseAcademicScheduleListItem {
         return schedules.stream()
                 .map(ResponseAcademicScheduleListItem::from)
                 .toList();
+    }
+    
+    /**
+     * 공휴일 Entity에서 DTO로 변환.
+     */
+    public static ResponseAcademicScheduleListItem fromHoliday(Holiday holiday) {
+        // 공휴일은 종일 이벤트로 처리 (00:00:00 ~ 23:59:59)
+        LocalDateTime startDateTime = holiday.getHolidayDate().atTime(LocalTime.MIN);
+        LocalDateTime endDateTime = holiday.getHolidayDate().atTime(23, 59, 59);
+        
+        return ResponseAcademicScheduleListItem.builder()
+                .id(null)  // 공휴일은 ID를 null로 설정
+                .title(holiday.getName())
+                .description(null)
+                .startAt(startDateTime)
+                .endAt(endDateTime)
+                .isAllDay(true)
+                .isRepeat(false)
+                .excludeWeekends(false)
+                .weekdayMask(null)
+                .isPublished(true)  // 공휴일은 항상 공개
+                .eventType(CalendarEventType.HOLIDAY)
+                .isHoliday(true)
+                .createdByName("시스템")
+                .createdAt(holiday.getCreatedAt())
+                .updatedByName("시스템")
+                .updatedAt(holiday.getUpdatedAt())
+                .build();
     }
 }

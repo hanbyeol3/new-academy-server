@@ -39,3 +39,11 @@ jwt:
   secret: mySecretKeyForJWT2024!@#$%^&*()1234567890
   access-expire-minutes: 15
   refresh-expire-days: 14
+
+# 공휴일 API 설정 (한국천문연구원 특일 정보)
+holiday:
+  kasi:
+    api-key: 4d7988e051f447f41d43c13528af8e2f439697ff533795125733a622b7161db3
+    base-url: https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService
+    max-rows: 50
+    timeout: 5000
