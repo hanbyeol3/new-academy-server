@@ -104,7 +104,59 @@ public class AcademicScheduleServiceImpl implements AcademicScheduleService {
     }
 
     /**
-     * 관리자용 학사일정 목록 조회 (연도별 필터링 지원).
+     * 관리자용 월별 학사일정 조회 (비공개 포함, 공휴일 포함).
+     */
+    @Override
+    public ResponseList<ResponseAcademicScheduleListItem> getMonthlySchedulesForAdmin(RequestAcademicScheduleSearch searchRequest) {
+        log.info("[AcademicScheduleService] 관리자용 월별 일정 조회 시작. year={}, month={}", 
+                searchRequest.getYear(), searchRequest.getMonth());
+
+        try {
+            // 월의 첫날과 마지막날 계산
+            LocalDate monthStart = LocalDate.of(searchRequest.getYear(), searchRequest.getMonth(), 1);
+            LocalDate monthEnd = monthStart.withDayOfMonth(monthStart.lengthOfMonth());
+
+            // 1. 모든 학사일정 조회 (비공개 포함)
+            List<AcademicSchedule> schedules = scheduleRepository.findAllSchedulesInMonth(monthStart, monthEnd);
+            
+            // 2. 공휴일 조회
+            List<Holiday> holidays = holidayRepository.findByHolidayDateBetweenOrderByHolidayDate(monthStart, monthEnd);
+            
+            // 3. 통합 리스트 생성
+            List<ResponseAcademicScheduleListItem> items = new ArrayList<>();
+            
+            // 학사일정 추가 (회원 이름 포함)
+            for (AcademicSchedule schedule : schedules) {
+                String createdByName = getMemberName(schedule.getCreatedBy());
+                String updatedByName = getMemberName(schedule.getUpdatedBy());
+                ResponseAcademicScheduleListItem item = ResponseAcademicScheduleListItem.fromWithNames(
+                    schedule, createdByName, updatedByName
+                );
+                items.add(item);
+            }
+            
+            // 공휴일 추가
+            for (Holiday holiday : holidays) {
+                ResponseAcademicScheduleListItem item = ResponseAcademicScheduleListItem.fromHoliday(holiday);
+                items.add(item);
+            }
+            
+            // 4. 날짜순 정렬
+            items.sort(Comparator.comparing(ResponseAcademicScheduleListItem::getStartAt));
+
+            log.debug("[AcademicScheduleService] 관리자용 월별 일정 조회 완료. 학사일정={}건, 공휴일={}건, 총={}건", 
+                    schedules.size(), holidays.size(), items.size());
+            
+            return ResponseList.ok(items, (long) items.size(), 0, items.size());
+
+        } catch (Exception e) {
+            log.error("[AcademicScheduleService] 관리자용 월별 일정 조회 중 예상치 못한 오류: {}", e.getMessage(), e);
+            return ResponseList.ok(List.of(), 0L, 0, 0);
+        }
+    }
+
+    /**
+     * 관리자용 학사일정 목록 조회 (연도별 필터링 지원, 공휴일 포함).
      */
     @Override
     public ResponseList<ResponseAcademicScheduleListItem> getScheduleList(Integer year, Pageable pageable) {
@@ -118,6 +170,9 @@ public class AcademicScheduleServiceImpl implements AcademicScheduleService {
                 return ResponseList.ok(List.of(), 0L, 0, 0);
             }
 
+            List<ResponseAcademicScheduleListItem> allItems = new ArrayList<>();
+            
+            // 1. 학사일정 조회
             Page<AcademicSchedule> schedulePage;
             
             if (year != null) {
@@ -125,28 +180,53 @@ public class AcademicScheduleServiceImpl implements AcademicScheduleService {
                 schedulePage = scheduleRepository.findSchedulesByYear(year, pageable);
                 log.debug("[AcademicScheduleService] {}년도 일정 조회 완료. 총 {}개", year, schedulePage.getTotalElements());
             } else {
-                // 전체 조회 (기존 로직)
+                // 전체 조회
                 schedulePage = scheduleRepository.findAllSchedules(pageable);
                 log.debug("[AcademicScheduleService] 전체 일정 조회 완료. 총 {}개", schedulePage.getTotalElements());
             }
             
-            List<ResponseAcademicScheduleListItem> items = schedulePage.getContent()
-                    .stream()
-                    .map(schedule -> {
-                        String createdByName = getMemberName(schedule.getCreatedBy());
-                        String updatedByName = getMemberName(schedule.getUpdatedBy());
-                        return ResponseAcademicScheduleListItem.fromWithNames(schedule, createdByName, updatedByName);
-                    })
-                    .toList();
+            // 학사일정 변환
+            for (AcademicSchedule schedule : schedulePage.getContent()) {
+                String createdByName = getMemberName(schedule.getCreatedBy());
+                String updatedByName = getMemberName(schedule.getUpdatedBy());
+                allItems.add(ResponseAcademicScheduleListItem.fromWithNames(schedule, createdByName, updatedByName));
+            }
+            
+            // 2. 공휴일 조회 및 추가 (연도별 필터링일 경우에만)
+            int holidayCount = 0;
+            if (year != null) {
+                LocalDate yearStart = LocalDate.of(year, 1, 1);
+                LocalDate yearEnd = LocalDate.of(year, 12, 31);
+                List<Holiday> holidays = holidayRepository.findByHolidayDateBetweenOrderByHolidayDate(yearStart, yearEnd);
+                holidayCount = holidays.size();
+                
+                log.debug("[AcademicScheduleService] {}년도 공휴일 조회 완료. 총 {}개", year, holidayCount);
+                
+                // 공휴일 변환 및 추가
+                for (Holiday holiday : holidays) {
+                    allItems.add(ResponseAcademicScheduleListItem.fromHoliday(holiday));
+                }
+            }
+            
+            // 3. 날짜순 정렬
+            allItems.sort(Comparator.comparing(ResponseAcademicScheduleListItem::getStartAt));
+            
+            // 페이징 처리 (수동)
+            int totalElements = allItems.size();
+            int fromIndex = Math.min(pageable.getPageNumber() * pageable.getPageSize(), totalElements);
+            int toIndex = Math.min(fromIndex + pageable.getPageSize(), totalElements);
+            List<ResponseAcademicScheduleListItem> pagedItems = allItems.subList(fromIndex, toIndex);
 
-            log.debug("[AcademicScheduleService] 전체 일정 목록 조회 완료. 조회된 항목 수={}, 전체 항목 수={}", 
-                    schedulePage.getNumberOfElements(), schedulePage.getTotalElements());
+            log.debug("[AcademicScheduleService] 전체 일정 목록 조회 완료. 학사일정={}, 공휴일={}, 총={}", 
+                    schedulePage.getTotalElements(), 
+                    holidayCount,
+                    totalElements);
             
             return ResponseList.ok(
-                    items,
-                    schedulePage.getTotalElements(),
-                    schedulePage.getNumber(),
-                    schedulePage.getSize()
+                    pagedItems,
+                    (long) totalElements,
+                    pageable.getPageNumber(),
+                    pageable.getPageSize()
             );
 
         } catch (Exception e) {

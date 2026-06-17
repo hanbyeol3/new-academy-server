@@ -33,6 +33,40 @@ public class AcademicScheduleAdminController {
 
     private final AcademicScheduleService academicScheduleService;
 
+    @GetMapping("/monthly")
+    @Operation(
+        summary = "월별 학사일정 조회 (관리자)",
+        description = """
+                관리자용 월별 학사일정을 조회합니다. (공휴일 포함)
+                
+                조회 조건:
+                - 모든 일정 조회 (비공개 포함)
+                - 해당 월의 학사일정 + 공휴일
+                
+                응답 데이터:
+                - 학사일정 및 공휴일
+                - eventType으로 구분 (ACADEMIC/HOLIDAY)
+                - 등록/수정 이력 포함
+                
+                사용 예시:
+                - GET /api/admin/academic-schedules/monthly?year=2026&month=6
+                """
+    )
+    public ResponseList<ResponseAcademicScheduleListItem> getMonthlySchedules(
+            @Parameter(description = "조회 연도", required = true, example = "2026")
+            @RequestParam Integer year,
+            @Parameter(description = "조회 월", required = true, example = "6")
+            @RequestParam Integer month) {
+        
+        log.info("[AcademicScheduleAdminController] 월별 일정 조회 요청. year={}, month={}", year, month);
+        
+        RequestAcademicScheduleSearch searchRequest = new RequestAcademicScheduleSearch();
+        searchRequest.setYear(year);
+        searchRequest.setMonth(month);
+        
+        return academicScheduleService.getMonthlySchedulesForAdmin(searchRequest);
+    }
+
     @GetMapping
     @Operation(
         summary = "학사일정 목록 조회 (관리자)",
@@ -66,6 +100,7 @@ public class AcademicScheduleAdminController {
                 
                 주의사항:
                 - 유효하지 않은 연도(1900-2100 범위 외)는 빈 목록 반환
+                - 2026년부터는 공휴일도 함께 포함됨 (eventType으로 구분)
                 """
     )
     public ResponseList<ResponseAcademicScheduleListItem> getScheduleList(
