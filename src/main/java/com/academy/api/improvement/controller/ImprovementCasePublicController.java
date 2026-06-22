@@ -41,7 +41,6 @@ public class ImprovementCasePublicController {
                 - 소프트 삭제된 사례는 제외
                 - 공개 상태인 사례만 표시
                 - 고정글이 상단에 우선 표시
-                - 비밀글은 제목만 표시
                 
                 검색 옵션:
                 - keyword: 검색 키워드
@@ -92,10 +91,10 @@ public class ImprovementCasePublicController {
                 특징:
                 - 공개된 사례만 조회 가능
                 - 조회시 자동으로 조회수 1 증가
-                - 비밀글의 경우 401 에러 반환
+                - 비밀번호가 설정된 글의 경우 401 에러 반환
                 - 삭제된 사례 조회시 404 에러
                 
-                비밀글 조회:
+                비밀번호 보호 글 조회:
                 - 별도의 비밀번호 검증 API 사용
                 """
     )
@@ -110,7 +109,7 @@ public class ImprovementCasePublicController {
     }
     
     @Operation(
-        summary = "비밀글 상세 조회",
+        summary = "비밀번호 보호 글 상세 조회",
         description = """
                 비밀번호로 보호된 성적 향상 사례를 조회합니다.
                 
@@ -129,7 +128,7 @@ public class ImprovementCasePublicController {
             @Parameter(description = "비밀번호 검증 요청")
             @RequestBody @Valid RequestPasswordVerify request) {
         
-        log.info("비밀글 상세 조회. ID={}", id);
+        log.info("비밀번호 보호 글 상세 조회. ID={}", id);
         
         return improvementCaseService.getSecretCaseDetail(id, request.getPassword());
     }
@@ -151,8 +150,7 @@ public class ImprovementCasePublicController {
                 - gradeType: 성적 유형 (SCORE: 점수, GRADE: 등급)
                 - prevResult: 이전 성적 (SCORE: 0~100 숫자, GRADE: 1~9 숫자)
                 - nextResult: 이후 성적 (SCORE: 0~100 숫자, GRADE: 1~9 숫자)
-                - isSecret: 비밀글 여부
-                - password: 비밀번호 (비밀글인 경우)
+                - password: 비밀번호 (외부 작성자의 경우 필수)
                 
                 파일 첨부:
                 - uploadFileIds: 첨부파일 ID 배열
@@ -160,7 +158,7 @@ public class ImprovementCasePublicController {
                 
                 주의사항:
                 - 작성자 유형은 자동으로 EXTERNAL로 설정
-                - 비밀글 설정시 비밀번호 필수
+                - 외부 작성자의 경우 비밀번호 필수
                 - 첨부파일은 미리 업로드 후 ID 전달
                 """
     )
@@ -185,7 +183,7 @@ public class ImprovementCasePublicController {
                 
                 검증 절차:
                 - 외부 작성자(EXTERNAL)만 수정 가능
-                - 비밀글인 경우 비밀번호 검증 필수
+                - 비밀번호 검증 필수
                 - 관리자가 작성한 사례는 수정 불가
                 
                 수정 가능 항목:
@@ -208,15 +206,12 @@ public class ImprovementCasePublicController {
             @Parameter(description = "수정 요청")
             @RequestBody @Valid RequestImprovementCaseUpdate request,
             
-            @Parameter(description = "비밀번호 (비밀글인 경우)", example = "1234")
-            @RequestParam(required = false) String password,
-            
             @Parameter(description = "첨부파일 ID 목록", example = "[1, 2, 3]")
             @RequestParam(required = false) Long[] uploadFileIds) {
         
         log.info("성적 향상 사례 수정. ID={}", id);
         
-        return improvementCaseService.updatePublicCase(id, request, password, uploadFileIds);
+        return improvementCaseService.updatePublicCase(id, request, uploadFileIds);
     }
     
     @Operation(
@@ -227,7 +222,7 @@ public class ImprovementCasePublicController {
                 검증 절차:
                 - 작성자명 일치 확인
                 - 외부 작성자(EXTERNAL)만 삭제 가능
-                - 비밀글인 경우 비밀번호 검증 필수
+                - 비밀번호 검증 필수
                 
                 삭제 방식:
                 - 소프트 삭제 (deletedAt 설정)
@@ -244,14 +239,11 @@ public class ImprovementCasePublicController {
             @Parameter(description = "사례 ID", example = "1")
             @PathVariable Long id,
             
-            @Parameter(description = "작성자명", example = "김학생")
-            @RequestParam String authorName,
-            
-            @Parameter(description = "비밀번호 (비밀글인 경우)", example = "1234")
-            @RequestParam(required = false) String password) {
+            @Parameter(description = "삭제 요청")
+            @RequestBody @Valid RequestImprovementCaseDelete request) {
         
-        log.info("성적 향상 사례 삭제. ID={}, 작성자={}", id, authorName);
+        log.info("성적 향상 사례 삭제. ID={}, 작성자={}", id, request.getAuthorName());
         
-        return improvementCaseService.deletePublicCase(id, authorName, password);
+        return improvementCaseService.deletePublicCase(id, request);
     }
 }

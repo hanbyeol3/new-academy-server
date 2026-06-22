@@ -55,6 +55,15 @@ public class ResponseQnaQuestionDetail {
     @Schema(description = "이전글/다음글 네비게이션 정보")
     private ResponseQnaNavigation navigation;
 
+    @Schema(description = "작성자 연락처 (관리자용)", example = "010-1234-5678")
+    private String authorPhone;
+
+    @Schema(description = "IP 주소 (관리자용)", example = "0:0:0:0:0:0:0:1")
+    private String ipAddress;
+
+    @Schema(description = "개인정보 수집 동의 여부 (관리자용)", example = "true")
+    private Boolean privacyConsent;
+
     /**
      * Entity에서 DTO로 변환 (Public용 - 비밀글 내용 보호).
      */
@@ -79,8 +88,7 @@ public class ResponseQnaQuestionDetail {
      * Entity에서 DTO로 변환 (Admin용 - 모든 정보 노출).
      */
     public static ResponseQnaQuestionDetail fromForAdmin(QnaQuestion entity, ResponseQnaAnswer answer, 
-                                                        ResponseQnaNavigation navigation,
-                                                        String phoneNumber, String ipAddress, Boolean privacyConsent) {
+                                                        ResponseQnaNavigation navigation) {
         return ResponseQnaQuestionDetail.builder()
                 .id(entity.getId())
                 .title(entity.getTitle())
@@ -94,6 +102,9 @@ public class ResponseQnaQuestionDetail {
                 .answeredAt(entity.getAnsweredAt())
                 .answer(answer)
                 .navigation(navigation)
+                .authorPhone(entity.getPhoneNumber())  // 관리자용에는 연락처 포함
+                .ipAddress(entity.getIpAddress())      // 관리자용에는 IP 포함
+                .privacyConsent(entity.getPrivacyConsent()) // 관리자용에는 개인정보 동의 포함
                 .build();
     }
 

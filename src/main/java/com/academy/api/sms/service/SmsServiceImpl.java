@@ -8,6 +8,7 @@ import com.academy.api.sms.dto.*;
 import com.academy.api.sms.mapper.MessageLogMapper;
 import com.academy.api.sms.template.SmsTemplate;
 import com.academy.api.sms.template.SmsTemplateProcessor;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -36,6 +37,7 @@ public class SmsServiceImpl implements SmsService {
     private final SmsTemplateProcessor templateProcessor;
     private final MessageLogService messageLogService;
     private final MessageLogMapper messageLogMapper;
+    private final ObjectMapper objectMapper;
 
     @Override
     public ResponseData<ResponseSmsMessage> sendMessage(RequestSmsMessage request) {
@@ -179,9 +181,15 @@ public class SmsServiceImpl implements SmsService {
      */
     private String createRequestJson(SolapiSendRequest solapiRequest) {
         try {
-            return String.format("{\"to\":\"%s\",\"from\":\"%s\",\"text\":\"%s\",\"type\":\"%s\"}", 
-                    solapiRequest.getTo(), solapiRequest.getFrom(), 
-                    solapiRequest.getText().replace("\"", "\\\""), solapiRequest.getType());
+            Map<String, Object> requestMap = new HashMap<>();
+            requestMap.put("to", solapiRequest.getTo());
+            requestMap.put("from", solapiRequest.getFrom());
+            requestMap.put("text", solapiRequest.getText());
+            requestMap.put("type", solapiRequest.getType());
+            if (solapiRequest.getSubject() != null) {
+                requestMap.put("subject", solapiRequest.getSubject());
+            }
+            return objectMapper.writeValueAsString(requestMap);
         } catch (Exception e) {
             log.warn("[SmsService] 요청 JSON 생성 실패: {}", e.getMessage());
             return "{}";
@@ -193,8 +201,18 @@ public class SmsServiceImpl implements SmsService {
      */
     private String createResponseJson(SolapiSendResponse solapiResponse) {
         try {
-            return String.format("{\"groupId\":\"%s\",\"status\":\"%s\",\"messageId\":\"%s\"}", 
-                    solapiResponse.getGroupId(), solapiResponse.getStatus(), solapiResponse.getMessageId());
+            Map<String, Object> responseMap = new HashMap<>();
+            responseMap.put("groupId", solapiResponse.getGroupId());
+            responseMap.put("status", solapiResponse.getStatus());
+            responseMap.put("messageId", solapiResponse.getMessageId());
+            responseMap.put("to", solapiResponse.getTo());
+            responseMap.put("from", solapiResponse.getFrom());
+            responseMap.put("text", solapiResponse.getText());
+            responseMap.put("type", solapiResponse.getType());
+            if (solapiResponse.getPrice() != null) {
+                responseMap.put("price", solapiResponse.getPrice().getValue());
+            }
+            return objectMapper.writeValueAsString(responseMap);
         } catch (Exception e) {
             log.warn("[SmsService] 응답 JSON 생성 실패: {}", e.getMessage());
             return "{}";

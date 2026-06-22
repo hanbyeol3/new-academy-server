@@ -80,10 +80,10 @@ public class RequestImprovementCaseCreate {
     @Schema(description = "고정글 여부 (관리자용)", example = "false", defaultValue = "false")
     private Boolean isPinned = false;
     
-    @Schema(description = "비밀글 여부", example = "false", defaultValue = "false")
-    private Boolean isSecret = false;
-    
     @Size(min = 4, max = 20, message = "비밀번호는 4자 이상 20자 이하여야 합니다")
-    @Schema(description = "비밀번호 (비밀글 설정시)", example = "1234")
+    @Schema(description = "비밀번호 (외부 작성자용)", example = "1234")
     private String password;
+    
+    @Schema(description = "개인정보 수집 및 이용 동의 (0: 미동의, 1: 동의)", example = "1", defaultValue = "0")
+    private Integer privacyConsent;
 }

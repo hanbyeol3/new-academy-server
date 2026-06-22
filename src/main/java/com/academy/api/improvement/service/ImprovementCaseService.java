@@ -68,22 +68,20 @@ public interface ImprovementCaseService {
      * [공개] 성적 향상 사례 수정 (작성자 본인).
      * 
      * @param id 사례 ID
-     * @param request 수정 요청
-     * @param password 비밀번호
+     * @param request 수정 요청 (비밀번호 포함)
      * @param uploadFileIds 첨부파일 ID 목록
      * @return 수정 결과
      */
-    Response updatePublicCase(Long id, RequestImprovementCaseUpdate request, String password, Long[] uploadFileIds);
+    Response updatePublicCase(Long id, RequestImprovementCaseUpdate request, Long[] uploadFileIds);
     
     /**
      * [공개] 성적 향상 사례 삭제 (작성자 본인).
      * 
      * @param id 사례 ID
-     * @param authorName 작성자명
-     * @param password 비밀번호
+     * @param request 삭제 요청 (작성자명, 비밀번호 포함)
      * @return 삭제 결과
      */
-    Response deletePublicCase(Long id, String authorName, String password);
+    Response deletePublicCase(Long id, RequestImprovementCaseDelete request);
     
     // ==================== 관리자 API ====================
     
@@ -138,7 +136,7 @@ public interface ImprovementCaseService {
      * @param uploadFileIds 첨부파일 ID 목록
      * @return 수정 결과
      */
-    Response updateAdminCase(Long id, RequestImprovementCaseUpdate request, Long[] uploadFileIds);
+    Response updateAdminCase(Long id, RequestImprovementCaseAdminUpdate request, Long[] uploadFileIds);
     
     /**
      * [관리자] 성적 향상 사례 삭제 (소프트 삭제).

@@ -24,6 +24,9 @@ public class ResponseQnaAnswer {
 
     @Schema(description = "답변 작성자 ID", example = "2")
     private Long createdBy;
+    
+    @Schema(description = "답변 작성자 이름", example = "테스트관리자")
+    private String createdByName;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @Schema(description = "답변 작성 시각", example = "2024-01-01 14:30:00")
@@ -32,6 +35,9 @@ public class ResponseQnaAnswer {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @Schema(description = "답변 수정 시각", example = "2024-01-01 15:00:00")
     private LocalDateTime updatedAt;
+    
+    @Schema(description = "답변 수정자 이름", example = "관리자")
+    private String updatedByName;
 
     /**
      * Entity에서 DTO로 변환.
@@ -43,6 +49,21 @@ public class ResponseQnaAnswer {
                 .createdBy(entity.getCreatedBy())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
+                .build();
+    }
+    
+    /**
+     * Entity에서 DTO로 변환 (작성자/수정자 이름 포함).
+     */
+    public static ResponseQnaAnswer fromWithNames(QnaAnswer entity, String createdByName, String updatedByName) {
+        return ResponseQnaAnswer.builder()
+                .id(entity.getId())
+                .content(entity.getContent())
+                .createdBy(entity.getCreatedBy())
+                .createdByName(createdByName)
+                .createdAt(entity.getCreatedAt())
+                .updatedAt(entity.getUpdatedAt())
+                .updatedByName(updatedByName)
                 .build();
     }
 }

@@ -2,6 +2,7 @@ package com.academy.api.improvement.dto;
 
 import com.academy.api.improvement.domain.GradeType;
 import com.academy.api.improvement.domain.ImprovementCase;
+import com.academy.api.improvement.domain.WriterType;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -25,6 +26,9 @@ public class ResponseImprovementCasePublicList {
     @Schema(description = "제목", example = "3등급에서 1등급으로! 수학 성적 향상 비결")
     private String title;
     
+    @Schema(description = "작성자 유형", example = "EXTERNAL")
+    private WriterType writerType;
+    
     @Schema(description = "작성자 이름", example = "김학생")
     private String authorName;
     
@@ -45,9 +49,6 @@ public class ResponseImprovementCasePublicList {
     
     @Schema(description = "고정글 여부", example = "false")
     private Boolean isPinned;
-    
-    @Schema(description = "비밀글 여부", example = "false")
-    private Boolean isSecret;
     
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @Schema(description = "작성일시", example = "2024-01-01 10:00:00")
@@ -71,6 +72,7 @@ public class ResponseImprovementCasePublicList {
         return ResponseImprovementCasePublicList.builder()
                 .id(entity.getId())
                 .title(entity.getTitle())
+                .writerType(entity.getWriterType())
                 .authorName(entity.getAuthorName())
                 .divisionText(divisionText)
                 .subjectText(subjectText)
@@ -78,7 +80,6 @@ public class ResponseImprovementCasePublicList {
                 .gradeType(entity.getGradeType())
                 .viewCount(entity.getViewCount())
                 .isPinned(entity.getIsPinned())
-                .isSecret(entity.getIsSecret())
                 .createdAt(entity.getCreatedAt())
                 .build();
     }

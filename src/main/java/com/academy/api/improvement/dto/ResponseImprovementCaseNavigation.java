@@ -29,8 +29,5 @@ public class ResponseImprovementCaseNavigation {
         
         @Schema(description = "제목", example = "3등급에서 1등급으로! 수학 성적 향상 비결")
         private String title;
-        
-        @Schema(description = "비밀글 여부", example = "false")
-        private Boolean isSecret;
     }
 }

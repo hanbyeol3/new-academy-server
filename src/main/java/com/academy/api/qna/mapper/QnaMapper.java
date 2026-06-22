@@ -78,13 +78,37 @@ public class QnaMapper {
         ResponseQnaAnswer answerDto = answer != null ? ResponseQnaAnswer.from(answer) : null;
         return ResponseQnaQuestionDetail.from(entity, answerDto, navigation);
     }
+    
+    /**
+     * Entity를 질문 상세 응답 DTO로 변환 (Public용 - 답변 작성자 이름 포함).
+     */
+    public ResponseQnaQuestionDetail toDetailResponse(QnaQuestion entity, QnaAnswer answer, ResponseQnaNavigation navigation, 
+                                                      String answerCreatedByName) {
+        ResponseQnaAnswer answerDto = null;
+        if (answer != null) {
+            answerDto = ResponseQnaAnswer.fromWithNames(answer, answerCreatedByName, null);
+        }
+        return ResponseQnaQuestionDetail.from(entity, answerDto, navigation);
+    }
 
     /**
      * Entity를 질문 관리자용 상세 응답 DTO로 변환.
      */
-    public ResponseQnaQuestionAdmin toAdminResponse(QnaQuestion entity, QnaAnswer answer, ResponseQnaNavigation navigation) {
+    public ResponseQnaQuestionAdmin toAdminResponse(QnaQuestion entity, QnaAnswer answer, ResponseQnaNavigation navigation, String deletedByName) {
         ResponseQnaAnswer answerDto = answer != null ? ResponseQnaAnswer.from(answer) : null;
-        return ResponseQnaQuestionAdmin.from(entity, answerDto, navigation);
+        return ResponseQnaQuestionAdmin.from(entity, answerDto, navigation, deletedByName);
+    }
+    
+    /**
+     * Entity를 질문 관리자용 상세 응답 DTO로 변환 (답변 작성자 이름 포함).
+     */
+    public ResponseQnaQuestionAdmin toAdminResponse(QnaQuestion entity, QnaAnswer answer, ResponseQnaNavigation navigation, 
+                                                    String deletedByName, String answerCreatedByName) {
+        ResponseQnaAnswer answerDto = null;
+        if (answer != null) {
+            answerDto = ResponseQnaAnswer.fromWithNames(answer, answerCreatedByName, null);
+        }
+        return ResponseQnaQuestionAdmin.from(entity, answerDto, navigation, deletedByName);
     }
 
     /**
@@ -154,29 +178,6 @@ public class QnaMapper {
         }
     }
 
-    /**
-     * 공개 질문 상세 응답 DTO 생성.
-     */
-    public ResponseQnaQuestionDetail toDetailResponse(QnaQuestion entity, ResponseQnaNavigation navigation) {
-        // 답변이 있으면 DTO로 변환, 없으면 null
-        ResponseQnaAnswer answerDto = null;
-        if (entity.getAnswer() != null) {
-            answerDto = ResponseQnaAnswer.from(entity.getAnswer());
-        }
-        return ResponseQnaQuestionDetail.from(entity, answerDto, navigation);
-    }
-
-    /**
-     * 관리자 질문 상세 응답 DTO 생성.
-     */
-    public ResponseQnaQuestionAdmin toAdminResponse(QnaQuestion entity, ResponseQnaNavigation navigation) {
-        // 답변이 있으면 DTO로 변환, 없으면 null
-        ResponseQnaAnswer answerDto = null;
-        if (entity.getAnswer() != null) {
-            answerDto = ResponseQnaAnswer.from(entity.getAnswer());
-        }
-        return ResponseQnaQuestionAdmin.from(entity, answerDto, navigation);
-    }
 
     /**
      * RequestQnaAnswerUpsert를 QnaAnswer Entity로 변환.

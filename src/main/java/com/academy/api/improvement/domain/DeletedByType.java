@@ -1,10 +1,10 @@
-package com.academy.api.qna.domain;
+package com.academy.api.improvement.domain;
 
 /**
- * QnA 질문 삭제자 구분 타입.
+ * 성적 향상 사례 삭제자 구분 타입.
  * 
  * 논리 삭제 시 누가 삭제했는지 구분하기 위한 열거형입니다.
- * qna_questions 테이블의 deleted_by_type 컬럼과 매핑됩니다.
+ * improvement_cases 테이블의 deleted_by_type 컬럼과 매핑됩니다.
  */
 public enum DeletedByType {
     

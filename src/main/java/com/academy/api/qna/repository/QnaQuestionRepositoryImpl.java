@@ -91,7 +91,7 @@ public class QnaQuestionRepositoryImpl implements QnaQuestionRepositoryCustom {
         BooleanBuilder predicate = new BooleanBuilder();
 
         // 삭제되지 않은 질문만 조회 (공개용 필수 조건)
-        predicate.and(question.isDeleted.eq(false));
+        predicate.and(question.deletedAt.isNull());
 
         // 답변 완료 여부 필터
         if (isAnswered != null) {
@@ -123,10 +123,13 @@ public class QnaQuestionRepositoryImpl implements QnaQuestionRepositoryCustom {
 
     /**
      * 관리자용 검색 조건 생성.
+     * 관리자는 삭제된 글도 모두 조회 가능 (deleted_at 조건 없음)
      */
     private BooleanBuilder createAdminSearchPredicate(Boolean isAnswered, Boolean secret, String searchType,
                                                     String keyword, LocalDateTime startDate, LocalDateTime endDate) {
         BooleanBuilder predicate = new BooleanBuilder();
+
+        // 관리자는 삭제 여부와 관계없이 모든 글 조회 가능 (deleted_at 필터 없음)
 
         // 답변 완료 여부 필터
         if (isAnswered != null) {
@@ -191,7 +194,7 @@ public class QnaQuestionRepositoryImpl implements QnaQuestionRepositoryCustom {
         return queryFactory
                 .selectFrom(question)
                 .where(
-                    question.isDeleted.eq(false)  // 삭제되지 않은 글만
+                    question.deletedAt.isNull()  // 삭제되지 않은 글만
                     .and(
                         question.createdAt.gt(current.getCreatedAt())
                         .or(
@@ -224,7 +227,7 @@ public class QnaQuestionRepositoryImpl implements QnaQuestionRepositoryCustom {
         return queryFactory
                 .selectFrom(question)
                 .where(
-                    question.isDeleted.eq(false)  // 삭제되지 않은 글만
+                    question.deletedAt.isNull()  // 삭제되지 않은 글만
                     .and(
                         question.createdAt.lt(current.getCreatedAt())
                         .or(

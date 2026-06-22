@@ -97,17 +97,30 @@ public class ImprovementCase {
     @Column(name = "is_pinned", nullable = false)
     private Boolean isPinned = false;
 
-    /** 비밀글 여부 */
-    @Column(name = "is_secret", nullable = false)
-    private Boolean isSecret = false;
-
     /** 비밀번호 해시 (BCrypt) */
     @Column(name = "password_hash", length = 255)
     private String passwordHash;
+    
+    /** IP 주소 */
+    @Column(name = "ip_address", length = 100)
+    private String ipAddress;
+    
+    /** 개인정보 수집 동의 */
+    @Column(name = "privacy_consent", nullable = false)
+    private Boolean privacyConsent = false;
 
     /** 삭제일시 (소프트 삭제) */
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
+    
+    /** 삭제자 구분 (작성자/관리자) */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "deleted_by_type", length = 10)
+    private DeletedByType deletedByType;
+    
+    /** 삭제자 ID */
+    @Column(name = "deleted_by")
+    private Long deletedBy;
 
     /** 등록자 ID (관리자 작성시) */
     @Column(name = "created_by")
@@ -121,6 +134,11 @@ public class ImprovementCase {
     /** 수정자 ID */
     @Column(name = "updated_by")
     private Long updatedBy;
+    
+    /** 수정자 구분 (외부/관리자) */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "updated_by_type", length = 10)
+    private UpdatedByType updatedByType;
 
     /** 수정일시 */
     @LastModifiedDate
@@ -135,7 +153,7 @@ public class ImprovementCase {
                            Division division, Subject subject, GradeType gradeType,
                            String prevResult, String nextResult,
                            String content, Boolean isPublished, Boolean isPinned,
-                           Boolean isSecret, String passwordHash, Long createdBy) {
+                           String passwordHash, String ipAddress, Boolean privacyConsent, Long createdBy) {
         this.title = title;
         this.writerType = writerType != null ? writerType : WriterType.EXTERNAL;
         this.authorName = authorName;
@@ -148,8 +166,9 @@ public class ImprovementCase {
         this.content = content;
         this.isPublished = isPublished != null ? isPublished : true;
         this.isPinned = isPinned != null ? isPinned : false;
-        this.isSecret = isSecret != null ? isSecret : false;
         this.passwordHash = passwordHash;
+        this.ipAddress = ipAddress;
+        this.privacyConsent = privacyConsent != null ? privacyConsent : false;
         this.createdBy = createdBy;
         this.viewCount = 0L;
     }
@@ -166,11 +185,14 @@ public class ImprovementCase {
      * @param content 내용
      * @param isPublished 공개 여부
      * @param isPinned 고정글 여부
+     * @param privacyConsent 개인정보 동의
      * @param updatedBy 수정자 ID
+     * @param updatedByType 수정자 구분
      */
     public void update(String title, Division division, Subject subject, GradeType gradeType,
                       String prevResult, String nextResult,
-                      String content, Boolean isPublished, Boolean isPinned, Long updatedBy) {
+                      String content, Boolean isPublished, Boolean isPinned, Boolean privacyConsent,
+                      Long updatedBy, UpdatedByType updatedByType) {
         this.title = title;
         this.division = division;
         this.subject = subject;
@@ -180,7 +202,9 @@ public class ImprovementCase {
         this.content = content;
         this.isPublished = isPublished != null ? isPublished : true;
         this.isPinned = isPinned != null ? isPinned : false;
+        this.privacyConsent = privacyConsent != null ? privacyConsent : false;
         this.updatedBy = updatedBy;
+        this.updatedByType = updatedByType;
     }
 
     /**
@@ -192,9 +216,14 @@ public class ImprovementCase {
 
     /**
      * 소프트 삭제 처리.
+     * 
+     * @param deletedByType 삭제자 구분 (AUTHOR, ADMIN)
+     * @param deletedBy 삭제자 ID (관리자 ID 또는 null)
      */
-    public void softDelete() {
+    public void softDelete(DeletedByType deletedByType, Long deletedBy) {
         this.deletedAt = LocalDateTime.now();
+        this.deletedByType = deletedByType;
+        this.deletedBy = deletedBy;
     }
 
     /**
@@ -202,6 +231,8 @@ public class ImprovementCase {
      */
     public void restore() {
         this.deletedAt = null;
+        this.deletedByType = null;
+        this.deletedBy = null;
     }
 
     /**

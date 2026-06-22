@@ -31,6 +31,9 @@ public class ResponseImprovementCaseDetail {
     @Schema(description = "작성자 이름", example = "김학생")
     private String authorName;
     
+    @Schema(description = "연락처 (관리자용)", example = "010-1234-5678")
+    private String phoneNumber;
+    
     @Schema(description = "학년 구분", example = "HIGH_3")
     private Division division;
     
@@ -67,8 +70,11 @@ public class ResponseImprovementCaseDetail {
     @Schema(description = "고정글 여부", example = "false")
     private Boolean isPinned;
     
-    @Schema(description = "비밀글 여부", example = "false")
-    private Boolean isSecret;
+    @Schema(description = "IP 주소", example = "0:0:0:0:0:0:0:1")
+    private String ipAddress;
+    
+    @Schema(description = "개인정보 수집 동의 여부", example = "true")
+    private Boolean privacyConsent;
     
     @Schema(description = "첨부파일 목록")
     private List<ResponseFileInfo> attachments;
@@ -92,9 +98,28 @@ public class ResponseImprovementCaseDetail {
     @Schema(description = "수정자 이름", example = "관리자")
     private String updatedByName;
     
+    @Schema(description = "수정자 구분", example = "ADMIN", allowableValues = {"EXTERNAL", "ADMIN"})
+    private String updatedByType;
+    
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @Schema(description = "수정일시", example = "2024-01-01 11:00:00")
     private LocalDateTime updatedAt;
+    
+    @Schema(description = "삭제 여부 (관리자용)", example = "false")
+    private Boolean isDeleted;
+    
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @Schema(description = "삭제 일시 (관리자용)", example = "2024-01-01 15:00:00")
+    private LocalDateTime deletedAt;
+    
+    @Schema(description = "삭제자 구분 (관리자용)", example = "ADMIN", allowableValues = {"EXTERNAL", "ADMIN"})
+    private String deletedByType;
+    
+    @Schema(description = "삭제자 ID (관리자용)", example = "2")
+    private Long deletedBy;
+    
+    @Schema(description = "삭제자 이름 (관리자용)", example = "관리자")
+    private String deletedByName;
     
     /**
      * 엔티티에서 DTO로 변환.
@@ -105,6 +130,7 @@ public class ResponseImprovementCaseDetail {
                 .title(entity.getTitle())
                 .writerType(entity.getWriterType())
                 .authorName(entity.getAuthorName())
+                .phoneNumber(null) // 공개 API에서는 연락처 숨김
                 .division(entity.getDivision())
                 .divisionText(entity.getDivision() != null ? entity.getDivision().getTitle() : null)
                 .subject(null) // 호환성을 위해 유지
@@ -117,7 +143,8 @@ public class ResponseImprovementCaseDetail {
                 .viewCount(entity.getViewCount())
                 .isPublished(entity.getIsPublished())
                 .isPinned(entity.getIsPinned())
-                .isSecret(entity.getIsSecret())
+                .ipAddress(entity.getIpAddress())
+                .privacyConsent(entity.getPrivacyConsent())
                 .attachments(null) // 서비스에서 설정
                 .navigation(null) // 서비스에서 설정
                 .createdBy(entity.getCreatedBy())
@@ -126,6 +153,11 @@ public class ResponseImprovementCaseDetail {
                 .updatedBy(entity.getUpdatedBy())
                 .updatedByName(null) // 서비스에서 설정
                 .updatedAt(entity.getUpdatedAt())
+                .isDeleted(entity.getDeletedAt() != null)
+                .deletedAt(entity.getDeletedAt())
+                .deletedByType(entity.getDeletedByType() != null ? entity.getDeletedByType().name() : null)
+                .deletedBy(entity.getDeletedBy())
+                .deletedByName(null) // 서비스에서 설정
                 .build();
     }
     
@@ -133,11 +165,19 @@ public class ResponseImprovementCaseDetail {
      * 엔티티에서 DTO로 변환 (회원 이름 포함).
      */
     public static ResponseImprovementCaseDetail fromWithNames(ImprovementCase entity, String createdByName, String updatedByName) {
+        return fromWithNames(entity, createdByName, updatedByName, null);
+    }
+    
+    /**
+     * 엔티티에서 DTO로 변환 (회원 이름 및 삭제자 이름 포함).
+     */
+    public static ResponseImprovementCaseDetail fromWithNames(ImprovementCase entity, String createdByName, String updatedByName, String deletedByName) {
         return ResponseImprovementCaseDetail.builder()
                 .id(entity.getId())
                 .title(entity.getTitle())
                 .writerType(entity.getWriterType())
                 .authorName(entity.getAuthorName())
+                .phoneNumber(entity.getPhoneNumber()) // 관리자용에는 연락처 포함
                 .division(entity.getDivision())
                 .divisionText(entity.getDivision() != null ? entity.getDivision().getTitle() : null)
                 .subject(null) // 호환성을 위해 유지
@@ -150,7 +190,8 @@ public class ResponseImprovementCaseDetail {
                 .viewCount(entity.getViewCount())
                 .isPublished(entity.getIsPublished())
                 .isPinned(entity.getIsPinned())
-                .isSecret(entity.getIsSecret())
+                .ipAddress(entity.getIpAddress())
+                .privacyConsent(entity.getPrivacyConsent())
                 .attachments(null) // 서비스에서 설정
                 .navigation(null) // 서비스에서 설정
                 .createdBy(entity.getCreatedBy())
@@ -158,7 +199,13 @@ public class ResponseImprovementCaseDetail {
                 .createdAt(entity.getCreatedAt())
                 .updatedBy(entity.getUpdatedBy())
                 .updatedByName(updatedByName)
+                .updatedByType(entity.getUpdatedByType() != null ? entity.getUpdatedByType().name() : null)
                 .updatedAt(entity.getUpdatedAt())
+                .isDeleted(entity.getDeletedAt() != null)
+                .deletedAt(entity.getDeletedAt())
+                .deletedByType(entity.getDeletedByType() != null ? entity.getDeletedByType().name() : null)
+                .deletedBy(entity.getDeletedBy())
+                .deletedByName(deletedByName)
                 .build();
     }
 }

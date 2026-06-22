@@ -12,15 +12,16 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * 성적 향상 사례 수정 요청 DTO.
+ * 성적 향상 사례 관리자 수정 요청 DTO.
  * 
- * 관리자 또는 작성자 본인이 성적 향상 사례를 수정할 때 사용합니다.
+ * 관리자가 성적 향상 사례를 수정할 때 사용합니다.
+ * 비밀번호 검증 없이 모든 사례를 수정할 수 있습니다.
  */
 @Getter
 @Setter
 @NoArgsConstructor
-@Schema(description = "성적 향상 사례 수정 요청")
-public class RequestImprovementCaseUpdate {
+@Schema(description = "성적 향상 사례 관리자 수정 요청")
+public class RequestImprovementCaseAdminUpdate {
     
     @NotBlank(message = "제목을 입력해주세요")
     @Size(max = 255, message = "제목은 255자 이하여야 합니다")
@@ -60,12 +61,6 @@ public class RequestImprovementCaseUpdate {
     @Schema(description = "공개 여부", example = "true", defaultValue = "true")
     private Boolean isPublished = true;
     
-    @Schema(description = "고정글 여부 (관리자용)", example = "false", defaultValue = "false")
+    @Schema(description = "고정글 여부", example = "false", defaultValue = "false")
     private Boolean isPinned = false;
-    
-    @Schema(description = "본인확인용 비밀번호 (외부 작성자용, 관리자는 불필요)", example = "1234")
-    private String password;
-    
-    @Schema(description = "개인정보 수집 및 이용 동의 (0: 미동의, 1: 동의)", example = "1", defaultValue = "0")
-    private Integer privacyConsent;
 }

@@ -53,9 +53,6 @@ public class ResponseImprovementCaseAdminList {
     @Schema(description = "고정글 여부", example = "false")
     private Boolean isPinned;
     
-    @Schema(description = "비밀글 여부", example = "false")
-    private Boolean isSecret;
-    
     @Schema(description = "등록자 ID", example = "1")
     private Long createdBy;
     
@@ -72,9 +69,28 @@ public class ResponseImprovementCaseAdminList {
     @Schema(description = "수정자 이름", example = "관리자")
     private String updatedByName;
     
+    @Schema(description = "수정자 구분", example = "ADMIN", allowableValues = {"EXTERNAL", "ADMIN"})
+    private String updatedByType;
+    
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @Schema(description = "수정일시", example = "2024-01-01 11:00:00")
     private LocalDateTime updatedAt;
+    
+    @Schema(description = "삭제 여부", example = "false")
+    private Boolean isDeleted;
+    
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @Schema(description = "삭제 일시", example = "2024-01-01 15:00:00")
+    private LocalDateTime deletedAt;
+    
+    @Schema(description = "삭제자 구분", example = "ADMIN", allowableValues = {"EXTERNAL", "ADMIN"})
+    private String deletedByType;
+    
+    @Schema(description = "삭제자 ID", example = "2")
+    private Long deletedBy;
+    
+    @Schema(description = "삭제자 이름", example = "관리자")
+    private String deletedByName;
     
     /**
      * 엔티티에서 DTO로 변환.
@@ -103,13 +119,18 @@ public class ResponseImprovementCaseAdminList {
                 .viewCount(entity.getViewCount())
                 .isPublished(entity.getIsPublished())
                 .isPinned(entity.getIsPinned())
-                .isSecret(entity.getIsSecret())
                 .createdBy(entity.getCreatedBy())
                 .createdByName(null) // 서비스에서 설정
                 .createdAt(entity.getCreatedAt())
                 .updatedBy(entity.getUpdatedBy())
                 .updatedByName(null) // 서비스에서 설정
+                .updatedByType(entity.getUpdatedByType() != null ? entity.getUpdatedByType().name() : null)
                 .updatedAt(entity.getUpdatedAt())
+                .isDeleted(entity.getDeletedAt() != null)
+                .deletedAt(entity.getDeletedAt())
+                .deletedByType(entity.getDeletedByType() != null ? entity.getDeletedByType().name() : null)
+                .deletedBy(entity.getDeletedBy())
+                .deletedByName(null) // 서비스에서 설정
                 .build();
     }
     
@@ -117,6 +138,13 @@ public class ResponseImprovementCaseAdminList {
      * 엔티티에서 DTO로 변환 (회원 이름 포함).
      */
     public static ResponseImprovementCaseAdminList fromWithNames(ImprovementCase entity, String createdByName, String updatedByName) {
+        return fromWithNames(entity, createdByName, updatedByName, null);
+    }
+    
+    /**
+     * 엔티티에서 DTO로 변환 (회원 이름 포함, 삭제자 이름 포함).
+     */
+    public static ResponseImprovementCaseAdminList fromWithNames(ImprovementCase entity, String createdByName, String updatedByName, String deletedByName) {
         String divisionText = entity.getDivision() != null ? entity.getDivision().getTitle() : "";
         String subjectText = entity.getSubject() != null ? entity.getSubject().getTitle() : null;
         
@@ -140,13 +168,18 @@ public class ResponseImprovementCaseAdminList {
                 .viewCount(entity.getViewCount())
                 .isPublished(entity.getIsPublished())
                 .isPinned(entity.getIsPinned())
-                .isSecret(entity.getIsSecret())
                 .createdBy(entity.getCreatedBy())
                 .createdByName(createdByName)
                 .createdAt(entity.getCreatedAt())
                 .updatedBy(entity.getUpdatedBy())
                 .updatedByName(updatedByName)
+                .updatedByType(entity.getUpdatedByType() != null ? entity.getUpdatedByType().name() : null)
                 .updatedAt(entity.getUpdatedAt())
+                .isDeleted(entity.getDeletedAt() != null)
+                .deletedAt(entity.getDeletedAt())
+                .deletedByType(entity.getDeletedByType() != null ? entity.getDeletedByType().name() : null)
+                .deletedBy(entity.getDeletedBy())
+                .deletedByName(deletedByName)
                 .build();
     }
 }

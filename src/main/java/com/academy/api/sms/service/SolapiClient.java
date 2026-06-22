@@ -19,6 +19,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.security.SecureRandom;
+import java.util.UUID;
 
 /**
  * SOLAPI REST API 클라이언트.
@@ -264,20 +265,36 @@ public class SolapiClient {
     /**
      * 임의의 salt 생성.
      * SOLAPI 스펙: 12~64바이트의 랜덤 16진수 문자열
+     * UUID를 추가하여 중복 방지
      */
     private String generateSalt() {
-        byte[] saltBytes = new byte[16]; // 16바이트 = 32글자 hex
-        RANDOM.nextBytes(saltBytes);
+        // UUID의 일부를 사용하여 더 유니크한 salt 생성
+        String uuid = UUID.randomUUID().toString().replace("-", "");
+        String timestamp = String.valueOf(System.nanoTime());
         
-        StringBuilder hexString = new StringBuilder();
-        for (byte b : saltBytes) {
-            String hex = Integer.toHexString(0xff & b);
-            if (hex.length() == 1) {
-                hexString.append('0');
+        // UUID의 앞 16자 + timestamp의 뒤 16자를 조합
+        String combined = uuid.substring(0, 16) + 
+                         timestamp.substring(Math.max(0, timestamp.length() - 16));
+        
+        // 32자로 맞추기 (SOLAPI 요구사항)
+        if (combined.length() > 32) {
+            combined = combined.substring(0, 32);
+        } else if (combined.length() < 32) {
+            // 부족한 부분은 랜덤 문자로 채우기
+            byte[] randomBytes = new byte[(32 - combined.length()) / 2];
+            RANDOM.nextBytes(randomBytes);
+            StringBuilder hexString = new StringBuilder(combined);
+            for (byte b : randomBytes) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) {
+                    hexString.append('0');
+                }
+                hexString.append(hex);
             }
-            hexString.append(hex);
+            combined = hexString.toString();
         }
-        return hexString.toString();
+        
+        return combined.substring(0, Math.min(combined.length(), 32));
     }
 
     /**

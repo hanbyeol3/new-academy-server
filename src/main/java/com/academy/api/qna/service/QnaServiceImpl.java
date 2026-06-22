@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * QnA 서비스 구현체.
@@ -106,7 +107,16 @@ public class QnaServiceImpl implements QnaService {
         // 네비게이션 정보 조회
         ResponseQnaNavigation navigation = getQnaNavigation(id);
 
-        ResponseQnaQuestionDetail response = qnaMapper.toDetailResponse(question, navigation);
+        // 답변 작성자 이름 조회
+        String answerCreatedByName = null;
+        QnaAnswer answer = question.getAnswer();
+        if (answer != null && answer.getCreatedBy() != null) {
+            answerCreatedByName = memberRepository.findById(answer.getCreatedBy())
+                    .map(m -> m.getMemberName())
+                    .orElse("알 수 없음");
+        }
+
+        ResponseQnaQuestionDetail response = qnaMapper.toDetailResponse(question, answer, navigation, answerCreatedByName);
         
         log.debug("[QnaService] 공개 질문 상세 조회 완료. id={}, title={}", id, question.getTitle());
         return ResponseData.ok("0000", "조회가 완료되었습니다.", response);
@@ -294,11 +304,11 @@ public class QnaServiceImpl implements QnaService {
         }
 
         try {
-            // 논리 삭제 처리 (작성자가 삭제)
-            question.markAsDeleted(DeletedByType.AUTHOR);
+            // 논리 삭제 처리 (외부 사용자가 삭제)
+            question.markAsDeleted(DeletedByType.EXTERNAL, null);
             questionRepository.save(question);
             
-            log.info("[QnaService] 질문 논리 삭제 완료. id={}, deletedBy=AUTHOR", id);
+            log.info("[QnaService] 질문 논리 삭제 완료. id={}, deletedByType=EXTERNAL", id);
             return Response.ok("0000", "질문이 삭제되었습니다.");
             
         } catch (Exception e) {
@@ -324,7 +334,20 @@ public class QnaServiceImpl implements QnaService {
         log.debug("[QnaService] 관리자 질문 목록 조회 완료. 총 {}개, 현재 페이지 {}개", 
                 questionPage.getTotalElements(), questionPage.getNumberOfElements());
         
-        return qnaMapper.toListItemResponseListForAdmin(questionPage);
+        // 삭제자 이름을 포함한 목록 변환
+        List<ResponseQnaQuestionListItem> items = questionPage.getContent().stream()
+                .map(entity -> {
+                    String deletedByName = null;
+                    if (entity.getDeletedBy() != null) {
+                        deletedByName = memberRepository.findById(entity.getDeletedBy())
+                                .map(Member::getMemberName)
+                                .orElse("알 수 없음");
+                    }
+                    return ResponseQnaQuestionListItem.fromForAdmin(entity, deletedByName);
+                })
+                .toList();
+        
+        return ResponseList.ok(items, questionPage.getTotalElements(), questionPage.getNumber(), questionPage.getSize());
     }
 
     /**
@@ -348,8 +371,24 @@ public class QnaServiceImpl implements QnaService {
         // 네비게이션 정보 조회
         ResponseQnaNavigation navigation = getQnaNavigation(id);
 
-        // 회원 이름 조회 (createdBy가 없으므로 일반 사용자)
-        ResponseQnaQuestionAdmin response = qnaMapper.toAdminResponse(question, navigation);
+        // 삭제자 이름 조회
+        String deletedByName = null;
+        if (question.getDeletedBy() != null) {
+            deletedByName = memberRepository.findById(question.getDeletedBy())
+                    .map(m -> m.getMemberName())
+                    .orElse("알 수 없음");
+        }
+        
+        // 답변 작성자 이름 조회
+        String answerCreatedByName = null;
+        QnaAnswer answer = question.getAnswer();
+        if (answer != null && answer.getCreatedBy() != null) {
+            answerCreatedByName = memberRepository.findById(answer.getCreatedBy())
+                    .map(m -> m.getMemberName())
+                    .orElse("알 수 없음");
+        }
+
+        ResponseQnaQuestionAdmin response = qnaMapper.toAdminResponse(question, answer, navigation, deletedByName, answerCreatedByName);
         
         log.debug("[QnaService] 관리자 질문 상세 조회 완료. id={}, title={}", id, question.getTitle());
         return ResponseData.ok("0000", "조회가 완료되었습니다.", response);
@@ -549,11 +588,14 @@ public class QnaServiceImpl implements QnaService {
         log.debug("[QnaService] 삭제 대상 질문 확인 완료. title={}, hasAnswer={}", 
                 question.getTitle(), question.getIsAnswered());
         
+        // 현재 로그인한 관리자 ID 가져오기
+        Long adminId = com.academy.api.common.util.SecurityUtils.getCurrentUserId();
+        
         // 논리 삭제 처리 (관리자가 삭제)
-        question.markAsDeleted(DeletedByType.ADMIN);
+        question.markAsDeleted(DeletedByType.ADMIN, adminId);
         questionRepository.save(question);
         
-        log.info("[QnaService] 관리자 질문 논리 삭제 완료. questionId={}, deletedBy=ADMIN", id);
+        log.info("[QnaService] 관리자 질문 논리 삭제 완료. questionId={}, deletedBy={}, deletedByType=ADMIN", id, adminId);
         return Response.ok("0000", "질문이 삭제되었습니다.");
     }
 

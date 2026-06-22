@@ -49,7 +49,7 @@ public interface ImprovementCaseRepository extends JpaRepository<ImprovementCase
     void incrementViewCount(@Param("id") Long id);
     
     /**
-     * 이전 사례 조회 (관리자용 - 모든 사례).
+     * 이전 사례 조회 (관리자용 - 삭제글 포함).
      * 
      * @param currentId 현재 사례 ID
      * @param pageable 페이징 정보 (limit 1)
@@ -57,8 +57,7 @@ public interface ImprovementCaseRepository extends JpaRepository<ImprovementCase
      */
     @Query("""
         SELECT ic FROM ImprovementCase ic 
-        WHERE ic.deletedAt IS NULL 
-        AND (
+        WHERE (
             (ic.createdAt > (SELECT ic2.createdAt FROM ImprovementCase ic2 WHERE ic2.id = :currentId))
             OR (ic.createdAt = (SELECT ic3.createdAt FROM ImprovementCase ic3 WHERE ic3.id = :currentId) AND ic.id > :currentId)
         )
@@ -67,7 +66,7 @@ public interface ImprovementCaseRepository extends JpaRepository<ImprovementCase
     List<ImprovementCase> findPreviousCase(@Param("currentId") Long currentId, Pageable pageable);
     
     /**
-     * 다음 사례 조회 (관리자용 - 모든 사례).
+     * 다음 사례 조회 (관리자용 - 삭제글 포함).
      * 
      * @param currentId 현재 사례 ID
      * @param pageable 페이징 정보 (limit 1)
@@ -75,8 +74,7 @@ public interface ImprovementCaseRepository extends JpaRepository<ImprovementCase
      */
     @Query("""
         SELECT ic FROM ImprovementCase ic 
-        WHERE ic.deletedAt IS NULL 
-        AND (
+        WHERE (
             (ic.createdAt < (SELECT ic2.createdAt FROM ImprovementCase ic2 WHERE ic2.id = :currentId))
             OR (ic.createdAt = (SELECT ic3.createdAt FROM ImprovementCase ic3 WHERE ic3.id = :currentId) AND ic.id < :currentId)
         )

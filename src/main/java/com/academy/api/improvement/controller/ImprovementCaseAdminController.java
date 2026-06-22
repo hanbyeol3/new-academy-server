@@ -205,7 +205,7 @@ public class ImprovementCaseAdminController {
             @PathVariable Long id,
             
             @Parameter(description = "수정 요청")
-            @RequestBody @Valid RequestImprovementCaseUpdate request,
+            @RequestBody @Valid RequestImprovementCaseAdminUpdate request,
             
             @Parameter(description = "첨부파일 ID 목록", example = "[1, 2, 3]")
             @RequestParam(required = false) Long[] uploadFileIds) {

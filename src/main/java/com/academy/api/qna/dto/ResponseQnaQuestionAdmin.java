@@ -71,13 +71,20 @@ public class ResponseQnaQuestionAdmin {
     @Schema(description = "삭제 일시", example = "2024-01-01 15:00:00")
     private LocalDateTime deletedAt;
 
-    @Schema(description = "삭제자 구분", example = "ADMIN", allowableValues = {"AUTHOR", "ADMIN"})
+    @Schema(description = "삭제자 구분", example = "ADMIN", allowableValues = {"EXTERNAL", "ADMIN"})
     private String deletedByType;
+    
+    @Schema(description = "삭제자 ID", example = "2")
+    private Long deletedBy;
+    
+    @Schema(description = "삭제자 이름", example = "관리자")
+    private String deletedByName;
 
     /**
      * Entity에서 DTO로 변환 (관리자용).
      */
-    public static ResponseQnaQuestionAdmin from(QnaQuestion entity, ResponseQnaAnswer answer, ResponseQnaNavigation navigation) {
+    public static ResponseQnaQuestionAdmin from(QnaQuestion entity, ResponseQnaAnswer answer, 
+                                               ResponseQnaNavigation navigation, String deletedByName) {
         return ResponseQnaQuestionAdmin.builder()
                 .id(entity.getId())
                 .title(entity.getTitle())
@@ -94,9 +101,11 @@ public class ResponseQnaQuestionAdmin {
                 .viewCount(entity.getViewCount())
                 .answer(answer)
                 .navigation(navigation)
-                .isDeleted(entity.getIsDeleted())
+                .isDeleted(entity.isDeleted())
                 .deletedAt(entity.getDeletedAt())
                 .deletedByType(entity.getDeletedByType() != null ? entity.getDeletedByType().name() : null)
+                .deletedBy(entity.getDeletedBy())
+                .deletedByName(deletedByName)
                 .build();
     }
 }

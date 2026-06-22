@@ -50,8 +50,14 @@ public class ResponseQnaQuestionListItem {
     @Schema(description = "삭제 일시", example = "2024-01-01 15:00:00")
     private LocalDateTime deletedAt;
 
-    @Schema(description = "삭제자 구분", example = "ADMIN", allowableValues = {"AUTHOR", "ADMIN"})
+    @Schema(description = "삭제자 구분", example = "ADMIN", allowableValues = {"EXTERNAL", "ADMIN"})
     private String deletedByType;
+    
+    @Schema(description = "삭제자 ID", example = "2")
+    private Long deletedBy;
+    
+    @Schema(description = "삭제자 이름", example = "관리자")
+    private String deletedByName;
 
     /**
      * Entity에서 DTO로 변환 (Public용).
@@ -84,9 +90,32 @@ public class ResponseQnaQuestionListItem {
                 .isAnswered(entity.getIsAnswered())
                 .answeredAt(entity.getAnsweredAt())
                 .secret(entity.getSecret())
-                .isDeleted(entity.getIsDeleted())
+                .isDeleted(entity.getDeletedAt() != null)
                 .deletedAt(entity.getDeletedAt())
                 .deletedByType(entity.getDeletedByType() != null ? entity.getDeletedByType().name() : null)
+                .deletedBy(entity.getDeletedBy())
+                .deletedByName(null) // 서비스에서 설정
+                .build();
+    }
+    
+    /**
+     * Entity에서 DTO로 변환 (Admin용 - 삭제자 이름 포함).
+     */
+    public static ResponseQnaQuestionListItem fromForAdmin(QnaQuestion entity, String deletedByName) {
+        return ResponseQnaQuestionListItem.builder()
+                .id(entity.getId())
+                .title(entity.getTitle())
+                .authorName(entity.getAuthorName())
+                .createdAt(entity.getCreatedAt())
+                .viewCount(entity.getViewCount())
+                .isAnswered(entity.getIsAnswered())
+                .answeredAt(entity.getAnsweredAt())
+                .secret(entity.getSecret())
+                .isDeleted(entity.getDeletedAt() != null)
+                .deletedAt(entity.getDeletedAt())
+                .deletedByType(entity.getDeletedByType() != null ? entity.getDeletedByType().name() : null)
+                .deletedBy(entity.getDeletedBy())
+                .deletedByName(deletedByName)
                 .build();
     }
 

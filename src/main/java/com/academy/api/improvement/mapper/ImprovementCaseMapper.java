@@ -32,8 +32,21 @@ public class ImprovementCaseMapper {
      * @return 엔티티
      */
     public ImprovementCase toEntity(RequestImprovementCaseCreate request, Long createdBy) {
+        return toEntity(request, createdBy, null);
+    }
+    
+    /**
+     * 생성 요청 DTO를 엔티티로 변환 (IP 주소 포함).
+     * 
+     * @param request 생성 요청 DTO
+     * @param createdBy 생성자 ID (관리자 작성시)
+     * @param ipAddress IP 주소
+     * @return 엔티티
+     */
+    public ImprovementCase toEntity(RequestImprovementCaseCreate request, Long createdBy, String ipAddress) {
         String passwordHash = null;
-        if (request.getIsSecret() && request.getPassword() != null) {
+        // 외부 작성자의 경우 항상 비밀번호 필요 (비밀글 여부와 관계없이)
+        if (request.getPassword() != null) {
             passwordHash = passwordEncoder.encode(request.getPassword());
         }
         
@@ -50,8 +63,9 @@ public class ImprovementCaseMapper {
                 .content(request.getContent())
                 .isPublished(request.getIsPublished())
                 .isPinned(request.getIsPinned())
-                .isSecret(request.getIsSecret())
                 .passwordHash(passwordHash)
+                .ipAddress(ipAddress)
+                .privacyConsent(request.getPrivacyConsent() != null && request.getPrivacyConsent() == 1)
                 .createdBy(createdBy)
                 .build();
     }
@@ -65,8 +79,9 @@ public class ImprovementCaseMapper {
     public ResponseImprovementCaseDetail toDetailResponse(ImprovementCase entity) {
         String createdByName = getMemberName(entity.getCreatedBy());
         String updatedByName = getMemberName(entity.getUpdatedBy());
+        String deletedByName = getMemberName(entity.getDeletedBy());
         
-        return ResponseImprovementCaseDetail.fromWithNames(entity, createdByName, updatedByName);
+        return ResponseImprovementCaseDetail.fromWithNames(entity, createdByName, updatedByName, deletedByName);
     }
     
     /**
@@ -94,7 +109,8 @@ public class ImprovementCaseMapper {
                 .map(entity -> {
                     String createdByName = getMemberName(entity.getCreatedBy());
                     String updatedByName = getMemberName(entity.getUpdatedBy());
-                    return ResponseImprovementCaseAdminList.fromWithNames(entity, createdByName, updatedByName);
+                    String deletedByName = getMemberName(entity.getDeletedBy());
+                    return ResponseImprovementCaseAdminList.fromWithNames(entity, createdByName, updatedByName, deletedByName);
                 })
                 .toList();
         

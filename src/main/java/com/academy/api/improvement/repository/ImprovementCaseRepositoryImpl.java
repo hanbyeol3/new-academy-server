@@ -43,37 +43,43 @@ public class ImprovementCaseRepositoryImpl implements ImprovementCaseRepositoryC
         log.debug("[ImprovementCaseRepository] 관리자용 검색 시작. keyword={}, searchType={}, writerType={}, division={}, subject={}, isPublished={}, isPinned={}, sortBy={}",
                 keyword, searchType, writerType, division, subjectEnum, isPublished, isPinned, sortBy);
         
-        // 기본 조건: 소프트 삭제되지 않은 것만
-        BooleanExpression predicate = improvementCase.deletedAt.isNull();
+        // 기본 조건: 관리자는 삭제된 글도 모두 조회 가능 (deletedAt 조건 없음)
+        BooleanExpression predicate = null;
         
         // 키워드 검색
         if (keyword != null && !keyword.trim().isEmpty()) {
-            predicate = predicate.and(buildKeywordPredicate(keyword, searchType));
+            BooleanExpression keywordPredicate = buildKeywordPredicate(keyword, searchType);
+            predicate = predicate == null ? keywordPredicate : predicate.and(keywordPredicate);
         }
         
         // 작성자 유형 필터
         if (writerType != null) {
-            predicate = predicate.and(improvementCase.writerType.eq(writerType));
+            BooleanExpression writerPredicate = improvementCase.writerType.eq(writerType);
+            predicate = predicate == null ? writerPredicate : predicate.and(writerPredicate);
         }
         
         // 학년 필터
         if (division != null) {
-            predicate = predicate.and(improvementCase.division.eq(division));
+            BooleanExpression divisionPredicate = improvementCase.division.eq(division);
+            predicate = predicate == null ? divisionPredicate : predicate.and(divisionPredicate);
         }
         
         // 과목 필터
         if (subjectEnum != null) {
-            predicate = predicate.and(improvementCase.subject.eq(subjectEnum));
+            BooleanExpression subjectPredicate = improvementCase.subject.eq(subjectEnum);
+            predicate = predicate == null ? subjectPredicate : predicate.and(subjectPredicate);
         }
         
         // 공개 상태 필터
         if (isPublished != null) {
-            predicate = predicate.and(improvementCase.isPublished.eq(isPublished));
+            BooleanExpression publishedPredicate = improvementCase.isPublished.eq(isPublished);
+            predicate = predicate == null ? publishedPredicate : predicate.and(publishedPredicate);
         }
         
         // 고정글 필터
         if (isPinned != null) {
-            predicate = predicate.and(improvementCase.isPinned.eq(isPinned));
+            BooleanExpression pinnedPredicate = improvementCase.isPinned.eq(isPinned);
+            predicate = predicate == null ? pinnedPredicate : predicate.and(pinnedPredicate);
         }
         
         // 정렬 조건

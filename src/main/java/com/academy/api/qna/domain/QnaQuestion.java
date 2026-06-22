@@ -97,18 +97,19 @@ public class QnaQuestion {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    /** 삭제 여부 (논리 삭제) */
-    @Column(name = "is_deleted", nullable = false)
-    private Boolean isDeleted = false;
 
     /** 삭제 일시 */
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    /** 삭제자 구분 (작성자/관리자) */
+    /** 삭제자 구분 (외부/관리자) */
     @Enumerated(EnumType.STRING)
     @Column(name = "deleted_by_type", length = 10)
     private DeletedByType deletedByType;
+    
+    /** 삭제 관리자 ID (관리자 삭제시) */
+    @Column(name = "deleted_by")
+    private Long deletedBy;
 
     /** 연관된 답변 (1:1 관계, LAZY 로딩) */
     @OneToOne(mappedBy = "question", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
@@ -200,18 +201,30 @@ public class QnaQuestion {
     /**
      * 논리 삭제 처리.
      * 
-     * @param deletedByType 삭제자 구분 (AUTHOR 또는 ADMIN)
+     * @param deletedByType 삭제자 구분 (EXTERNAL 또는 ADMIN)
+     * @param deletedBy 삭제자 ID (관리자 삭제시), 외부 삭제시 null
      */
-    public void markAsDeleted(DeletedByType deletedByType) {
-        this.isDeleted = true;
+    public void markAsDeleted(DeletedByType deletedByType, Long deletedBy) {
         this.deletedAt = LocalDateTime.now();
         this.deletedByType = deletedByType;
+        this.deletedBy = deletedBy;
     }
 
     /**
      * 삭제 여부 확인.
      */
     public boolean isDeleted() {
-        return Boolean.TRUE.equals(this.isDeleted);
+        return this.deletedAt != null;
+    }
+    
+    /**
+     * 엔티티 생성 시 호출되는 메서드.
+     * createdAt과 updatedAt을 동일한 시간으로 설정하여 시간대 불일치 문제 해결.
+     */
+    @PrePersist
+    public void prePersist() {
+        LocalDateTime now = LocalDateTime.now();
+        this.createdAt = now;
+        this.updatedAt = now;  // 정확히 동일한 시간으로 설정
     }
 }

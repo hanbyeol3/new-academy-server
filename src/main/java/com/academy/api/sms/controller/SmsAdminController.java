@@ -149,7 +149,8 @@ public class SmsAdminController {
         log.info("[SmsAdminController] 설명회 예약 확인 SMS 발송 요청. 수신자={}, 이름={}, 일정={}", 
                 phoneNumber, name, scheduleDate);
         
-        return smsService.sendExplanationConfirmation(phoneNumber, name, scheduleDate);
+        // DB의 message_purposes 테이블 템플릿 사용
+        return smsServiceImpl.sendExplanationConfirmationByPurposeCode(phoneNumber, name, scheduleDate);
     }
 
     /**
@@ -184,7 +185,8 @@ public class SmsAdminController {
         log.info("[SmsAdminController] QnA 답변 알림 SMS 발송 요청. 수신자={}, 질문제목={}", 
                 phoneNumber, questionTitle);
         
-        return smsService.sendQnaAnswerNotification(phoneNumber, questionTitle);
+        // DB의 message_purposes 테이블 템플릿 사용
+        return smsServiceImpl.sendQnaAnswerNotificationByPurposeCode(phoneNumber, questionTitle);
     }
     
     /**

@@ -75,24 +75,22 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
     }
     
     @Override
+    @Transactional
     public ResponseData<ResponseImprovementCaseDetail> getPublicCaseDetail(Long id) {
         log.info("[ImprovementCaseService] 공개 사례 상세 조회. ID={}", id);
         
         return improvementCaseRepository.findByIdAndPublishedAndNotDeleted(id)
                 .<ResponseData<ResponseImprovementCaseDetail>>map(entity -> {
-                    // 비밀글인 경우 내용 제한
-                    if (entity.getIsSecret()) {
-                        log.debug("[ImprovementCaseService] 비밀글 접근 시도. ID={}", id);
-                        return ResponseData.error("S401", "비밀번호가 필요한 글입니다.");
-                    }
+                    // 성적향상사례는 비밀번호와 관계없이 누구나 조회 가능
+                    // 비밀번호는 수정/삭제 시에만 필요
                     
-                    // 조회수 증가
-                    entity.incrementViewCount();
+                    // 조회수 증가 (Repository의 @Query 사용 - updatedAt 갱신 방지)
+                    improvementCaseRepository.incrementViewCount(id);
                     
                     // 상세 응답 생성
                     ResponseImprovementCaseDetail response = buildDetailResponse(entity, true);
                     
-                    log.debug("[ImprovementCaseService] 공개 사례 상세 조회 성공. ID={}, 조회수={}", id, entity.getViewCount());
+                    log.debug("[ImprovementCaseService] 공개 사례 상세 조회 성공. ID={}", id);
                     return ResponseData.ok(response);
                 })
                 .orElseGet(() -> {
@@ -108,9 +106,9 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
         return improvementCaseRepository.findByIdAndPublishedAndNotDeleted(id)
                 .<ResponseData<ResponseImprovementCaseDetail>>map(entity -> {
                     // 비밀번호 검증
-                    if (!entity.getIsSecret()) {
-                        log.debug("[ImprovementCaseService] 비밀글이 아닌 글에 비밀번호 검증 시도. ID={}", id);
-                        return ResponseData.error("I400", "비밀글이 아닙니다.");
+                    if (entity.getPasswordHash() == null) {
+                        log.debug("[ImprovementCaseService] 비밀번호가 설정되지 않은 글. ID={}", id);
+                        return ResponseData.error("I400", "비밀번호가 설정되지 않은 글입니다.");
                     }
                     
                     if (!passwordEncoder.matches(password, entity.getPasswordHash())) {
@@ -118,8 +116,8 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
                         return ResponseData.error("I401", "비밀번호가 일치하지 않습니다.");
                     }
                     
-                    // 조회수 증가
-                    entity.incrementViewCount();
+                    // 조회수 증가 (Repository의 @Query 사용 - updatedAt 갱신 방지)
+                    improvementCaseRepository.incrementViewCount(id);
                     
                     // 상세 응답 생성
                     ResponseImprovementCaseDetail response = buildDetailResponse(entity, true);
@@ -136,8 +134,8 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
     @Override
     @Transactional
     public ResponseData<Long> createPublicCase(RequestImprovementCaseCreate request, Long[] uploadFileIds) {
-        log.info("[ImprovementCaseService] 공개 사례 생성. 제목={}, 작성자={}, 비밀글={}",
-                request.getTitle(), request.getAuthorName(), request.getIsSecret());
+        log.info("[ImprovementCaseService] 공개 사례 생성. 제목={}, 작성자={}",
+                request.getTitle(), request.getAuthorName());
         
         try {
             // 성적 값 검증
@@ -158,8 +156,9 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
             // 외부 작성자로 설정
             request.setWriterType(WriterType.EXTERNAL);
             
-            // 엔티티 생성
-            ImprovementCase entity = improvementCaseMapper.toEntity(request, null);
+            // 엔티티 생성 (IP 주소 포함)
+            String ipAddress = "0:0:0:0:0:0:0:1"; // 로컬 환경 기본값
+            ImprovementCase entity = improvementCaseMapper.toEntity(request, null, ipAddress);
             ImprovementCase savedEntity = improvementCaseRepository.save(entity);
             
             // 파일 첨부 처리
@@ -178,7 +177,7 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
     
     @Override
     @Transactional
-    public Response updatePublicCase(Long id, RequestImprovementCaseUpdate request, String password, Long[] uploadFileIds) {
+    public Response updatePublicCase(Long id, RequestImprovementCaseUpdate request, Long[] uploadFileIds) {
         log.info("[ImprovementCaseService] 공개 사례 수정. ID={}", id);
         
         return improvementCaseRepository.findByIdAndNotDeleted(id)
@@ -189,8 +188,13 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
                         return Response.error("I403", "관리자가 작성한 글은 수정할 수 없습니다.");
                     }
                     
-                    // 비밀번호 검증
-                    if (entity.getIsSecret() && !passwordEncoder.matches(password, entity.getPasswordHash())) {
+                    // 비밀번호 검증 (외부 작성자의 경우)
+                    if (request.getPassword() == null || request.getPassword().isEmpty()) {
+                        log.warn("[ImprovementCaseService] 수정 시 비밀번호 미입력. ID={}", id);
+                        return Response.error("I400", "비밀번호를 입력해주세요.");
+                    }
+                    
+                    if (!passwordEncoder.matches(request.getPassword(), entity.getPasswordHash())) {
                         log.warn("[ImprovementCaseService] 수정 시 비밀번호 불일치. ID={}", id);
                         return Response.error("I401", "비밀번호가 일치하지 않습니다.");
                     }
@@ -221,7 +225,9 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
                             request.getContent(),
                             request.getIsPublished(),
                             false, // 외부 작성자는 고정글 설정 불가
-                            null
+                            request.getPrivacyConsent() != null && request.getPrivacyConsent() == 1,
+                            null,  // 외부 사용자는 updatedBy가 없음
+                            UpdatedByType.EXTERNAL
                     );
                     
                     // 파일 첨부 처리
@@ -240,10 +246,10 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
     
     @Override
     @Transactional
-    public Response deletePublicCase(Long id, String authorName, String password) {
-        log.info("[ImprovementCaseService] 공개 사례 삭제. ID={}, 작성자={}", id, authorName);
+    public Response deletePublicCase(Long id, RequestImprovementCaseDelete request) {
+        log.info("[ImprovementCaseService] 공개 사례 삭제. ID={}, 작성자={}", id, request.getAuthorName());
         
-        return improvementCaseRepository.findByIdAndAuthorNameAndNotDeleted(id, authorName)
+        return improvementCaseRepository.findByIdAndAuthorNameAndNotDeleted(id, request.getAuthorName())
                 .map(entity -> {
                     // 외부 작성자 검증
                     if (entity.getWriterType() != WriterType.EXTERNAL) {
@@ -251,20 +257,25 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
                         return Response.error("I403", "관리자가 작성한 글은 삭제할 수 없습니다.");
                     }
                     
-                    // 비밀번호 검증
-                    if (entity.getIsSecret() && !passwordEncoder.matches(password, entity.getPasswordHash())) {
+                    // 비밀번호 검증 (외부 작성자의 경우)
+                    if (request.getPassword() == null || request.getPassword().isEmpty()) {
+                        log.warn("[ImprovementCaseService] 삭제 시 비밀번호 미입력. ID={}", id);
+                        return Response.error("I400", "비밀번호를 입력해주세요.");
+                    }
+                    
+                    if (!passwordEncoder.matches(request.getPassword(), entity.getPasswordHash())) {
                         log.warn("[ImprovementCaseService] 삭제 시 비밀번호 불일치. ID={}", id);
                         return Response.error("I401", "비밀번호가 일치하지 않습니다.");
                     }
                     
-                    // 소프트 삭제 처리
-                    entity.softDelete();
+                    // 소프트 삭제 처리 (EXTERNAL로 표시)
+                    entity.softDelete(DeletedByType.EXTERNAL, null);
                     
                     log.info("[ImprovementCaseService] 공개 사례 삭제 성공. ID={}", id);
                     return Response.ok("0000", "성적 향상 사례가 삭제되었습니다.");
                 })
                 .orElseGet(() -> {
-                    log.warn("[ImprovementCaseService] 삭제할 사례 미존재. ID={}, 작성자={}", id, authorName);
+                    log.warn("[ImprovementCaseService] 삭제할 사례 미존재. ID={}, 작성자={}", id, request.getAuthorName());
                     return Response.error("I404", "성적 향상 사례를 찾을 수 없습니다.");
                 });
     }
@@ -300,14 +311,16 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
     public ResponseData<ResponseImprovementCaseDetail> getAdminCaseDetail(Long id) {
         log.info("[ImprovementCaseService] 관리자 사례 상세 조회. ID={}", id);
         
-        return improvementCaseRepository.findByIdAndNotDeleted(id)
+        // 관리자는 삭제된 사례도 조회 가능 (findById 사용)
+        return improvementCaseRepository.findById(id)
                 .map(entity -> {
                     // 관리자는 조회수 증가 없음
                     
-                    // 상세 응답 생성
+                    // 상세 응답 생성 (삭제 정보 포함)
                     ResponseImprovementCaseDetail response = buildDetailResponse(entity, false);
                     
-                    log.debug("[ImprovementCaseService] 관리자 사례 상세 조회 성공. ID={}", id);
+                    log.debug("[ImprovementCaseService] 관리자 사례 상세 조회 성공. ID={}, 삭제여부={}", 
+                            id, entity.getDeletedAt() != null);
                     return ResponseData.ok(response);
                 })
                 .orElseGet(() -> {
@@ -341,8 +354,9 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
             // 관리자 작성자 정보 설정
             Long createdBy = SecurityUtils.getCurrentUserId();
             
-            // 엔티티 생성
-            ImprovementCase entity = improvementCaseMapper.toEntity(request, createdBy);
+            // 엔티티 생성 (IP 주소 포함)
+            String ipAddress = "0:0:0:0:0:0:0:1"; // 로컬 환경 기본값
+            ImprovementCase entity = improvementCaseMapper.toEntity(request, createdBy, ipAddress);
             ImprovementCase savedEntity = improvementCaseRepository.save(entity);
             
             // 파일 첨부 처리
@@ -361,7 +375,7 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
     
     @Override
     @Transactional
-    public Response updateAdminCase(Long id, RequestImprovementCaseUpdate request, Long[] uploadFileIds) {
+    public Response updateAdminCase(Long id, RequestImprovementCaseAdminUpdate request, Long[] uploadFileIds) {
         log.info("[ImprovementCaseService] 관리자 사례 수정. ID={}", id);
         
         return improvementCaseRepository.findByIdAndNotDeleted(id)
@@ -395,7 +409,9 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
                             request.getContent(),
                             request.getIsPublished(),
                             request.getIsPinned(),
-                            updatedBy
+                            entity.getPrivacyConsent(), // 관리자는 기존 값 유지
+                            updatedBy,
+                            UpdatedByType.ADMIN
                     );
                     
                     // 파일 첨부 처리
@@ -419,10 +435,13 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
         
         return improvementCaseRepository.findByIdAndNotDeleted(id)
                 .map(entity -> {
-                    // 소프트 삭제 처리
-                    entity.softDelete();
+                    // 관리자 ID 가져오기
+                    Long adminId = SecurityUtils.getCurrentUserId();
                     
-                    log.info("[ImprovementCaseService] 관리자 사례 삭제 성공. ID={}", id);
+                    // 소프트 삭제 처리 (ADMIN으로 표시)
+                    entity.softDelete(DeletedByType.ADMIN, adminId);
+                    
+                    log.info("[ImprovementCaseService] 관리자 사례 삭제 성공. ID={}, 삭제자ID={}", id, adminId);
                     return Response.ok("0000", "성적 향상 사례가 삭제되었습니다.");
                 })
                 .orElseGet(() -> {
@@ -513,6 +532,7 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
                 .title(response.getTitle())
                 .writerType(response.getWriterType())
                 .authorName(response.getAuthorName())
+                .phoneNumber(isPublicApi ? null : response.getPhoneNumber()) // 공개 API에서는 연락처 숨김
                 .division(response.getDivision())
                 .divisionText(response.getDivisionText())
                 .subject(response.getSubject())  // subject 문자열
@@ -525,7 +545,7 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
                 .viewCount(response.getViewCount())
                 .isPublished(response.getIsPublished())
                 .isPinned(response.getIsPinned())
-                .isSecret(response.getIsSecret())
+                .ipAddress(response.getIpAddress())
                 .attachments(attachments)
                 .navigation(navigation)
                 .createdBy(response.getCreatedBy())
@@ -533,7 +553,13 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
                 .createdAt(response.getCreatedAt())
                 .updatedBy(response.getUpdatedBy())
                 .updatedByName(response.getUpdatedByName())
+                .updatedByType(response.getUpdatedByType())
                 .updatedAt(response.getUpdatedAt())
+                .isDeleted(response.getIsDeleted())
+                .deletedAt(response.getDeletedAt())
+                .deletedByType(response.getDeletedByType())
+                .deletedBy(response.getDeletedBy())
+                .deletedByName(response.getDeletedByName())
                 .build();
         
         return response;
@@ -562,7 +588,6 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
             previous = ResponseImprovementCaseNavigation.NavigationItem.builder()
                     .id(prevCase.getId())
                     .title(prevCase.getTitle())
-                    .isSecret(prevCase.getIsSecret())
                     .build();
         }
         
@@ -572,7 +597,6 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
             next = ResponseImprovementCaseNavigation.NavigationItem.builder()
                     .id(nextCase.getId())
                     .title(nextCase.getTitle())
-                    .isSecret(nextCase.getIsSecret())
                     .build();
         }
         
