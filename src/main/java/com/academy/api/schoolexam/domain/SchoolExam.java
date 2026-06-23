@@ -48,7 +48,7 @@ public class SchoolExam {
 
     /** 시험분석 내용 */
     @Lob
-    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "content", nullable = false, columnDefinition = "MEDIUMTEXT")
     private String content;
 
     /** 학교급 구분 */

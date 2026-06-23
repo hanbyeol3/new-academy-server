@@ -45,7 +45,7 @@ public class Gallery {
 
     /** 갤러리 내용 */
     @Lob
-    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "content", nullable = false, columnDefinition = "MEDIUMTEXT")
     private String content;
     /** 게시 여부 */
     @Column(name = "is_published", nullable = false)

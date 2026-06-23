@@ -45,7 +45,7 @@ public class QnaAnswer {
 
     /** 답변 내용 */
     @Lob
-    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "content", nullable = false, columnDefinition = "MEDIUMTEXT")
     private String content;
 
     /** 답변 관리자 ID */

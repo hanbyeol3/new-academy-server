@@ -287,13 +287,14 @@ public class GalleryServiceImpl implements GalleryService, CategoryUsageChecker 
         log.info("[GalleryService] 갤러리 상세 조회 (조회수 증가) 시작. ID={}", id);
         
         Gallery gallery = findGalleryById(id);
-        Long beforeViewCount = gallery.getViewCount();
         
-        // 조회수 증가
-        gallery.incrementViewCount();
+        // 조회수 증가 - Repository JPQL 메서드 사용 (updatedAt 변경 방지)
+        int updatedCount = galleryRepository.incrementViewCount(id);
+        if (updatedCount == 0) {
+            log.warn("[GalleryService] 조회수 증가 실패 - 갤러리를 찾을 수 없음. ID={}", id);
+        }
         
-        log.debug("[GalleryService] 조회수 증가 완료. ID={}, 이전조회수={}, 현재조회수={}",
-                id, beforeViewCount, gallery.getViewCount());
+        log.debug("[GalleryService] 조회수 증가 완료. ID={}", id);
         
         // 파일 정보를 포함한 상세 조회 - 공개용 네비게이션 사용
         return getGalleryWithFiles(id, true);

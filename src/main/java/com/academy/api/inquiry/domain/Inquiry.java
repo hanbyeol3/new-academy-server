@@ -53,7 +53,7 @@ public class Inquiry {
 
     /** 문의 내용 (최대 1000자 권장) */
     @Lob
-    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "content", nullable = false, columnDefinition = "MEDIUMTEXT")
     private String content;
 
     /** 상담 상태 */

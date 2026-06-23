@@ -220,7 +220,6 @@ public class ImprovementCasePublicController {
                 작성자가 본인이 작성한 사례를 삭제합니다.
                 
                 검증 절차:
-                - 작성자명 일치 확인
                 - 외부 작성자(EXTERNAL)만 삭제 가능
                 - 비밀번호 검증 필수
                 
@@ -234,7 +233,7 @@ public class ImprovementCasePublicController {
                 - 삭제 후 복구는 관리자에게 문의
                 """
     )
-    @DeleteMapping("/{id}")
+    @PostMapping("/{id}/delete")
     public Response deleteCase(
             @Parameter(description = "사례 ID", example = "1")
             @PathVariable Long id,
@@ -242,7 +241,7 @@ public class ImprovementCasePublicController {
             @Parameter(description = "삭제 요청")
             @RequestBody @Valid RequestImprovementCaseDelete request) {
         
-        log.info("성적 향상 사례 삭제. ID={}, 작성자={}", id, request.getAuthorName());
+        log.info("성적 향상 사례 삭제 요청. ID={}", id);
         
         return improvementCaseService.deletePublicCase(id, request);
     }

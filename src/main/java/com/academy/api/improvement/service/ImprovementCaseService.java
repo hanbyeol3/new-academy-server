@@ -78,7 +78,7 @@ public interface ImprovementCaseService {
      * [공개] 성적 향상 사례 삭제 (작성자 본인).
      * 
      * @param id 사례 ID
-     * @param request 삭제 요청 (작성자명, 비밀번호 포함)
+     * @param request 삭제 요청 (비밀번호 포함)
      * @return 삭제 결과
      */
     Response deletePublicCase(Long id, RequestImprovementCaseDelete request);

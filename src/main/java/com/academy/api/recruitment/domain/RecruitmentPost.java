@@ -82,7 +82,7 @@ public class RecruitmentPost {
 
     /** 공고내용 */
     @Lob
-    @Column(name = "content", nullable = false, columnDefinition = "LONGTEXT")
+    @Column(name = "content", nullable = false, columnDefinition = "MEDIUMTEXT")
     private String content;
 
     /** 필수자격요건 */

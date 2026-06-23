@@ -708,6 +708,59 @@ function validatePhoneNumber(phone) {
 - `test`로 시작하는 별도 계정 생성
 - 예: `testuser` (password: password123!)
 
+## 📌 이전글/다음글 네비게이션 표준
+
+### 정렬 기준
+모든 도메인의 이전글/다음글은 **createdAt(생성시간) 기준**으로 정렬합니다.
+
+- **이전글**: 현재 글보다 최신 글 (createdAt이 더 큰 글)
+- **다음글**: 현재 글보다 오래된 글 (createdAt이 더 작은 글)
+
+### 접근 권한별 조회 범위
+
+#### 공개 API (Public)
+- **공개된 글만** 조회 (`isPublished = true`)
+- **삭제되지 않은 글만** 조회 (`deletedAt IS NULL`) // deletedAt 컬럼이 있다면
+- 비공개 글과 삭제된 글은 네비게이션에서 제외
+
+#### 관리자 API (Admin)
+- **모든 글** 조회 (공개/비공개 포함)
+- **삭제된 글도 포함** 조회
+- 전체 데이터를 대상으로 네비게이션 제공
+
+### 구현 예시
+```java
+// 공개 API - 이전글 조회
+@Query("""
+    SELECT e FROM Entity e 
+    WHERE e.isPublished = true 
+    AND e.deletedAt IS NULL
+    AND (
+        (e.createdAt > (SELECT e2.createdAt FROM Entity e2 WHERE e2.id = :currentId))
+        OR (e.createdAt = (SELECT e3.createdAt FROM Entity e3 WHERE e3.id = :currentId) AND e.id > :currentId)
+    )
+    ORDER BY e.createdAt ASC, e.id ASC
+    """)
+
+// 관리자 API - 이전글 조회
+@Query("""
+    SELECT e FROM Entity e 
+    WHERE (
+        (e.createdAt > (SELECT e2.createdAt FROM Entity e2 WHERE e2.id = :currentId))
+        OR (e.createdAt = (SELECT e3.createdAt FROM Entity e3 WHERE e3.id = :currentId) AND e.id > :currentId)
+    )
+    ORDER BY e.createdAt ASC, e.id ASC
+    """)
+```
+
+### 적용 도메인
+- 공지사항 (Notice)
+- 갤러리 (Gallery)
+- 학교별 시험분석 (SchoolExam)
+- QnA (QnaQuestion)
+- 성적향상 사례 (ImprovementCase)
+- 합격 성공사례 (SuccessCase)
+
 ## 🛠️ 개발 명령어
 
 ```bash

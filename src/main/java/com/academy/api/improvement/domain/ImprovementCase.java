@@ -82,7 +82,7 @@ public class ImprovementCase {
 
     /** 내용 */
     @Lob
-    @Column(name = "content", columnDefinition = "TEXT")
+    @Column(name = "content", columnDefinition = "MEDIUMTEXT")
     private String content;
 
     /** 조회수 */

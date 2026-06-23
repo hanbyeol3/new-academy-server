@@ -292,13 +292,14 @@ public class NoticeServiceImpl implements NoticeService, CategoryUsageChecker {
         log.info("[NoticeService] 공지사항 상세 조회 (조회수 증가) 시작. ID={}", id);
         
         Notice notice = findNoticeById(id);
-        Long beforeViewCount = notice.getViewCount();
         
-        // 조회수 증가
-        notice.incrementViewCount();
+        // 조회수 증가 - Repository JPQL 메서드 사용 (updatedAt 변경 방지)
+        int updatedCount = noticeRepository.incrementViewCount(id);
+        if (updatedCount == 0) {
+            log.warn("[NoticeService] 조회수 증가 실패 - 공지사항을 찾을 수 없음. ID={}", id);
+        }
         
-        log.debug("[NoticeService] 조회수 증가 완료. ID={}, 이전조회수={}, 현재조회수={}", 
-                id, beforeViewCount, notice.getViewCount());
+        log.debug("[NoticeService] 조회수 증가 완료. ID={}", id);
         
         // 파일 정보를 포함한 상세 조회 - 공개용 네비게이션 사용
         return getNoticeWithFiles(id, true);

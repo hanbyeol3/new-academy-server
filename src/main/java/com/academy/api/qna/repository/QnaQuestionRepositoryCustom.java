@@ -56,4 +56,20 @@ public interface QnaQuestionRepositoryCustom {
      * @return 다음 질문 (없으면 null)
      */
     QnaQuestion findNextQuestion(Long currentId);
+
+    /**
+     * 관리자용 이전 질문 조회 (삭제된 글 포함).
+     * 
+     * @param currentId 현재 질문 ID
+     * @return 이전 질문 (없으면 null)
+     */
+    QnaQuestion findPreviousQuestionForAdmin(Long currentId);
+
+    /**
+     * 관리자용 다음 질문 조회 (삭제된 글 포함).
+     * 
+     * @param currentId 현재 질문 ID
+     * @return 다음 질문 (없으면 null)
+     */
+    QnaQuestion findNextQuestionForAdmin(Long currentId);
 }

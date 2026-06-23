@@ -49,7 +49,7 @@ public class Notice {
 
     /** 공지사항 내용 */
     @Lob
-    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "content", nullable = false, columnDefinition = "MEDIUMTEXT")
     private String content;
 
     /** 중요 공지 여부 */

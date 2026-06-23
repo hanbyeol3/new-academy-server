@@ -81,6 +81,7 @@ public class ResponseQnaQuestionDetail {
                 .answeredAt(entity.getAnsweredAt())
                 .answer(answer)
                 .navigation(navigation)
+                .privacyConsent(entity.getPrivacyConsent())
                 .build();
     }
 
@@ -125,6 +126,7 @@ public class ResponseQnaQuestionDetail {
                 .answeredAt(entity.getAnsweredAt())
                 .answer(null)
                 .navigation(navigation)
+                .privacyConsent(entity.getPrivacyConsent())
                 .build();
     }
 }

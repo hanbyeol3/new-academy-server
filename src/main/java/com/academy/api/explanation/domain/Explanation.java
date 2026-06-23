@@ -47,7 +47,7 @@ public class Explanation {
 
     /** 설명회 상세 내용 */
     @Lob
-    @Column(name = "content", columnDefinition = "TEXT")
+    @Column(name = "content", columnDefinition = "MEDIUMTEXT")
     private String content;
 
     /** 게시 여부 */

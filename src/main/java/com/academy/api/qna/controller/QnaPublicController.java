@@ -182,7 +182,7 @@ public class QnaPublicController {
     /**
      * 질문 삭제.
      */
-    @DeleteMapping("/questions/{id}")
+    @PostMapping("/questions/{id}/delete")
     @Operation(
         summary = "질문 삭제",
         description = """

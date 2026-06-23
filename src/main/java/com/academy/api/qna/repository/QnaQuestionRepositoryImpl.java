@@ -239,4 +239,65 @@ public class QnaQuestionRepositoryImpl implements QnaQuestionRepositoryCustom {
                 .orderBy(question.createdAt.desc(), question.id.desc())
                 .fetchFirst();
     }
+
+    /**
+     * 관리자용 이전 질문 조회 (목록에서 위에 있는 글).
+     * createdAt > current.createdAt OR (createdAt = current.createdAt AND id > current.id)
+     * 삭제된 글 포함
+     */
+    @Override
+    public QnaQuestion findPreviousQuestionForAdmin(Long currentId) {
+        // 현재 질문 조회
+        QnaQuestion current = queryFactory
+                .selectFrom(question)
+                .where(question.id.eq(currentId))
+                .fetchOne();
+                
+        if (current == null) {
+            return null;
+        }
+        
+        return queryFactory
+                .selectFrom(question)
+                .where(
+                    question.createdAt.gt(current.getCreatedAt())
+                    .or(
+                        question.createdAt.eq(current.getCreatedAt())
+                        .and(question.id.gt(currentId))
+                    )
+                )
+                .orderBy(question.createdAt.asc(), question.id.asc())
+                .fetchFirst();
+    }
+
+    /**
+     * 관리자용 다음 질문 조회 (목록에서 아래에 있는 글).
+     * createdAt < current.createdAt OR (createdAt = current.createdAt AND id < current.id)
+     * 삭제된 글 포함
+     */
+    @Override
+    public QnaQuestion findNextQuestionForAdmin(Long currentId) {
+        // 현재 질문 조회
+        QnaQuestion current = queryFactory
+                .selectFrom(question)
+                .where(question.id.eq(currentId))
+                .fetchOne();
+                
+        if (current == null) {
+            return null;
+        }
+        
+        return queryFactory
+                .selectFrom(question)
+                .where(
+                    question.createdAt.lt(current.getCreatedAt())
+                    .or(
+                        question.createdAt.eq(current.getCreatedAt())
+                        .and(question.id.lt(currentId))
+                    )
+                )
+                .orderBy(question.createdAt.desc(), question.id.desc())
+                .fetchFirst();
+    }
+
 }

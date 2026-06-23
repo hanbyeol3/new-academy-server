@@ -5,6 +5,7 @@ import com.academy.api.schoolexam.domain.SchoolLevel;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -78,8 +79,11 @@ public interface SchoolExamRepository extends JpaRepository<SchoolExam, Long>, S
      */
     @Query("""
         SELECT se FROM SchoolExam se 
-        WHERE se.id < :currentId 
-        ORDER BY se.id DESC
+        WHERE (
+            (se.createdAt > (SELECT se2.createdAt FROM SchoolExam se2 WHERE se2.id = :currentId))
+            OR (se.createdAt = (SELECT se3.createdAt FROM SchoolExam se3 WHERE se3.id = :currentId) AND se.id > :currentId)
+        )
+        ORDER BY se.createdAt ASC, se.id ASC
         """)
     List<SchoolExam> findPreviousSchoolExam(@Param("currentId") Long currentId, Pageable pageable);
 
@@ -88,8 +92,11 @@ public interface SchoolExamRepository extends JpaRepository<SchoolExam, Long>, S
      */
     @Query("""
         SELECT se FROM SchoolExam se 
-        WHERE se.id > :currentId 
-        ORDER BY se.id ASC
+        WHERE (
+            (se.createdAt < (SELECT se2.createdAt FROM SchoolExam se2 WHERE se2.id = :currentId))
+            OR (se.createdAt = (SELECT se3.createdAt FROM SchoolExam se3 WHERE se3.id = :currentId) AND se.id < :currentId)
+        )
+        ORDER BY se.createdAt DESC, se.id DESC
         """)
     List<SchoolExam> findNextSchoolExam(@Param("currentId") Long currentId, Pageable pageable);
 
@@ -98,9 +105,12 @@ public interface SchoolExamRepository extends JpaRepository<SchoolExam, Long>, S
      */
     @Query("""
         SELECT se FROM SchoolExam se 
-        WHERE se.id < :currentId 
-        AND se.isPublished = true 
-        ORDER BY se.id DESC
+        WHERE se.isPublished = true 
+        AND (
+            (se.createdAt > (SELECT se2.createdAt FROM SchoolExam se2 WHERE se2.id = :currentId))
+            OR (se.createdAt = (SELECT se3.createdAt FROM SchoolExam se3 WHERE se3.id = :currentId) AND se.id > :currentId)
+        )
+        ORDER BY se.createdAt ASC, se.id ASC
         """)
     List<SchoolExam> findPreviousPublicSchoolExam(@Param("currentId") Long currentId, Pageable pageable);
 
@@ -109,9 +119,12 @@ public interface SchoolExamRepository extends JpaRepository<SchoolExam, Long>, S
      */
     @Query("""
         SELECT se FROM SchoolExam se 
-        WHERE se.id > :currentId 
-        AND se.isPublished = true 
-        ORDER BY se.id ASC
+        WHERE se.isPublished = true 
+        AND (
+            (se.createdAt < (SELECT se2.createdAt FROM SchoolExam se2 WHERE se2.id = :currentId))
+            OR (se.createdAt = (SELECT se3.createdAt FROM SchoolExam se3 WHERE se3.id = :currentId) AND se.id < :currentId)
+        )
+        ORDER BY se.createdAt DESC, se.id DESC
         """)
     List<SchoolExam> findNextPublicSchoolExam(@Param("currentId") Long currentId, Pageable pageable);
     
@@ -120,9 +133,12 @@ public interface SchoolExamRepository extends JpaRepository<SchoolExam, Long>, S
      */
     @Query("""
         SELECT se FROM SchoolExam se 
-        WHERE se.id < :currentId 
-        AND se.schoolLevel = :schoolLevel 
-        ORDER BY se.id DESC
+        WHERE se.schoolLevel = :schoolLevel 
+        AND (
+            (se.createdAt > (SELECT se2.createdAt FROM SchoolExam se2 WHERE se2.id = :currentId))
+            OR (se.createdAt = (SELECT se3.createdAt FROM SchoolExam se3 WHERE se3.id = :currentId) AND se.id > :currentId)
+        )
+        ORDER BY se.createdAt ASC, se.id ASC
         """)
     List<SchoolExam> findPreviousSchoolExamBySchoolLevel(
             @Param("currentId") Long currentId, 
@@ -134,9 +150,12 @@ public interface SchoolExamRepository extends JpaRepository<SchoolExam, Long>, S
      */
     @Query("""
         SELECT se FROM SchoolExam se 
-        WHERE se.id > :currentId 
-        AND se.schoolLevel = :schoolLevel 
-        ORDER BY se.id ASC
+        WHERE se.schoolLevel = :schoolLevel 
+        AND (
+            (se.createdAt < (SELECT se2.createdAt FROM SchoolExam se2 WHERE se2.id = :currentId))
+            OR (se.createdAt = (SELECT se3.createdAt FROM SchoolExam se3 WHERE se3.id = :currentId) AND se.id < :currentId)
+        )
+        ORDER BY se.createdAt DESC, se.id DESC
         """)
     List<SchoolExam> findNextSchoolExamBySchoolLevel(
             @Param("currentId") Long currentId, 
@@ -148,10 +167,13 @@ public interface SchoolExamRepository extends JpaRepository<SchoolExam, Long>, S
      */
     @Query("""
         SELECT se FROM SchoolExam se 
-        WHERE se.id < :currentId 
-        AND se.isPublished = true 
+        WHERE se.isPublished = true 
         AND se.schoolLevel = :schoolLevel 
-        ORDER BY se.id DESC
+        AND (
+            (se.createdAt > (SELECT se2.createdAt FROM SchoolExam se2 WHERE se2.id = :currentId))
+            OR (se.createdAt = (SELECT se3.createdAt FROM SchoolExam se3 WHERE se3.id = :currentId) AND se.id > :currentId)
+        )
+        ORDER BY se.createdAt ASC, se.id ASC
         """)
     List<SchoolExam> findPreviousPublicSchoolExamBySchoolLevel(
             @Param("currentId") Long currentId, 
@@ -163,10 +185,13 @@ public interface SchoolExamRepository extends JpaRepository<SchoolExam, Long>, S
      */
     @Query("""
         SELECT se FROM SchoolExam se 
-        WHERE se.id > :currentId 
-        AND se.isPublished = true 
+        WHERE se.isPublished = true 
         AND se.schoolLevel = :schoolLevel 
-        ORDER BY se.id ASC
+        AND (
+            (se.createdAt < (SELECT se2.createdAt FROM SchoolExam se2 WHERE se2.id = :currentId))
+            OR (se.createdAt = (SELECT se3.createdAt FROM SchoolExam se3 WHERE se3.id = :currentId) AND se.id < :currentId)
+        )
+        ORDER BY se.createdAt DESC, se.id DESC
         """)
     List<SchoolExam> findNextPublicSchoolExamBySchoolLevel(
             @Param("currentId") Long currentId, 
@@ -187,4 +212,12 @@ public interface SchoolExamRepository extends JpaRepository<SchoolExam, Long>, S
     List<SchoolExam> findLatestBySchoolLevel(
             @Param("schoolLevel") SchoolLevel schoolLevel, 
             Pageable pageable);
+    
+    /**
+     * 조회수 증가.
+     * 수정일시(updatedAt)는 변경하지 않음
+     */
+    @Modifying
+    @Query("UPDATE SchoolExam se SET se.viewCount = se.viewCount + 1 WHERE se.id = :id")
+    int incrementViewCount(@Param("id") Long id);
 }

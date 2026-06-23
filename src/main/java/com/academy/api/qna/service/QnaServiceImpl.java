@@ -15,6 +15,9 @@ import com.academy.api.qna.dto.*;
 import com.academy.api.qna.mapper.QnaMapper;
 import com.academy.api.qna.repository.QnaAnswerRepository;
 import com.academy.api.qna.repository.QnaQuestionRepository;
+import com.querydsl.jpa.impl.JPAQueryFactory;
+import com.academy.api.qna.domain.QQnaQuestion;
+import com.academy.api.qna.domain.QQnaAnswer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -54,6 +57,10 @@ public class QnaServiceImpl implements QnaService {
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
     private final QnaRateLimitService rateLimitService;
+    private final JPAQueryFactory queryFactory;
+    
+    private static final QQnaQuestion qnaQuestion = QQnaQuestion.qnaQuestion;
+    private static final QQnaAnswer qnaAnswer = QQnaAnswer.qnaAnswer;
 
     // ========== Public API ==========
 
@@ -104,8 +111,8 @@ public class QnaServiceImpl implements QnaService {
         questionRepository.incrementViewCount(id);
         log.debug("[QnaService] 조회수 증가. id={}", id);
 
-        // 네비게이션 정보 조회
-        ResponseQnaNavigation navigation = getQnaNavigation(id);
+        // 네비게이션 정보 조회 (일반 사용자는 삭제된 글 제외)
+        ResponseQnaNavigation navigation = getQnaNavigation(id, false);
 
         // 답변 작성자 이름 조회
         String answerCreatedByName = null;
@@ -368,8 +375,8 @@ public class QnaServiceImpl implements QnaService {
             return ResponseData.error("Q404", "질문을 찾을 수 없습니다.");
         }
 
-        // 네비게이션 정보 조회
-        ResponseQnaNavigation navigation = getQnaNavigation(id);
+        // 네비게이션 정보 조회 (관리자는 삭제된 글 포함)
+        ResponseQnaNavigation navigation = getQnaNavigation(id, true);
 
         // 삭제자 이름 조회
         String deletedByName = null;
@@ -433,9 +440,14 @@ public class QnaServiceImpl implements QnaService {
                 log.info("[QnaService] 답변 생성 완료. questionId={}, answerId={}", questionId, newAnswer.getId());
             }
 
-            // 질문의 답변 완료 상태 업데이트
-            question.markAsAnswered();
-            questionRepository.save(question);
+            // 질문의 답변 완료 상태 업데이트 (벌크 업데이트로 updated_at 변경 방지)
+            queryFactory
+                .update(qnaQuestion)
+                .set(qnaQuestion.isAnswered, true)
+                .set(qnaQuestion.answeredAt, LocalDateTime.now())
+                // updatedAt은 변경하지 않음
+                .where(qnaQuestion.id.eq(questionId))
+                .execute();
             
             log.info("[QnaService] 답변 Upsert 완료. questionId={}", questionId);
             return Response.ok("0000", "답변이 저장되었습니다.");
@@ -475,12 +487,23 @@ public class QnaServiceImpl implements QnaService {
         }
 
         try {
-            // 답변 삭제
-            answerRepository.delete(answer);
+            // 답변 ID 먼저 저장
+            Long answerId = answer.getId();
             
-            // 질문의 답변 완료 상태 해제
-            question.markAsUnanswered();
-            questionRepository.save(question);
+            // Native Query로 직접 삭제 (JPA 관계 문제 회피)
+            queryFactory
+                .delete(qnaAnswer)
+                .where(qnaAnswer.id.eq(answerId))
+                .execute();
+            
+            // 질문의 답변 완료 상태 해제 (벌크 업데이트로 updated_at 변경 방지)
+            queryFactory
+                .update(qnaQuestion)
+                .set(qnaQuestion.isAnswered, false)
+                .setNull(qnaQuestion.answeredAt)
+                // updatedAt은 변경하지 않음
+                .where(qnaQuestion.id.eq(questionId))
+                .execute();
             
             log.info("[QnaService] 답변 삭제 완료. questionId={}, answerId={}", questionId, answer.getId());
             return Response.ok("0000", "답변이 삭제되었습니다.");
@@ -529,13 +552,16 @@ public class QnaServiceImpl implements QnaService {
      * QnA 네비게이션 정보 조회 (이전글/다음글).
      * 
      * @param currentId 현재 질문 ID
+     * @param isAdmin 관리자 여부 (관리자는 삭제된 글 포함)
      * @return 네비게이션 정보
      */
-    private ResponseQnaNavigation getQnaNavigation(Long currentId) {
-        log.debug("[QnaService] 네비게이션 정보 조회 시작. currentId={}", currentId);
+    private ResponseQnaNavigation getQnaNavigation(Long currentId, boolean isAdmin) {
+        log.debug("[QnaService] 네비게이션 정보 조회 시작. currentId={}, isAdmin={}", currentId, isAdmin);
         
         // 이전글 조회
-        QnaQuestion previousQuestion = questionRepository.findPreviousQuestion(currentId);
+        QnaQuestion previousQuestion = isAdmin 
+                ? questionRepository.findPreviousQuestionForAdmin(currentId)
+                : questionRepository.findPreviousQuestion(currentId);
         ResponseQnaNavigation.NavigationItem previous = null;
         if (previousQuestion != null) {
             previous = ResponseQnaNavigation.NavigationItem.builder()
@@ -548,7 +574,9 @@ public class QnaServiceImpl implements QnaService {
         }
         
         // 다음글 조회
-        QnaQuestion nextQuestion = questionRepository.findNextQuestion(currentId);
+        QnaQuestion nextQuestion = isAdmin
+                ? questionRepository.findNextQuestionForAdmin(currentId)
+                : questionRepository.findNextQuestion(currentId);
         ResponseQnaNavigation.NavigationItem next = null;
         if (nextQuestion != null) {
             next = ResponseQnaNavigation.NavigationItem.builder()

@@ -247,9 +247,9 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
     @Override
     @Transactional
     public Response deletePublicCase(Long id, RequestImprovementCaseDelete request) {
-        log.info("[ImprovementCaseService] 공개 사례 삭제. ID={}, 작성자={}", id, request.getAuthorName());
+        log.info("[ImprovementCaseService] 공개 사례 삭제 요청. ID={}", id);
         
-        return improvementCaseRepository.findByIdAndAuthorNameAndNotDeleted(id, request.getAuthorName())
+        return improvementCaseRepository.findByIdAndNotDeleted(id)
                 .map(entity -> {
                     // 외부 작성자 검증
                     if (entity.getWriterType() != WriterType.EXTERNAL) {
@@ -275,7 +275,7 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
                     return Response.ok("0000", "성적 향상 사례가 삭제되었습니다.");
                 })
                 .orElseGet(() -> {
-                    log.warn("[ImprovementCaseService] 삭제할 사례 미존재. ID={}, 작성자={}", id, request.getAuthorName());
+                    log.warn("[ImprovementCaseService] 삭제할 사례 미존재. ID={}", id);
                     return Response.error("I404", "성적 향상 사례를 찾을 수 없습니다.");
                 });
     }
@@ -546,6 +546,7 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
                 .isPublished(response.getIsPublished())
                 .isPinned(response.getIsPinned())
                 .ipAddress(response.getIpAddress())
+                .privacyConsent(response.getPrivacyConsent())
                 .attachments(attachments)
                 .navigation(navigation)
                 .createdBy(response.getCreatedBy())

@@ -183,8 +183,11 @@ public class SchoolExamServiceImpl implements SchoolExamService, CategoryUsageCh
             throw new BusinessException(ErrorCode.SCHOOL_EXAM_NOT_FOUND);
         }
 
-        // 조회수 증가
-        schoolExam.incrementViewCount();
+        // 조회수 증가 - Repository JPQL 메서드 사용 (updatedAt 변경 방지)
+        int updatedCount = schoolExamRepository.incrementViewCount(id);
+        if (updatedCount == 0) {
+            log.warn("[SchoolExamService] 조회수 증가 실패 - 시험분석을 찾을 수 없음. ID={}", id);
+        }
 
         // 공개용 네비게이션 (공개된 것만)
         ResponseSchoolExamDetail response = buildDetailResponse(schoolExam, true);
@@ -211,19 +214,18 @@ public class SchoolExamServiceImpl implements SchoolExamService, CategoryUsageCh
             throw new BusinessException(ErrorCode.SCHOOL_EXAM_NOT_FOUND);
         }
 
-        // 조회수 증가
-        schoolExam.incrementViewCount();
-
-        // SchoolLevel enum 변환
-        SchoolLevel schoolLevel = null;
-        if (schoolLevelParam != null) {
-            schoolLevel = SchoolLevel.fromString(schoolLevelParam);
-            if (schoolLevel == null) {
-                log.warn("[SchoolExamService] 유효하지 않은 학교급: {}. 필터링 없이 진행", schoolLevelParam);
-            }
+        // 조회수 증가 - Repository JPQL 메서드 사용 (updatedAt 변경 방지)
+        int updatedCount = schoolExamRepository.incrementViewCount(id);
+        if (updatedCount == 0) {
+            log.warn("[SchoolExamService] 조회수 증가 실패 - 시험분석을 찾을 수 없음. ID={}", id);
         }
 
-        // 공개용 네비게이션 (공개된 것만, 학교급 필터 적용)
+        // 현재 게시글의 학교급으로 필터링 (파라미터와 관계없이)
+        SchoolLevel schoolLevel = schoolExam.getSchoolLevel();
+        
+        log.info("[SchoolExamService] 현재 글의 학교급으로 이전/다음글 필터링: {}", schoolLevel);
+
+        // 공개용 네비게이션 (공개된 것만, 현재 글의 학교급으로 필터 적용)
         ResponseSchoolExamDetail response = buildDetailResponseWithSchoolLevel(schoolExam, true, schoolLevel);
         
         log.debug("[SchoolExamService] 공개용 상세 조회 완료. ID={}, 제목={}, 조회수={}, schoolLevel={}", 
@@ -388,11 +390,14 @@ public class SchoolExamServiceImpl implements SchoolExamService, CategoryUsageCh
     public Response incrementViewCount(Long id) {
         log.info("[SchoolExamService] 조회수 수동 증가 시작. ID={}", id);
 
-        SchoolExam schoolExam = findSchoolExamById(id);
+        // Repository JPQL 메서드 사용 (updatedAt 변경 방지)
+        int updatedCount = schoolExamRepository.incrementViewCount(id);
+        if (updatedCount == 0) {
+            log.warn("[SchoolExamService] 조회수 증가 실패 - 시험분석을 찾을 수 없음. ID={}", id);
+            throw new BusinessException(ErrorCode.SCHOOL_EXAM_NOT_FOUND);
+        }
 
-        schoolExam.incrementViewCount();
-
-        log.debug("[SchoolExamService] 조회수 증가 완료. ID={}, 현재 조회수={}", id, schoolExam.getViewCount());
+        log.debug("[SchoolExamService] 조회수 증가 완료. ID={}", id);
 
         return Response.ok("0000", "조회수가 증가되었습니다.");
     }

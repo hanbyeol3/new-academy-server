@@ -60,7 +60,7 @@ public class QnaQuestion {
 
     /** 질문 내용 */
     @Lob
-    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "content", nullable = false, columnDefinition = "MEDIUMTEXT")
     private String content;
 
     /** 비밀글 여부 (0=공개, 1=비밀) */
@@ -141,6 +141,7 @@ public class QnaQuestion {
         this.title = title;
         this.content = content;
         this.secret = secret != null ? secret : false;
+        this.updatedAt = LocalDateTime.now(); // 질문 수정 시에만 명시적으로 변경
     }
 
     /**
