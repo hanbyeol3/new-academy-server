@@ -68,6 +68,7 @@ public class SecurityConfiguration {
 						.requestMatchers("/api/explanations/**").permitAll()
 						.requestMatchers("/api/gallery/**").permitAll()
 						.requestMatchers("/api/academic-schedules/**").permitAll()
+						.requestMatchers("/api/academy-info/**").permitAll()  // 학원 정보 공개 API
 						.requestMatchers("/api/academy-about/**").permitAll()
 						.requestMatchers("/api/facility/**").permitAll()
 						.requestMatchers("/api/faq/**").permitAll()
