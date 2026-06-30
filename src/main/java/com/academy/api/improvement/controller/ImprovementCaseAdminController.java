@@ -325,4 +325,23 @@ public class ImprovementCaseAdminController {
         
         return improvementCaseService.updatePinnedStatus(id, isPinned);
     }
+    
+    @Operation(
+        summary = "조회수 수동 증가",
+        description = """
+                성적 향상 사례의 조회수를 수동으로 1 증가시킵니다.
+                
+                주의사항:
+                - 일반적으로는 상세 조회 시 자동 증가
+                - 관리자만 수동 증가 가능
+                """
+    )
+    @PostMapping("/{id}/increment-view")
+    public Response incrementViewCount(
+            @Parameter(description = "사례 ID", example = "1") 
+            @PathVariable Long id) {
+        
+        log.info("[ImprovementCaseAdminController] 조회수 수동 증가 요청. ID={}", id);
+        return improvementCaseService.incrementViewCount(id);
+    }
 }

@@ -688,4 +688,20 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
         
         return false;
     }
+    
+    @Override
+    @Transactional
+    public Response incrementViewCount(Long id) {
+        log.info("[ImprovementCaseService] 조회수 수동 증가. ID={}", id);
+        
+        int updatedCount = improvementCaseRepository.incrementViewCount(id);
+        
+        if (updatedCount == 0) {
+            log.warn("[ImprovementCaseService] 조회수 증가 실패. 사례를 찾을 수 없거나 삭제된 상태. ID={}", id);
+            return Response.error("CASE_NOT_FOUND", "사례를 찾을 수 없습니다.");
+        }
+        
+        log.debug("[ImprovementCaseService] 조회수 증가 완료. ID={}", id);
+        return Response.ok("VIEW_COUNT_INCREMENTED", "조회수가 증가되었습니다.");
+    }
 }

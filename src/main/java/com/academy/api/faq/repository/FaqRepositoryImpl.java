@@ -156,10 +156,10 @@ public class FaqRepositoryImpl implements FaqRepositoryCustom {
 
     private OrderSpecifier<?>[] getOrderSpecifiers(String sortBy) {
         return switch (sortBy != null ? sortBy : "CREATED_DESC") {
-            case "CREATED_ASC" -> new OrderSpecifier[]{faq.createdAt.asc()};
-            case "TITLE_ASC" -> new OrderSpecifier[]{faq.title.asc()};
-            case "TITLE_DESC" -> new OrderSpecifier[]{faq.title.desc()};
-            default -> new OrderSpecifier[]{faq.createdAt.desc()};
+            case "CREATED_ASC" -> new OrderSpecifier[]{faq.createdAt.asc(), faq.id.asc()};
+            case "TITLE_ASC" -> new OrderSpecifier[]{faq.title.asc(), faq.id.asc()};
+            case "TITLE_DESC" -> new OrderSpecifier[]{faq.title.desc(), faq.id.desc()};
+            default -> new OrderSpecifier[]{faq.createdAt.desc(), faq.id.desc()};
         };
     }
 }

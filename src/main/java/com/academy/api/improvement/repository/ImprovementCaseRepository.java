@@ -43,10 +43,11 @@ public interface ImprovementCaseRepository extends JpaRepository<ImprovementCase
      * 조회수 증가.
      * 
      * @param id 사례 ID
+     * @return 업데이트된 행 수
      */
     @Modifying
-    @Query("UPDATE ImprovementCase ic SET ic.viewCount = ic.viewCount + 1 WHERE ic.id = :id")
-    void incrementViewCount(@Param("id") Long id);
+    @Query("UPDATE ImprovementCase ic SET ic.viewCount = ic.viewCount + 1 WHERE ic.id = :id AND ic.deletedAt IS NULL")
+    int incrementViewCount(@Param("id") Long id);
     
     /**
      * 이전 사례 조회 (관리자용 - 삭제글 포함).

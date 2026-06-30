@@ -171,4 +171,12 @@ public interface ImprovementCaseService {
      * @return 변경 결과
      */
     Response updatePinnedStatus(Long id, Boolean isPinned);
+    
+    /**
+     * [관리자] 조회수 수동 증가.
+     * 
+     * @param id 사례 ID
+     * @return 증가 결과
+     */
+    Response incrementViewCount(Long id);
 }
