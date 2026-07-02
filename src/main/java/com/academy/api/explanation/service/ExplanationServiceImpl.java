@@ -987,7 +987,7 @@ public class ExplanationServiceImpl implements ExplanationService {
         // 5. SMS 발송
         try {
             Map<String, Object> variables = new HashMap<>();
-            variables.put("verificationCode", verificationCode);
+            variables.put("code", verificationCode);  // 템플릿이 기대하는 변수명으로 변경
             
             ResponseData<ResponseSmsMessage> smsResponse = smsService.sendMessageByPurposeCode(
                     "USER_EXPLANATION_CANCEL_VERIFY",

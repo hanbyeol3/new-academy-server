@@ -393,10 +393,10 @@ public class SolapiClient {
             log.warn("[SolapiClient] 카카오 템플릿 변수가 비어있습니다!");
         }
         
-        // 카카오 알림톡 메시지 JSON 생성
+        // 카카오 알림톡 메시지 JSON 생성 (messages 배열 형태)
         String jsonMessage = String.format("""
             {
-              "message": {
+              "messages": [{
                 "to": "%s",
                 "from": "%s",
                 "type": "ATA",
@@ -405,7 +405,7 @@ public class SolapiClient {
                   "templateId": "%s",
                   "variables": {%s}
                 }
-              }
+              }]
             }""", 
             to,
             solapiConfig.getSenderNumber(),  // 대체발송용 발신번호

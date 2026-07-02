@@ -204,7 +204,7 @@ public class ApplyApplicationServiceImpl implements ApplyApplicationService {
             // 1. 보호자 SMS 발송
             if (request.getGuardian1Phone() != null) {
                 Map<String, Object> userVariables = new HashMap<>();
-                userVariables.put("name", request.getStudentName());
+                userVariables.put("name", request.getGuardian1Name());  // 보호자1 이름으로 변경
                 
                 smsService.sendMessageByPurposeCode(
                     "USER_APPLICATION_CONFIRMED",

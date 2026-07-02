@@ -322,7 +322,10 @@ public class SmsServiceImpl implements SmsService {
      */
     public ResponseData<ResponseSmsMessage> sendMessageByPurposeCode(String purposeCode, String toPhone, 
                                                                     String toName, Map<String, Object> variables) {
-        log.info("[SmsService] 목적 코드 기반 SMS 발송 요청. purposeCode={}, 수신자={}", purposeCode, toPhone);
+        // 전화번호 정규화 (하이펀 제거)
+        String normalizedPhone = toPhone != null ? toPhone.replaceAll("\\D", "") : "";
+        log.info("[SmsService] 목적 코드 기반 SMS 발송 요청. purposeCode={}, 수신자={} -> {}", 
+                purposeCode, toPhone, normalizedPhone);
         
         // 스택 트레이스 로깅으로 호출 위치 확인
         StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
@@ -376,14 +379,14 @@ public class SmsServiceImpl implements SmsService {
                     toPhone, kakaoTemplateCode, objectMapper.writeValueAsString(kakaoVariables)
                 );
                 
-                // 메시지 로그 사전 생성 (발송 전)
+                // 메시지 로그 사전 생성 (발송 전 - 정규화된 번호 사용)
                 messageLog = messageLogMapper.createForSolapi(
-                        channel, toPhone, toName, from, processedMessage.getMessage(), purposeCode, requestJson);
+                        channel, normalizedPhone, toName, from, processedMessage.getMessage(), purposeCode, requestJson);
                 messageLog = messageLogService.saveMessageLog(messageLog);
                 log.debug("[SmsService] 카카오 알림톡 로그 사전 저장 완료. logId={}", messageLog.getId());
                 
-                // 카카오 알림톡 발송 실행
-                solapiResponse = solapiClient.sendKakaoAlimtalk(toPhone, kakaoTemplateCode, kakaoVariables);
+                // 카카오 알림톡 발송 실행 (정규화된 번호 사용)
+                solapiResponse = solapiClient.sendKakaoAlimtalk(normalizedPhone, kakaoTemplateCode, kakaoVariables);
                 
             } else {
                 // SMS/LMS 발송 (기존 로직) - 카카오 템플릿 코드 무시
@@ -393,23 +396,23 @@ public class SmsServiceImpl implements SmsService {
                 SolapiSendRequest solapiRequest;
                 
                 if ("LMS".equals(processedMessage.getType())) {
-                    // LMS 발송
+                    // LMS 발송 (정규화된 번호 사용)
                     String subject = processedMessage.getPurpose() != null ? 
                             processedMessage.getPurpose().getLmsSubjectOrDefault() : "[아카데미] 알림";
-                    solapiRequest = SolapiSendRequest.createLms(toPhone, from, processedMessage.getMessage(), subject);
+                    solapiRequest = SolapiSendRequest.createLms(normalizedPhone, from, processedMessage.getMessage(), subject);
                     channel = MessageLog.Channel.LMS;
                 } else {
-                    // SMS 발송
-                    solapiRequest = SolapiSendRequest.createSms(toPhone, from, processedMessage.getMessage());
+                    // SMS 발송 (정규화된 번호 사용)
+                    solapiRequest = SolapiSendRequest.createSms(normalizedPhone, from, processedMessage.getMessage());
                     channel = MessageLog.Channel.SMS;
                 }
                 
                 // 요청 JSON 생성 (로그 저장용)
                 requestJson = createRequestJson(solapiRequest);
 
-                // 메시지 로그 사전 생성 (발송 전)
+                // 메시지 로그 사전 생성 (발송 전 - 정규화된 번호 사용)
                 messageLog = messageLogMapper.createForSolapi(
-                        channel, toPhone, toName, from, processedMessage.getMessage(), purposeCode, requestJson);
+                        channel, normalizedPhone, toName, from, processedMessage.getMessage(), purposeCode, requestJson);
                 messageLog = messageLogService.saveMessageLog(messageLog);
                 log.debug("[SmsService] 메시지 로그 사전 저장 완료. logId={}", messageLog.getId());
 
