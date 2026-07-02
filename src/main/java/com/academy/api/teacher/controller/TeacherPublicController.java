@@ -1,7 +1,7 @@
 package com.academy.api.teacher.controller;
 
-import com.academy.api.data.responses.common.ResponseData;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.ResponseData;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.teacher.dto.ResponseTeacher;
 import com.academy.api.teacher.dto.ResponseTeacherByCategory;
 import com.academy.api.teacher.dto.ResponseTeacherListItem;

@@ -1,6 +1,6 @@
 package com.academy.api.improvement.mapper;
 
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.improvement.domain.ImprovementCase;
 import com.academy.api.improvement.dto.*;
 import com.academy.api.member.domain.Member;

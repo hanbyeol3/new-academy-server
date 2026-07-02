@@ -36,6 +36,16 @@ public class SolapiConfig {
     
     /** SOLAPI Base URL */
     private String baseUrl = "https://api.solapi.com";
+    
+    /** 카카오 설정 */
+    private Kakao kakao = new Kakao();
+    
+    @Getter
+    @Setter
+    public static class Kakao {
+        /** 카카오톡 채널 ID */
+        private String pfId;
+    }
 
     /**
      * SOLAPI용 RestTemplate 빈 생성.
@@ -88,6 +98,7 @@ public class SolapiConfig {
                  apiSecret != null ? apiSecret.length() : 0);
         log.info("[SolapiConfig] 🔍 senderNumber: {} (이것이 문제의 핵심!)", senderNumber);
         log.info("[SolapiConfig] 🔍 baseUrl: {}", baseUrl);
+        log.info("[SolapiConfig] 🔍 kakao.pfId: {}", kakao != null ? kakao.getPfId() : "null");
         
         // YAML 파일 직접 읽기 시도
         try {

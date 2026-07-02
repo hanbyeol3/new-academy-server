@@ -1,6 +1,6 @@
 package com.academy.api.holiday.controller;
 
-import com.academy.api.data.responses.common.Response;
+import com.academy.api.data.responses.Response;
 import com.academy.api.holiday.service.HolidaySyncService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

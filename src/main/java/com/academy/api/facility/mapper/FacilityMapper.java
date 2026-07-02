@@ -1,9 +1,8 @@
 package com.academy.api.facility.mapper;
 
 import com.academy.api.common.util.SecurityUtils;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.facility.domain.Facility;
-import com.academy.api.facility.dto.RequestFacilityCreate;
 import com.academy.api.facility.dto.RequestFacilityUpdate;
 import com.academy.api.facility.dto.ResponseFacility;
 import com.academy.api.facility.dto.ResponseFacilityListItem;

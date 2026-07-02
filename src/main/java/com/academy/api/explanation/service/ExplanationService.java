@@ -2,9 +2,9 @@ package com.academy.api.explanation.service;
 
 import com.academy.api.explanation.domain.ExplanationDivision;
 import com.academy.api.explanation.dto.*;
-import com.academy.api.data.responses.common.Response;
-import com.academy.api.data.responses.common.ResponseData;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.Response;
+import com.academy.api.data.responses.ResponseData;
+import com.academy.api.data.responses.ResponseList;
 import org.springframework.data.domain.Pageable;
 
 import jakarta.servlet.http.HttpServletResponse;
@@ -228,6 +228,27 @@ public interface ExplanationService {
     ResponseData<ResponseExplanationReservationCheck> checkReservation(Long explanationId, Long scheduleId, 
                                                                        String applicantName, String applicantPhone);
 
+    /**
+     * 예약 취소 인증번호 요청.
+     * 
+     * SMS를 통한 인증번호를 발송합니다.
+     * 
+     * @param reservationId 예약 ID
+     * @return 인증 요청 결과
+     */
+    Response requestCancellationVerification(Long reservationId);
+    
+    /**
+     * 예약 취소 확인 (인증번호 검증).
+     * 
+     * 인증번호를 검증하고 예약을 취소합니다.
+     * 
+     * @param reservationId 예약 ID
+     * @param request 인증 정보
+     * @return 취소 결과
+     */
+    Response confirmCancellationWithVerification(Long reservationId, RequestCancelVerification request);
+    
     /**
      * 예약 취소 (사용자).
      * 

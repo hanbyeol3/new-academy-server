@@ -1,6 +1,5 @@
-package com.academy.api.data.responses.common;
+package com.academy.api.data.responses;
 
-import com.academy.api.data.responses.ResponseResult;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AccessLevel;
 import lombok.Getter;

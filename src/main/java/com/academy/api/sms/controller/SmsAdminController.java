@@ -1,8 +1,8 @@
 package com.academy.api.sms.controller;
 
 import com.academy.api.config.SolapiConfig;
-import com.academy.api.data.responses.common.Response;
-import com.academy.api.data.responses.common.ResponseData;
+import com.academy.api.data.responses.Response;
+import com.academy.api.data.responses.ResponseData;
 import com.academy.api.sms.dto.RequestSmsMessage;
 import com.academy.api.sms.dto.ResponseSmsMessage;
 import com.academy.api.sms.service.SmsService;

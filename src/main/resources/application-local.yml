@@ -31,16 +31,26 @@ spring:
 
 # SOLAPI SMS 서비스 설정
 solapi:
-  api-key: NCSZPDWFHWOLSR5F
-  api-secret: ZPZMXWYZ2NEZ2GND4FORCVCZP3X7UEW6
-  sender-number: "01053725012"
+  api-key: NCSL39N1UJFBOEFU
+  api-secret: NMUAOYPEZOLVZA1BW9DOPNKYBUEIFN7K
+  sender-number: "0313667666"
   base-url: https://api.solapi.com
+  kakao:
+    pf-id: KA01PF260701100900740zBdOERJtbvH
 
 # JWT 설정 (로컬 환경용)
 jwt:
   secret: mySecretKeyForJWT2024!@#$%^&*()1234567890
   access-expire-minutes: 15
   refresh-expire-days: 14
+
+# 학원 설정
+academy:
+  admin:
+    phone: "01083873610"  # 관리자 전화번호 (SMS 알림 수신용)
+  scheduler:
+    explanation-reminder:
+      enabled: true  # D-1 리마인더 활성화 여부
 
 # 공휴일 API 설정 (한국천문연구원 특일 정보)
 holiday:

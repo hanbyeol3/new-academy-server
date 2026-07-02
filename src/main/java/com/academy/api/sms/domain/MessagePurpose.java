@@ -1,15 +1,20 @@
 package com.academy.api.sms.domain;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * 메시징 목적 코드 관리 엔티티.
@@ -23,12 +28,15 @@ import java.time.LocalDateTime;
  * - 카카오톡 실패시 fallback 채널
  * - 활성/비활성 상태 관리
  */
+@Slf4j
 @Entity
 @Table(name = "message_purposes")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class)
 public class MessagePurpose {
+    
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     @Id
     @Column(name = "code", length = 50)
@@ -70,6 +78,10 @@ public class MessagePurpose {
     @Column(name = "kakao_template_code", length = 50)
     private String kakaoTemplateCode;
 
+    /** 카카오 변수 목록 (JSON 배열) */
+    @Column(name = "kakao_variables", columnDefinition = "JSON")
+    private String kakaoVariables;
+
     /** 활성 여부 */
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
@@ -99,8 +111,8 @@ public class MessagePurpose {
     @Builder
     private MessagePurpose(String code, String name, String description, TargetType targetType,
                           DefaultChannel defaultChannel, String smsTemplate, String lmsTemplate, 
-                          String lmsSubject, String kakaoTemplateCode, Boolean isActive, 
-                          Boolean isBatchAvailable, FallbackChannel fallbackChannel) {
+                          String lmsSubject, String kakaoTemplateCode, String kakaoVariables,
+                          Boolean isActive, Boolean isBatchAvailable, FallbackChannel fallbackChannel) {
         this.code = code;
         this.name = name;
         this.description = description;
@@ -110,6 +122,7 @@ public class MessagePurpose {
         this.lmsTemplate = lmsTemplate;
         this.lmsSubject = lmsSubject;
         this.kakaoTemplateCode = kakaoTemplateCode;
+        this.kakaoVariables = kakaoVariables;
         this.isActive = isActive != null ? isActive : true;
         this.isBatchAvailable = isBatchAvailable != null ? isBatchAvailable : false;
         this.fallbackChannel = fallbackChannel;
@@ -154,8 +167,9 @@ public class MessagePurpose {
     /**
      * 카카오톡 설정 업데이트.
      */
-    public void updateKakaoSettings(String kakaoTemplateCode, FallbackChannel fallbackChannel) {
+    public void updateKakaoSettings(String kakaoTemplateCode, String kakaoVariables, FallbackChannel fallbackChannel) {
         this.kakaoTemplateCode = kakaoTemplateCode;
+        this.kakaoVariables = kakaoVariables;
         this.fallbackChannel = fallbackChannel;
     }
 
@@ -171,6 +185,23 @@ public class MessagePurpose {
      */
     public void toggleActive() {
         this.isActive = !this.isActive;
+    }
+
+    /**
+     * 카카오 변수 목록을 파싱하여 반환.
+     * JSON 배열 문자열을 List<String>으로 변환합니다.
+     */
+    public List<String> getParsedKakaoVariables() {
+        if (kakaoVariables == null || kakaoVariables.isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        try {
+            return objectMapper.readValue(kakaoVariables, new TypeReference<List<String>>() {});
+        } catch (Exception e) {
+            log.warn("카카오 변수 파싱 실패. code={}, variables={}", code, kakaoVariables, e);
+            return Collections.emptyList();
+        }
     }
 
     /**

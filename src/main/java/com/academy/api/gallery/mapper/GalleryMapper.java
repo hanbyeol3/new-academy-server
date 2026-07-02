@@ -2,7 +2,7 @@ package com.academy.api.gallery.mapper;
 
 import com.academy.api.category.domain.Category;
 import com.academy.api.common.util.SecurityUtils;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.gallery.domain.Gallery;
 import com.academy.api.gallery.dto.RequestGalleryCreate;
 import com.academy.api.gallery.dto.RequestGalleryUpdate;

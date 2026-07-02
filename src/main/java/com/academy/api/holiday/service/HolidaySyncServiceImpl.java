@@ -1,6 +1,6 @@
 package com.academy.api.holiday.service;
 
-import com.academy.api.data.responses.common.Response;
+import com.academy.api.data.responses.Response;
 import com.academy.api.holiday.client.KasiHolidayApiClient;
 import com.academy.api.holiday.client.dto.KasiHolidayItem;
 import com.academy.api.holiday.domain.Holiday;

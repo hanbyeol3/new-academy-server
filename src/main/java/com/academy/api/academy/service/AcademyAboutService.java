@@ -1,9 +1,9 @@
 package com.academy.api.academy.service;
 
 import com.academy.api.academy.dto.*;
-import com.academy.api.data.responses.common.Response;
-import com.academy.api.data.responses.common.ResponseData;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.Response;
+import com.academy.api.data.responses.ResponseData;
+import com.academy.api.data.responses.ResponseList;
 
 /**
  * 학원 소개 정보 통합 서비스 인터페이스.

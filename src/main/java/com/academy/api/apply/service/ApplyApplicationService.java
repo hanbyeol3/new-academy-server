@@ -1,11 +1,9 @@
 package com.academy.api.apply.service;
 
-import com.academy.api.apply.domain.ApplicationDivision;
-import com.academy.api.apply.domain.ApplicationStatus;
 import com.academy.api.apply.dto.*;
-import com.academy.api.data.responses.common.Response;
-import com.academy.api.data.responses.common.ResponseData;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.Response;
+import com.academy.api.data.responses.ResponseData;
+import com.academy.api.data.responses.ResponseList;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;

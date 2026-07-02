@@ -1,8 +1,8 @@
 package com.academy.api.shuttle.service;
 
-import com.academy.api.data.responses.common.Response;
-import com.academy.api.data.responses.common.ResponseData;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.Response;
+import com.academy.api.data.responses.ResponseData;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.member.domain.Member;
 import com.academy.api.member.repository.MemberRepository;
 import com.academy.api.shuttle.domain.ShuttleRoute;

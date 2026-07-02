@@ -1,13 +1,12 @@
 package com.academy.api.popup.service;
 
-import com.academy.api.data.responses.common.Response;
-import com.academy.api.data.responses.common.ResponseData;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.Response;
+import com.academy.api.data.responses.ResponseData;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.popup.domain.Popup;
 import com.academy.api.popup.dto.*;
 import org.springframework.data.domain.Pageable;
 
-import java.util.List;
 
 /**
  * 팝업 서비스 인터페이스.

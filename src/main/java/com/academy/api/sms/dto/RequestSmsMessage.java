@@ -32,7 +32,7 @@ public class RequestSmsMessage {
     private String text;
 
     @Schema(description = "발신자 전화번호", 
-            example = "01053725012")
+            example = "0313667666")
     private String from;
 
     @Schema(description = "메시지 제목 (LMS용)", 

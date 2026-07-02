@@ -1,6 +1,6 @@
 package com.academy.api.inquiry.controller;
 
-import com.academy.api.data.responses.common.ResponseData;
+import com.academy.api.data.responses.ResponseData;
 import com.academy.api.inquiry.dto.RequestInquiryCreate;
 import com.academy.api.inquiry.service.InquiryService;
 import io.swagger.v3.oas.annotations.Operation;

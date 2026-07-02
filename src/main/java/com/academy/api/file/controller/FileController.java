@@ -1,6 +1,6 @@
 package com.academy.api.file.controller;
 
-import com.academy.api.data.responses.common.ResponseData;
+import com.academy.api.data.responses.ResponseData;
 import com.academy.api.file.dto.Base64FileUploadRequest;
 import com.academy.api.file.dto.FileUploadResponse;
 import com.academy.api.file.dto.UploadTempFileResponse;

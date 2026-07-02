@@ -2,9 +2,8 @@ package com.academy.api.teacher.mapper;
 
 import com.academy.api.category.domain.Category;
 import com.academy.api.common.util.SecurityUtils;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.teacher.domain.Teacher;
-import com.academy.api.teacher.domain.TeacherCareer;
 import com.academy.api.teacher.domain.TeacherSubject;
 import com.academy.api.teacher.dto.CareerItem;
 import com.academy.api.teacher.dto.RequestTeacherCreate;
@@ -13,8 +12,6 @@ import com.academy.api.teacher.dto.ResponseTeacher;
 import com.academy.api.teacher.dto.ResponseTeacherByCategory;
 import com.academy.api.teacher.dto.ResponseTeacherListItem;
 import com.academy.api.teacher.dto.TeacherSimple;
-import com.academy.api.file.domain.FileRole;
-import com.academy.api.file.domain.UploadFileLink;
 import com.academy.api.file.repository.UploadFileLinkRepository;
 import com.academy.api.file.repository.UploadFileRepository;
 import com.academy.api.file.dto.UploadFileDto;
@@ -36,7 +33,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class TeacherMapper {
 
-    private final UploadFileLinkRepository uploadFileLinkRepository;
     private final UploadFileRepository uploadFileRepository;
 
     /**
@@ -180,18 +176,6 @@ public class TeacherMapper {
     }
 
     /**
-     * 엔티티 리스트를 목록용 응답 DTO 리스트로 변환.
-     * 
-     * @param teachers Teacher 엔티티 리스트
-     * @return 목록용 응답 DTO 리스트
-     */
-    public List<ResponseTeacherListItem> toListItemResponseList(List<Teacher> teachers) {
-        return teachers.stream()
-                .map(this::toListItemResponse)
-                .collect(Collectors.toList());
-    }
-
-    /**
      * 엔티티 페이지를 상세 응답 리스트로 변환.
      * 
      * @param page Teacher 페이지
@@ -233,20 +217,6 @@ public class TeacherMapper {
     }
 
     /**
-     * TeacherSubject 엔티티 생성.
-     * 
-     * @param teacher 강사 엔티티
-     * @param category 과목 카테고리 엔티티
-     * @return TeacherSubject 엔티티
-     */
-    public TeacherSubject createTeacherSubject(Teacher teacher, Category category) {
-        return TeacherSubject.builder()
-                .teacher(teacher)
-                .category(category)
-                .build();
-    }
-
-    /**
      * 부분 업데이트를 위한 null 체크 도우미 메서드.
      * 
      * @param newValue 새로운 값
@@ -282,28 +252,7 @@ public class TeacherMapper {
                 .careers(careers)
                 .build();
     }
-    
-    /**
-     * 카테고리와 강사 목록을 ResponseTeacherByCategory로 변환.
-     * 
-     * @param category 카테고리 엔티티
-     * @param teachers 해당 카테고리의 강사 목록
-     * @return 카테고리별 강사 응답 DTO
-     */
-    public ResponseTeacherByCategory toCategoryResponse(Category category, List<Teacher> teachers) {
-        List<TeacherSimple> teacherSimpleList = teachers.stream()
-                .map(this::toTeacherSimple)
-                .collect(Collectors.toList());
-        
-        return ResponseTeacherByCategory.builder()
-                .categoryId(category.getId())
-                .slug(category.getSlug())
-                .name(category.getName())
-                .description(category.getDescription())
-                .teachers(teacherSimpleList)
-                .build();
-    }
-    
+
     /**
      * 강사의 이미지 파일 조회 (imagePath 기반).
      * 

@@ -1,9 +1,9 @@
 package com.academy.api.schedule.service;
 
 import com.academy.api.common.util.SecurityUtils;
-import com.academy.api.data.responses.common.Response;
-import com.academy.api.data.responses.common.ResponseData;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.Response;
+import com.academy.api.data.responses.ResponseData;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.holiday.domain.Holiday;
 import com.academy.api.holiday.repository.HolidayRepository;
 import com.academy.api.member.domain.Member;

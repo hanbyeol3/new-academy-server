@@ -4,7 +4,7 @@ import com.academy.api.auth.dto.*;
 import com.academy.api.auth.security.JwtAuthenticationToken;
 import com.academy.api.auth.service.AuthService;
 import com.academy.api.common.response.ApiResponse;
-import com.academy.api.data.responses.common.ResponseData;
+import com.academy.api.data.responses.ResponseData;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;

@@ -1,7 +1,7 @@
 package com.academy.api.popup.mapper;
 
 import com.academy.api.common.util.SecurityUtils;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.file.domain.FileRole;
 import com.academy.api.file.domain.UploadFileLink;
 import com.academy.api.file.repository.UploadFileLinkRepository;

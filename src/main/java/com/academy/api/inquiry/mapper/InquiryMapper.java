@@ -1,6 +1,6 @@
 package com.academy.api.inquiry.mapper;
 
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.inquiry.domain.*;
 import com.academy.api.inquiry.dto.*;
 import lombok.RequiredArgsConstructor;

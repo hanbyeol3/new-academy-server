@@ -1,6 +1,6 @@
 package com.academy.api.qna.mapper;
 
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.qna.domain.QnaAnswer;
 import com.academy.api.qna.domain.QnaQuestion;
 import com.academy.api.qna.dto.*;

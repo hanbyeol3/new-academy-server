@@ -2,9 +2,9 @@ package com.academy.api.academy.controller;
 
 import com.academy.api.academy.dto.*;
 import com.academy.api.academy.service.AcademyAboutService;
-import com.academy.api.data.responses.common.Response;
-import com.academy.api.data.responses.common.ResponseData;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.Response;
+import com.academy.api.data.responses.ResponseData;
+import com.academy.api.data.responses.ResponseList;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -203,7 +203,7 @@ public class AcademyAboutAdminController {
                 
                 처리 방식:
                 - 요청된 모든 항목의 순서를 일괄적으로 업데이트
-                - 트랜잭션으로 처리되어 일부 실패 시 전체 롤백
+                - 트랜잭션으로 처리되어 일부 실패 시 전체 롤백₩
                 
                 주의사항:
                 - 존재하지 않는 ID가 포함된 경우 전체 작업 실패

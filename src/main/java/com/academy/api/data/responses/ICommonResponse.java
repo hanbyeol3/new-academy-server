@@ -1,7 +1,6 @@
-package com.academy.api.data.responses.common;
+package com.academy.api.data.responses;
 
 
-import com.academy.api.data.responses.ResponseResult;
 
 /**
  * 응답 기본 인터페이스

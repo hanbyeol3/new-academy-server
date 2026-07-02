@@ -5,9 +5,8 @@ import com.academy.api.academy.domain.AcademyAboutDetails;
 import com.academy.api.academy.dto.*;
 import com.academy.api.common.util.SecurityUtils;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.stereotype.Component;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.ResponseList;
 
 import java.util.List;
 

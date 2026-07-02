@@ -1,16 +1,16 @@
 package com.academy.api.sms.service;
 
 import com.academy.api.config.SolapiConfig;
-import com.academy.api.data.responses.common.Response;
-import com.academy.api.data.responses.common.ResponseData;
+import com.academy.api.data.responses.Response;
+import com.academy.api.data.responses.ResponseData;
 import com.academy.api.sms.domain.MessageLog;
 import com.academy.api.sms.dto.*;
 import com.academy.api.sms.mapper.MessageLogMapper;
-import com.academy.api.sms.template.SmsTemplate;
 import com.academy.api.sms.template.SmsTemplateProcessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -38,6 +38,9 @@ public class SmsServiceImpl implements SmsService {
     private final MessageLogService messageLogService;
     private final MessageLogMapper messageLogMapper;
     private final ObjectMapper objectMapper;
+    
+    @Value("${academy.admin.phone}")
+    private String adminPhoneNumber;
 
     @Override
     public ResponseData<ResponseSmsMessage> sendMessage(RequestSmsMessage request) {
@@ -228,23 +231,9 @@ public class SmsServiceImpl implements SmsService {
             Map<String, Object> variables = new HashMap<>();
             variables.put("name", name);
             
-            // 템플릿 처리
-            SmsTemplateProcessor.ProcessedMessage processedMessage = 
-                    templateProcessor.processTemplate(SmsTemplate.INQUIRY_CONFIRMATION, variables);
-            
-            // SMS 발송 요청 생성
-            RequestSmsMessage request = new RequestSmsMessage();
-            request.setTo(phoneNumber);
-            request.setText(processedMessage.getMessage());
-            request.setType(processedMessage.getType());
-            request.setFrom(solapiConfig.getSenderNumber());
-            
-            // LMS인 경우 제목 설정
-            if ("LMS".equals(processedMessage.getType())) {
-                request.setSubject("[아카데미] 상담 신청 확인");
-            }
-
-            ResponseData<ResponseSmsMessage> result = sendMessage(request, "INQUIRY_CONFIRMATION");
+            // DB 템플릿 사용
+            ResponseData<ResponseSmsMessage> result = sendMessageByPurposeCode(
+                    "USER_INQUIRY_CONFIRMED", phoneNumber, name, variables);
             
             if (result.getCode().equals("0000")) {
                 log.debug("[SmsService] 상담 신청 확인 SMS 발송 완료");
@@ -260,81 +249,25 @@ public class SmsServiceImpl implements SmsService {
         }
     }
 
-    @Override
-    public Response sendExplanationConfirmation(String phoneNumber, String name, String scheduleDate) {
-        log.info("[SmsService] 설명회 예약 확인 SMS 발송. 수신자={}, 이름={}, 일정={}", 
-                phoneNumber, name, scheduleDate);
-
-        try {
-            // 📋 발신번호 디버깅 - 여러 시점에서 확인
-            String configSender = solapiConfig.getSenderNumber();
-            log.info("[SmsService] 🔍 설명회 SMS - STEP 1: config에서 가져온 발신번호={}", configSender);
-            
-            // 템플릿 변수 설정
-            Map<String, Object> variables = new HashMap<>();
-            variables.put("name", name);
-            variables.put("scheduleDate", scheduleDate);
-            variables.put("location", "본원 세미나실"); // 기본 장소 (추후 파라미터로 받을 수 있음)
-            variables.put("contactNumber", configSender); // 문의 전화번호
-            log.info("[SmsService] 🔍 설명회 SMS - STEP 2: template variables에 설정한 contactNumber={}", configSender);
-            
-            // 템플릿 처리
-            SmsTemplateProcessor.ProcessedMessage processedMessage = 
-                    templateProcessor.processTemplate(SmsTemplate.EXPLANATION_CONFIRMATION, variables);
-            
-            log.info("[SmsService] 🔍 설명회 SMS - STEP 3: 템플릿 처리 후 메시지={}", processedMessage.getMessage());
-            
-            // SMS 발송 요청 생성
-            RequestSmsMessage request = new RequestSmsMessage();
-            request.setTo(phoneNumber);
-            request.setText(processedMessage.getMessage());
-            request.setType(processedMessage.getType());
-            request.setSubject("[아카데미] 설명회 예약 확인");
-            String explanationFromNumber = solapiConfig.getSenderNumber();
-            log.info("[SmsService] 🔍 설명회 SMS - STEP 4: request.setFrom()에 설정할 값={}", explanationFromNumber);
-            request.setFrom(explanationFromNumber);
-            log.info("[SmsService] 🔍 설명회 SMS - STEP 5: request.getFrom() 확인={}", request.getFrom());
-
-            ResponseData<ResponseSmsMessage> result = sendMessage(request, "EXPLANATION_CONFIRMATION");
-            
-            if (result.getCode().equals("0000")) {
-                log.debug("[SmsService] 설명회 예약 확인 SMS 발송 완료");
-                return Response.ok("0000", "설명회 예약 확인 SMS가 발송되었습니다");
-            } else {
-                log.warn("[SmsService] 설명회 예약 확인 SMS 발송 실패: {}", result.getMessage());
-                return Response.error(result.getCode(), result.getMessage());
-            }
-            
-        } catch (Exception e) {
-            log.error("[SmsService] 설명회 예약 확인 SMS 템플릿 처리 실패: {}", e.getMessage(), e);
-            return Response.error("SMS003", "SMS 템플릿 처리 중 오류가 발생했습니다");
-        }
-    }
+    // 중복 발송 방지를 위해 제거됨 - ExplanationServiceImpl에서 직접 sendMessageByPurposeCode 호출
+    // @Override
+    // public Response sendExplanationConfirmation(String phoneNumber, String name, String scheduleDate) {
+    //     // 이 메서드는 더 이상 사용되지 않음
+    //     // ExplanationServiceImpl.processReservationCreate에서 직접 sendMessageByPurposeCode를 호출합니다
+    //     return Response.error("SMS999", "이 메서드는 더 이상 사용되지 않습니다");
+    // }
 
     @Override
     public Response sendQnaAnswerNotification(String phoneNumber, String questionTitle) {
         log.info("[SmsService] QnA 답변 알림 SMS 발송. 수신자={}, 질문제목={}", phoneNumber, questionTitle);
 
         try {
-            // 템플릿 변수 설정
+            // 템플릿 변수 설정 (DB 템플릿에는 변수가 없지만 향후 확장 가능)
             Map<String, Object> variables = new HashMap<>();
-            // 제목이 길면 20자로 제한
-            String shortTitle = questionTitle.length() > 20 ? 
-                    questionTitle.substring(0, 20) + "..." : questionTitle;
-            variables.put("questionTitle", shortTitle);
             
-            // 템플릿 처리
-            SmsTemplateProcessor.ProcessedMessage processedMessage = 
-                    templateProcessor.processTemplate(SmsTemplate.QNA_ANSWER_NOTIFICATION, variables);
-            
-            // SMS 발송 요청 생성
-            RequestSmsMessage request = new RequestSmsMessage();
-            request.setTo(phoneNumber);
-            request.setText(processedMessage.getMessage());
-            request.setType(processedMessage.getType());
-            request.setFrom(solapiConfig.getSenderNumber());
-
-            ResponseData<ResponseSmsMessage> result = sendMessage(request, "QNA_ANSWER_NOTIFICATION");
+            // DB 템플릿 사용
+            ResponseData<ResponseSmsMessage> result = sendMessageByPurposeCode(
+                    "USER_QNA_ANSWERED", phoneNumber, null, variables);
             
             if (result.getCode().equals("0000")) {
                 log.debug("[SmsService] QnA 답변 알림 SMS 발송 완료");
@@ -352,28 +285,16 @@ public class SmsServiceImpl implements SmsService {
 
     @Override
     public Response sendAdminNotification(String message) {
-        log.info("[SmsService] 관리자 알림 SMS 발송. 메시지 길이={}", message.length());
+        log.info("[SmsService] 관리자 알림 SMS 발송. 메시지 길이={}, 수신번호={}", message.length(), adminPhoneNumber);
 
         try {
-            // TODO: 관리자 전화번호는 별도 설정으로 관리 필요
-            String adminPhoneNumber = "01053725012"; // 임시로 발신자 번호와 동일하게 설정
-            
             // 템플릿 변수 설정
             Map<String, Object> variables = new HashMap<>();
             variables.put("message", message);
             
-            // 템플릿 처리
-            SmsTemplateProcessor.ProcessedMessage processedMessage = 
-                    templateProcessor.processTemplate(SmsTemplate.ADMIN_GENERAL_NOTIFICATION, variables);
-            
-            // SMS 발송 요청 생성
-            RequestSmsMessage request = new RequestSmsMessage();
-            request.setTo(adminPhoneNumber);
-            request.setText(processedMessage.getMessage());
-            request.setType(processedMessage.getType());
-            request.setFrom(solapiConfig.getSenderNumber());
-
-            ResponseData<ResponseSmsMessage> result = sendMessage(request, "ADMIN_NOTIFICATION");
+            // DB 템플릿 사용
+            ResponseData<ResponseSmsMessage> result = sendMessageByPurposeCode(
+                    "ADMIN_NOTIFICATION", adminPhoneNumber, "관리자", variables);
             
             if (result.getCode().equals("0000")) {
                 log.debug("[SmsService] 관리자 알림 SMS 발송 완료");
@@ -402,6 +323,14 @@ public class SmsServiceImpl implements SmsService {
     public ResponseData<ResponseSmsMessage> sendMessageByPurposeCode(String purposeCode, String toPhone, 
                                                                     String toName, Map<String, Object> variables) {
         log.info("[SmsService] 목적 코드 기반 SMS 발송 요청. purposeCode={}, 수신자={}", purposeCode, toPhone);
+        
+        // 스택 트레이스 로깅으로 호출 위치 확인
+        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+        StringBuilder caller = new StringBuilder("호출 스택:\n");
+        for (int i = 2; i < Math.min(stackTrace.length, 7); i++) {
+            caller.append("  ").append(stackTrace[i].toString()).append("\n");
+        }
+        log.info("[SmsService] {}", caller.toString());
 
         MessageLog messageLog = null;
         String requestJson = null;
@@ -414,33 +343,79 @@ public class SmsServiceImpl implements SmsService {
             // 발신자 번호 설정
             String from = solapiConfig.getSenderNumber();
 
-            // 메시지 타입에 따라 SOLAPI 요청 생성
-            SolapiSendRequest solapiRequest;
+            // 메시지 타입에 따라 처리 분기
             MessageLog.Channel channel;
+            SolapiSendResponse solapiResponse;
             
-            if ("LMS".equals(processedMessage.getType())) {
-                // LMS 발송
-                String subject = processedMessage.getPurpose() != null ? 
-                        processedMessage.getPurpose().getLmsSubjectOrDefault() : "[아카데미] 알림";
-                solapiRequest = SolapiSendRequest.createLms(toPhone, from, processedMessage.getMessage(), subject);
-                channel = MessageLog.Channel.LMS;
+            if ("KAKAO_AT".equals(processedMessage.getType())) {
+                // 카카오 알림톡 발송
+                channel = MessageLog.Channel.KAKAO_AT;
+                
+                // 카카오 템플릿 코드 확인
+                String kakaoTemplateCode = processedMessage.getPurpose().getKakaoTemplateCode();
+                if (kakaoTemplateCode == null || kakaoTemplateCode.isEmpty()) {
+                    log.error("[SmsService] 카카오 템플릿 코드가 설정되지 않았습니다. purposeCode={}", purposeCode);
+                    throw new RuntimeException("카카오 템플릿 코드가 설정되지 않았습니다");
+                }
+                
+                // 변수를 String 맵으로 변환
+                Map<String, String> kakaoVariables = new HashMap<>();
+                for (Map.Entry<String, Object> entry : variables.entrySet()) {
+                    String value = entry.getValue() != null ? String.valueOf(entry.getValue()) : "";
+                    kakaoVariables.put(entry.getKey(), value);
+                    log.debug("[SmsService] 카카오 변수 추가: {} = {}", entry.getKey(), value);
+                }
+                
+                // 카카오 알림톡 발송
+                log.info("[SmsService] 카카오 알림톡 발송. 템플릿={}, 수신자={}, 변수={}", 
+                        kakaoTemplateCode, toPhone, kakaoVariables);
+                
+                // 요청 JSON 생성 (로그 저장용)
+                requestJson = String.format(
+                    "{\"to\":\"%s\",\"templateId\":\"%s\",\"variables\":%s}", 
+                    toPhone, kakaoTemplateCode, objectMapper.writeValueAsString(kakaoVariables)
+                );
+                
+                // 메시지 로그 사전 생성 (발송 전)
+                messageLog = messageLogMapper.createForSolapi(
+                        channel, toPhone, toName, from, processedMessage.getMessage(), purposeCode, requestJson);
+                messageLog = messageLogService.saveMessageLog(messageLog);
+                log.debug("[SmsService] 카카오 알림톡 로그 사전 저장 완료. logId={}", messageLog.getId());
+                
+                // 카카오 알림톡 발송 실행
+                solapiResponse = solapiClient.sendKakaoAlimtalk(toPhone, kakaoTemplateCode, kakaoVariables);
+                
             } else {
-                // SMS 발송
-                solapiRequest = SolapiSendRequest.createSms(toPhone, from, processedMessage.getMessage());
-                channel = MessageLog.Channel.SMS;
+                // SMS/LMS 발송 (기존 로직) - 카카오 템플릿 코드 무시
+                log.info("[SmsService] SMS/LMS 발송 모드. kakao_template_code는 무시됩니다. type={}", 
+                        processedMessage.getType());
+                
+                SolapiSendRequest solapiRequest;
+                
+                if ("LMS".equals(processedMessage.getType())) {
+                    // LMS 발송
+                    String subject = processedMessage.getPurpose() != null ? 
+                            processedMessage.getPurpose().getLmsSubjectOrDefault() : "[아카데미] 알림";
+                    solapiRequest = SolapiSendRequest.createLms(toPhone, from, processedMessage.getMessage(), subject);
+                    channel = MessageLog.Channel.LMS;
+                } else {
+                    // SMS 발송
+                    solapiRequest = SolapiSendRequest.createSms(toPhone, from, processedMessage.getMessage());
+                    channel = MessageLog.Channel.SMS;
+                }
+                
+                // 요청 JSON 생성 (로그 저장용)
+                requestJson = createRequestJson(solapiRequest);
+
+                // 메시지 로그 사전 생성 (발송 전)
+                messageLog = messageLogMapper.createForSolapi(
+                        channel, toPhone, toName, from, processedMessage.getMessage(), purposeCode, requestJson);
+                messageLog = messageLogService.saveMessageLog(messageLog);
+                log.debug("[SmsService] 메시지 로그 사전 저장 완료. logId={}", messageLog.getId());
+
+                // SOLAPI SMS/LMS 발송 실행
+                solapiResponse = solapiClient.sendMessage(solapiRequest);
             }
-
-            // 요청 JSON 생성 (로그 저장용)
-            requestJson = createRequestJson(solapiRequest);
-
-            // 메시지 로그 사전 생성 (발송 전)
-            messageLog = messageLogMapper.createForSolapi(
-                    channel, toPhone, toName, from, processedMessage.getMessage(), purposeCode, requestJson);
-            messageLog = messageLogService.saveMessageLog(messageLog);
-            log.debug("[SmsService] 메시지 로그 사전 저장 완료. logId={}", messageLog.getId());
-
-            // SOLAPI 발송 실행
-            SolapiSendResponse solapiResponse = solapiClient.sendMessage(solapiRequest);
 
             // 발송 성공 처리
             String responseJson = createResponseJson(solapiResponse);
@@ -602,12 +577,9 @@ public class SmsServiceImpl implements SmsService {
      * 목적 코드 기반 관리자 알림 SMS 발송.
      */
     public Response sendAdminNotificationByPurposeCode(String message) {
-        log.info("[SmsService] 목적 코드 기반 관리자 알림 SMS 발송. 메시지 길이={}", message.length());
+        log.info("[SmsService] 목적 코드 기반 관리자 알림 SMS 발송. 메시지 길이={}, 수신번호={}", message.length(), adminPhoneNumber);
 
         try {
-            // TODO: 관리자 전화번호는 별도 설정으로 관리 필요
-            String adminPhoneNumber = "01053725012";
-
             Map<String, Object> variables = new HashMap<>();
             variables.put("message", message);
 

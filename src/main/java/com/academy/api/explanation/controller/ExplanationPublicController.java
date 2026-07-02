@@ -3,9 +3,9 @@ package com.academy.api.explanation.controller;
 import com.academy.api.explanation.domain.ExplanationDivision;
 import com.academy.api.explanation.dto.*;
 import com.academy.api.explanation.service.ExplanationService;
-import com.academy.api.data.responses.common.Response;
-import com.academy.api.data.responses.common.ResponseData;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.Response;
+import com.academy.api.data.responses.ResponseData;
+import com.academy.api.data.responses.ResponseList;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -168,8 +168,12 @@ public class ExplanationPublicController {
             @RequestBody @Valid RequestExplanationReservationCreate request,
             HttpServletRequest httpRequest) {
         
-        log.info("예약 신청 요청. scheduleId={}, applicantName={}, applicantPhone={}", 
-                request.getScheduleId(), request.getApplicantName(), request.getApplicantPhone());
+        // API 호출 추적을 위한 고유 ID 생성
+        String requestId = System.currentTimeMillis() + "-" + Thread.currentThread().getId();
+        
+        log.info("[API CALL] 예약 신청 API 호출 \ubc88\ud638: {}, scheduleId={}, applicantName={}, applicantPhone={}, clientIP={}", 
+                requestId, request.getScheduleId(), request.getApplicantName(), request.getApplicantPhone(),
+                getClientIpAddress(httpRequest));
         
         String clientIp = getClientIpAddress(httpRequest);
         
@@ -251,34 +255,62 @@ public class ExplanationPublicController {
     }
 
     @Operation(
-            summary = "예약 취소 (사용자)",
+            summary = "예약 취소 인증번호 요청",
             description = """
-                    사용자가 직접 예약을 취소합니다. 예약 인원수가 감소됩니다.
+                    예약 취소를 위한 SMS 인증번호를 발송합니다.
+                    
+                    처리 과정:
+                    - 예약 ID로 예약 정보 조회
+                    - 예약에 등록된 전화번호로 6자리 인증번호 발송
+                    - 인증번호는 3분간 유효
+                    
+                    검증 규칙:
+                    - 존재하지 않는 예약: 404 에러
+                    - 이미 취소된 예약: 400 에러
+                    - 1분 이내 재요청 제한
+                    """
+    )
+    @PostMapping("/reservations/{reservationId}/cancel-request")
+    public Response requestCancellation(
+            @Parameter(description = "예약 ID", example = "1")
+            @PathVariable Long reservationId) {
+        
+        log.info("예약 취소 인증번호 요청. reservationId={}", reservationId);
+        
+        return explanationService.requestCancellationVerification(reservationId);
+    }
+    
+    @Operation(
+            summary = "예약 취소 확인",
+            description = """
+                    인증번호를 검증하고 예약을 취소합니다.
+                    
+                    처리 과정:
+                    - 인증번호 검증 (3분 이내)
+                    - 검증 성공 시 예약 취소 처리
+                    - 취소 완료 SMS 발송
                     
                     취소 처리:
                     - 예약 상태를 CANCELED로 변경
                     - canceledBy를 USER로 설정
-                    - canceledAt에 현재 시각 기록
-                    - 회차의 reserved_count 1 감소 (캐시 갱신)
+                    - 회차의 reserved_count 감소
                     
                     검증 규칙:
-                    - 이미 취소된 예약은 멱등 처리 (200 OK + 이미 취소됨 메시지)
-                    - 존재하지 않는 예약 ID는 404 에러
-                    
-                    주의사항:
-                    - 취소 권한 검증이 필요할 수 있습니다 (향후 토큰 기반)
-                    - 취소 가능 시간 제한 정책 고려 (예: apply_end_at 이후 취소 불가)
-                    - reserved_count가 0 아래로 내려가지 않도록 가드 처리
+                    - 잘못된 인증번호: 400 에러
+                    - 인증번호 만료: 400 에러
+                    - 5회 실패 시 차단
                     """
     )
-    @PostMapping("/reservations/{reservationId}/cancel")
-    public Response cancelReservation(
+    @PostMapping("/reservations/{reservationId}/cancel-confirm")
+    public Response confirmCancellation(
             @Parameter(description = "예약 ID", example = "1") 
-            @PathVariable Long reservationId) {
+            @PathVariable Long reservationId,
+            @Parameter(description = "인증 정보")
+            @RequestBody @Valid RequestCancelVerification request) {
         
-        log.info("예약 취소 요청. reservationId={}", reservationId);
+        log.info("예약 취소 확인. reservationId={}", reservationId);
         
-        return explanationService.cancelReservationByUser(reservationId);
+        return explanationService.confirmCancellationWithVerification(reservationId, request);
     }
 
     // ===== 유틸리티 메서드 =====

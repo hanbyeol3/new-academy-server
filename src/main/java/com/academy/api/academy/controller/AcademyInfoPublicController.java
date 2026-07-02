@@ -2,7 +2,7 @@ package com.academy.api.academy.controller;
 
 import com.academy.api.academy.dto.ResponseAcademyInfo;
 import com.academy.api.academy.service.AcademyInfoService;
-import com.academy.api.data.responses.common.ResponseData;
+import com.academy.api.data.responses.ResponseData;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;

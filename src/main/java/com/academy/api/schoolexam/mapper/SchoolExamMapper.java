@@ -1,6 +1,6 @@
 package com.academy.api.schoolexam.mapper;
 
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.member.domain.Member;
 import com.academy.api.member.repository.MemberRepository;
 import com.academy.api.schoolexam.domain.SchoolExam;

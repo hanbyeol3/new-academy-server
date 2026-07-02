@@ -7,12 +7,13 @@ import com.academy.api.explanation.mapper.ExplanationMapper;
 import com.academy.api.explanation.repository.ExplanationRepository;
 import com.academy.api.explanation.repository.ExplanationReservationRepository;
 import com.academy.api.explanation.repository.ExplanationScheduleRepository;
+import com.academy.api.explanation.repository.ExplanationCancelVerificationRepository;
 import com.academy.api.explanation.repository.ReservationWithDetails;
 import com.academy.api.common.exception.BusinessException;
 import com.academy.api.common.exception.ErrorCode;
-import com.academy.api.data.responses.common.Response;
-import com.academy.api.data.responses.common.ResponseData;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.Response;
+import com.academy.api.data.responses.ResponseData;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.file.domain.UploadFileLink;
 import com.academy.api.file.domain.FileRole;
 import com.academy.api.file.dto.ResponseFileInfo;
@@ -20,8 +21,10 @@ import com.academy.api.file.repository.UploadFileLinkRepository;
 import com.academy.api.file.service.FileService;
 import com.academy.api.file.dto.FileReference;
 import com.academy.api.member.domain.Member;
+import com.academy.api.sms.dto.ResponseSmsMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -39,6 +42,7 @@ import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import jakarta.servlet.http.HttpServletResponse;
@@ -65,14 +69,20 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ExplanationServiceImpl implements ExplanationService {
+    
+    // 중복 요청 방지를 위한 간단한 캐시 (5초 동안 유지)
+    private final Map<String, Long> recentRequests = new ConcurrentHashMap<>();
 
     private final ExplanationRepository explanationRepository;
     private final ExplanationScheduleRepository scheduleRepository;
     private final ExplanationReservationRepository reservationRepository;
+    private final ExplanationCancelVerificationRepository verificationRepository;
     private final ExplanationMapper explanationMapper;
     private final FileService fileService;
     private final UploadFileLinkRepository uploadFileLinkRepository;
     private final com.academy.api.member.repository.MemberRepository memberRepository;
+    private final com.academy.api.sms.service.SmsService smsService;
+
 
     // ===== 설명회 관리 =====
 
@@ -614,8 +624,9 @@ public class ExplanationServiceImpl implements ExplanationService {
     @Override
     @Transactional
     public ResponseData<Long> createReservation(RequestExplanationReservationCreate request, String clientIp) {
-        log.info("[ExplanationService] 예약 신청. scheduleId={}, applicantName={}, applicantPhone={}", 
-                request.getScheduleId(), request.getApplicantName(), request.getApplicantPhone());
+        log.info("[ExplanationService] 예약 신청. scheduleId={}, applicantName={}, applicantPhone={}, txId={}", 
+                request.getScheduleId(), request.getApplicantName(), request.getApplicantPhone(),
+                Thread.currentThread().getName() + "-" + System.nanoTime());
 
         return processReservationCreate(request, clientIp, false);
     }
@@ -640,7 +651,31 @@ public class ExplanationServiceImpl implements ExplanationService {
     private ResponseData<Long> processReservationCreate(RequestExplanationReservationCreate request, 
                                                        String clientIp, boolean isAdminRequest) {
         
-        // 1. 회차 조회 및 락 획득 (동시성 제어)
+        // 중복 호출 추적을 위한 고유 ID
+        String processId = System.nanoTime() + "-" + Thread.currentThread().getId();
+        
+        // 중복 요청 체크 (5초 이내 동일 요청)
+        String requestKey = request.getScheduleId() + "-" + request.getApplicantPhone() + "-" + request.getApplicantName();
+        Long lastRequestTime = recentRequests.get(requestKey);
+        long currentTime = System.currentTimeMillis();
+        
+        if (lastRequestTime != null && (currentTime - lastRequestTime) < 5000) {
+            log.warn("[중복 요청 감지] 5초 이내 동일한 예약 요청. key={}, 간격={}ms", 
+                    requestKey, (currentTime - lastRequestTime));
+            // 이미 처리된 것으로 간주하고 성공 응답 (실제 예약은 하지 않음)
+            return ResponseData.ok("0000", "예약이 완료되었습니다.", -1L);
+        }
+        
+        recentRequests.put(requestKey, currentTime);
+        
+        // 오래된 엔트리 제거 (10초 이상 지난 것들)
+        recentRequests.entrySet().removeIf(entry -> 
+                (currentTime - entry.getValue()) > 10000);
+        
+        log.info("[ExplanationService] processReservationCreate 시작. processId={}, applicantPhone={}, scheduleId={}, isAdmin={}, clientIp={}", 
+                processId, request.getApplicantPhone(), request.getScheduleId(), isAdminRequest, clientIp);
+        
+        // 1. 회차 조회 및 락 획듍 (동시성 제어)
         ExplanationSchedule schedule = scheduleRepository
                 .findByIdForUpdate(request.getScheduleId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.EXPLANATION_SCHEDULE_NOT_FOUND));
@@ -679,6 +714,56 @@ public class ExplanationServiceImpl implements ExplanationService {
 
         log.debug("[ExplanationService] 예약 생성 완료. reservationId={}, scheduleId={}, reservedCount={}", 
                 savedReservation.getId(), schedule.getId(), schedule.getReservedCount());
+
+        // 7. SMS 발송 (실패해도 예약은 유지)
+        try {
+            // 설명회 정보 조회
+            Explanation explanation = explanationRepository.findById(schedule.getExplanationId())
+                    .orElse(null);
+            
+            if (explanation == null) {
+                log.warn("[ExplanationService] 설명회 정보를 찾을 수 없음. explanationId={}", schedule.getExplanationId());
+                return ResponseData.ok("0000", "예약이 완료되었습니다.", savedReservation.getId());
+            }
+            
+            // 날짜/시간 포맷팅 (요일 포함)
+            DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy년 MM월 dd일(E)");
+            DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+            String scheduleDate = schedule.getStartAt().format(dateFormatter);
+            String scheduleTime = schedule.getStartAt().format(timeFormatter);
+            
+            // SMS 발송 (DB 템플릿 사용)
+            Map<String, Object> variables = new HashMap<>();
+            variables.put("name", savedReservation.getApplicantName());
+            variables.put("title", explanation.getTitle());
+            variables.put("attendeeCount", String.valueOf(attendeeCount)); // 신청인원
+            variables.put("scheduleDate", scheduleDate + " " + scheduleTime);
+            variables.put("location", schedule.getLocation() != null ? schedule.getLocation() : "본원");
+            
+            // DB 템플릿 USER_EXPLANATION_CONFIRMED 사용
+            String smsId = System.currentTimeMillis() + "-" + savedReservation.getId();
+            log.warn("🚨 [SMS 발송 추적] 예약 확인 SMS 발송 시작!");
+            log.warn("🚨 [SMS 발송 추적] smsId={}, phone={}, name={}, reservationId={}", 
+                    smsId, savedReservation.getApplicantPhone(), savedReservation.getApplicantName(), savedReservation.getId());
+            log.warn("🚨 [SMS 발송 추적] Thread={}, Time={}", Thread.currentThread().getName(), System.currentTimeMillis());
+            
+            ResponseData<ResponseSmsMessage> userSmsResult = smsService.sendMessageByPurposeCode(
+                "USER_EXPLANATION_CONFIRMED",
+                savedReservation.getApplicantPhone(),
+                savedReservation.getApplicantName(),
+                variables
+            );
+            
+            log.info("[ExplanationService] 사용자 SMS 발송 완료. phone={}, result={}, reservationId={}", 
+                    savedReservation.getApplicantPhone(), userSmsResult.getCode(), savedReservation.getId());
+            
+            // 관리자 SMS는 발송하지 않음
+                    
+        } catch (Exception e) {
+            log.error("[ExplanationService] SMS 발송 실패. 예약은 정상 처리됨. reservationId={}, error={}", 
+                    savedReservation.getId(), e.getMessage());
+            // SMS 실패해도 예약은 유지
+        }
 
         return ResponseData.ok("0000", "예약이 완료되었습니다.", savedReservation.getId());
     }
@@ -860,6 +945,109 @@ public class ExplanationServiceImpl implements ExplanationService {
 
     @Override
     @Transactional
+    public Response requestCancellationVerification(Long reservationId) {
+        log.info("[ExplanationService] 예약 취소 인증번호 요청. reservationId={}", reservationId);
+        
+        // 1. 예약 조회
+        ExplanationReservation reservation = reservationRepository.findById(reservationId)
+                .orElse(null);
+        
+        if (reservation == null) {
+            log.warn("[ExplanationService] 예약을 찾을 수 없음. reservationId={}", reservationId);
+            return Response.error("R404", "예약을 찾을 수 없습니다.");
+        }
+        
+        // 2. 이미 취소된 예약 체크
+        if (reservation.getStatus() == ReservationStatus.CANCELED) {
+            log.warn("[ExplanationService] 이미 취소된 예약. reservationId={}", reservationId);
+            return Response.error("R400", "이미 취소된 예약입니다.");
+        }
+        
+        // 3. 3분 이내 재요청 제한
+        LocalDateTime oneMinuteAgo = LocalDateTime.now().minusMinutes(3);
+        verificationRepository.findRecentRequest(reservationId, oneMinuteAgo)
+                .ifPresent(recent -> {
+                    throw new BusinessException(ErrorCode.TOO_MANY_REQUESTS, "3분 후에 다시 시도해주세요.");
+                });
+        
+        // 4. 인증번호 생성 및 저장
+        String verificationCode = ExplanationCancelVerification.generateCode();
+        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(3);
+        
+        ExplanationCancelVerification verification = ExplanationCancelVerification.builder()
+                .reservationId(reservationId)
+                .phoneNumber(reservation.getApplicantPhone())
+                .verificationCode(verificationCode)
+                .expiresAt(expiresAt)
+                .build();
+        
+        verificationRepository.save(verification);
+        log.debug("[ExplanationService] 인증정보 저장 완료. code={}, expiresAt={}", verificationCode, expiresAt);
+        
+        // 5. SMS 발송
+        try {
+            Map<String, Object> variables = new HashMap<>();
+            variables.put("verificationCode", verificationCode);
+            
+            ResponseData<ResponseSmsMessage> smsResponse = smsService.sendMessageByPurposeCode(
+                    "USER_EXPLANATION_CANCEL_VERIFY",
+                    reservation.getApplicantPhone(),
+                    reservation.getApplicantName(),
+                    variables
+            );
+            
+            log.info("[ExplanationService] 인증번호 SMS 발송 완료. phone={}",
+                    reservation.getApplicantPhone());
+        } catch (Exception e) {
+            log.error("[ExplanationService] SMS 발송 실패. phone={}", reservation.getApplicantPhone(), e);
+            // SMS 실패해도 인증 프로세스는 계속 진행
+        }
+        
+        return Response.ok("0000", "인증번호가 발송되었습니다. 3분 이내에 입력해주세요.");
+    }
+    
+    @Override
+    @Transactional
+    public Response confirmCancellationWithVerification(Long reservationId, RequestCancelVerification request) {
+        log.info("[ExplanationService] 예약 취소 인증 확인. reservationId={}", reservationId);
+        
+        // 1. 유효한 인증 정보 조회
+        ExplanationCancelVerification verification = verificationRepository
+                .findValidVerification(reservationId, LocalDateTime.now())
+                .orElse(null);
+        
+        if (verification == null) {
+            log.warn("[ExplanationService] 유효한 인증정보 없음. reservationId={}", reservationId);
+            return Response.error("V404", "인증번호를 다시 요청해주세요.");
+        }
+        
+        // 2. 최대 시도 횟수 체크
+        if (verification.isMaxAttemptsExceeded()) {
+            log.warn("[ExplanationService] 최대 시도 횟수 초과. reservationId={}, attempts={}", 
+                    reservationId, verification.getAttemptCount());
+            return Response.error("V403", "인증 시도 횟수를 초과했습니다. 다시 요청해주세요.");
+        }
+        
+        // 3. 인증번호 검증
+        verification.incrementAttempt();
+        if (!verification.verifyCode(request.getVerificationCode())) {
+            verificationRepository.save(verification);
+            log.warn("[ExplanationService] 잘못된 인증번호. reservationId={}, attempt={}", 
+                    reservationId, verification.getAttemptCount());
+            return Response.error("V400", "인증번호가 일치하지 않습니다.");
+        }
+        
+        // 4. 인증 완료 처리
+        verification.markAsVerified();
+        verificationRepository.save(verification);
+        log.debug("[ExplanationService] 인증 성공. reservationId={}", reservationId);
+        
+        // 5. 실제 예약 취소 처리
+        return cancelReservationByUser(reservationId);
+    }
+
+    @Override
+    @Transactional
     public Response cancelReservationByUser(Long reservationId) {
         log.info("[ExplanationService] 사용자 예약 취소 시작. reservationId={}", reservationId);
 
@@ -890,6 +1078,46 @@ public class ExplanationServiceImpl implements ExplanationService {
             scheduleRepository.save(schedule);
             log.debug("[ExplanationService] 회차 예약 인원수 감소. scheduleId={}, 감소인원={}, 현재 예약수={}", 
                     schedule.getId(), attendeeCount, schedule.getReservedCount());
+                    
+            // SMS 발송 (취소 알림)
+            try {
+                // 설명회 정보 조회
+                Explanation explanation = explanationRepository.findById(schedule.getExplanationId())
+                        .orElse(null);
+                
+                if (explanation == null) {
+                    log.warn("[ExplanationService] 설명회 정보를 찾을 수 없음. explanationId={}", schedule.getExplanationId());
+                    // SMS 실패해도 취소 처리는 유지되므로 그냥 넘어감
+                } else {
+                
+                // 날짜/시간 포맷팅
+                DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy년 MM월 dd일");
+                DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+                String scheduleDate = schedule.getStartAt().format(dateFormatter);
+                String scheduleTime = schedule.getStartAt().format(timeFormatter);
+                
+                // SMS 템플릿에 맞춰 변수 설정
+                Map<String, Object> variables = new HashMap<>();
+                variables.put("seminarTitle", explanation.getTitle());
+                variables.put("seminarTime", scheduleDate + " " + scheduleTime);
+                
+                // DB 템플릿 USER_EXPLANATION_CANCELED 사용
+                smsService.sendMessageByPurposeCode(
+                    "USER_EXPLANATION_CANCELED",
+                    reservation.getApplicantPhone(),
+                    reservation.getApplicantName(),
+                    variables
+                );
+                
+                log.info("[ExplanationService] 예약 취소 SMS 발송 완료. phone={}, name={}", 
+                        reservation.getApplicantPhone(), reservation.getApplicantName());
+                }
+                        
+            } catch (Exception e) {
+                log.error("[ExplanationService] 취소 SMS 발송 실패. reservationId={}, error={}", 
+                        reservationId, e.getMessage());
+                // SMS 실패해도 취소 처리는 유지
+            }
         }
 
         log.info("[ExplanationService] 사용자 예약 취소 완료. reservationId={}", reservationId);
@@ -931,6 +1159,49 @@ public class ExplanationServiceImpl implements ExplanationService {
             scheduleRepository.save(schedule);
             log.debug("[ExplanationService] 회차 예약 인원수 감소. scheduleId={}, 감소인원={}, 현재 예약수={}", 
                     schedule.getId(), attendeeCount, schedule.getReservedCount());
+                    
+            // SMS 발송 (관리자 취소 알림)
+            try {
+                // 설명회 정보 조회
+                Explanation explanation = explanationRepository.findById(schedule.getExplanationId())
+                        .orElse(null);
+                
+                if (explanation == null) {
+                    log.warn("[ExplanationService] 설명회 정보를 찾을 수 없음. explanationId={}", schedule.getExplanationId());
+                    // SMS 실패해도 취소 처리는 유지되므로 그냥 넘어감
+                } else {
+                
+                // 날짜/시간 포맷팅
+                DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy년 MM월 dd일");
+                DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+                String scheduleDate = schedule.getStartAt().format(dateFormatter);
+                String scheduleTime = schedule.getStartAt().format(timeFormatter);
+                
+                // SMS 템플릿에 맞춰 변수 설정
+                Map<String, Object> variables = new HashMap<>();
+                variables.put("scheduleName", explanation.getTitle());
+                variables.put("scheduleDate", scheduleDate);
+                variables.put("scheduleTime", scheduleTime);
+                variables.put("roundNo", String.valueOf(schedule.getRoundNo()));
+                variables.put("reason", reason != null ? reason : "운영상 사유");
+                
+                // DB 템플릿 ADMIN_EXPLANATION_CANCELED 사용
+                smsService.sendMessageByPurposeCode(
+                    "ADMIN_EXPLANATION_CANCELED",
+                    reservation.getApplicantPhone(),
+                    reservation.getApplicantName(),
+                    variables
+                );
+                
+                log.info("[ExplanationService] 관리자 예약 취소 SMS 발송 완료. phone={}, name={}", 
+                        reservation.getApplicantPhone(), reservation.getApplicantName());
+                }
+                        
+            } catch (Exception e) {
+                log.error("[ExplanationService] 관리자 취소 SMS 발송 실패. reservationId={}, error={}", 
+                        reservationId, e.getMessage());
+                // SMS 실패해도 취소 처리는 유지
+            }
         }
 
         log.info("[ExplanationService] 관리자 예약 취소 완료. reservationId={}, reason={}", reservationId, reason);

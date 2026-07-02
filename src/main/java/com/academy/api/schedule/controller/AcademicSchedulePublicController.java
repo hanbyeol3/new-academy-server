@@ -1,6 +1,6 @@
 package com.academy.api.schedule.controller;
 
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.schedule.dto.RequestAcademicScheduleSearch;
 import com.academy.api.schedule.dto.ResponseAcademicScheduleListItem;
 import com.academy.api.schedule.service.AcademicScheduleService;

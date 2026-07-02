@@ -1,6 +1,6 @@
 package com.academy.api.holiday.service;
 
-import com.academy.api.data.responses.common.Response;
+import com.academy.api.data.responses.Response;
 
 /**
  * 공휴일 동기화 서비스 인터페이스.

@@ -1,7 +1,7 @@
 package com.academy.api.notice.controller;
 
-import com.academy.api.data.responses.common.ResponseData;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.ResponseData;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.notice.dto.ResponseNoticeDetail;
 import com.academy.api.notice.dto.ResponseNoticePublicList;
 import com.academy.api.notice.service.NoticeService;

@@ -1,7 +1,7 @@
 package com.academy.api.facility.controller;
 
-import com.academy.api.data.responses.common.ResponseData;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.ResponseData;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.facility.dto.ResponseFacility;
 import com.academy.api.facility.dto.ResponseFacilityListItem;
 import com.academy.api.facility.service.FacilityService;

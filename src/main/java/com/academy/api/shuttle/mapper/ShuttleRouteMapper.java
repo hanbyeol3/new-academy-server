@@ -1,7 +1,7 @@
 package com.academy.api.shuttle.mapper;
 
 import com.academy.api.common.util.SecurityUtils;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.shuttle.domain.ShuttleRoute;
 import com.academy.api.shuttle.domain.ShuttleRouteStop;
 import com.academy.api.shuttle.dto.*;

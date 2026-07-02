@@ -1,7 +1,7 @@
 package com.academy.api.gallery.controller;
 
-import com.academy.api.data.responses.common.ResponseData;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.ResponseData;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.gallery.dto.ResponseGalleryDetail;
 import com.academy.api.gallery.dto.ResponseGalleryPublicList;
 import com.academy.api.gallery.service.GalleryService;

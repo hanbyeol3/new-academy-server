@@ -5,7 +5,7 @@ import com.academy.api.explanation.domain.ExplanationReservation;
 import com.academy.api.explanation.domain.ExplanationSchedule;
 import com.academy.api.explanation.dto.*;
 import com.academy.api.explanation.repository.ReservationWithDetails;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.file.dto.ResponseFileInfo;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;

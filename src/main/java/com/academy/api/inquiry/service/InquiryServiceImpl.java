@@ -1,8 +1,8 @@
 package com.academy.api.inquiry.service;
 
-import com.academy.api.data.responses.common.Response;
-import com.academy.api.data.responses.common.ResponseData;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.Response;
+import com.academy.api.data.responses.ResponseData;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.inquiry.domain.*;
 import com.academy.api.inquiry.dto.*;
 import com.academy.api.inquiry.mapper.InquiryMapper;
@@ -11,8 +11,10 @@ import com.academy.api.inquiry.repository.InquiryRepository;
 import com.academy.api.member.domain.Member;
 import com.academy.api.member.repository.MemberRepository;
 import com.academy.api.common.util.SecurityUtils;
+import com.academy.api.sms.service.SmsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -20,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -49,6 +52,10 @@ public class InquiryServiceImpl implements InquiryService {
     private final InquiryLogRepository inquiryLogRepository;
     private final MemberRepository memberRepository;
     private final InquiryMapper inquiryMapper;
+    private final SmsService smsService;
+    
+    @Value("${academy.admin.phone:01083873610}")
+    private String adminPhoneNumber;
 
     @Override
     public ResponseList<ResponseInquiryListItem> getInquiryList(String keyword, String searchType, String status,
@@ -166,6 +173,41 @@ public class InquiryServiceImpl implements InquiryService {
         inquiryLogRepository.save(createLog);
 
         log.info("[InquiryService] 외부 상담신청 생성 완료. ID={}", inquiry.getId());
+
+        // SMS 발송 (실패해도 상담신청은 유지)
+        try {
+            // 1. 신청자 SMS 발송
+            if (request.getPhoneNumber() != null) {
+                Map<String, Object> userVariables = new HashMap<>();
+                userVariables.put("name", request.getName());
+                
+                smsService.sendMessageByPurposeCode(
+                    "USER_INQUIRY_CONFIRMED",
+                    request.getPhoneNumber(),
+                    request.getName(),
+                    userVariables
+                );
+                log.info("[InquiryService] 신청자 SMS 발송 완료. phone={}", request.getPhoneNumber());
+            }
+            
+            // 2. 관리자 SMS 발송
+            Map<String, Object> adminVariables = new HashMap<>();
+            adminVariables.put("name", request.getName());
+            adminVariables.put("phoneNumber", request.getPhoneNumber());
+            adminVariables.put("content", request.getContent());
+            
+            smsService.sendMessageByPurposeCode(
+                "ADMIN_INQUIRY_REGISTERED",
+                adminPhoneNumber,
+                "관리자",
+                adminVariables
+            );
+            log.info("[InquiryService] 관리자 SMS 발송 완료. phone={}", adminPhoneNumber);
+            
+        } catch (Exception e) {
+            log.error("[InquiryService] SMS 발송 실패. 상담신청은 정상 처리됨. error={}", e.getMessage());
+            // SMS 실패해도 상담신청은 유지
+        }
 
         return ResponseData.ok("0000", "상담신청이 접수되었습니다.", inquiry.getId());
     }

@@ -4,7 +4,7 @@ import com.academy.api.admin.dto.request.RequestAdminAccountCreate;
 import com.academy.api.admin.dto.response.ResponseAdminAccount;
 import com.academy.api.admin.dto.response.ResponseAdminAccountDetail;
 import com.academy.api.member.domain.Member;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.ResponseList;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 

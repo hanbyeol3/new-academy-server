@@ -2,7 +2,7 @@ package com.academy.api.category.controller;
 
 import com.academy.api.category.dto.ResponseCategoryPublic;
 import com.academy.api.category.service.CategoryService;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.ResponseList;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;

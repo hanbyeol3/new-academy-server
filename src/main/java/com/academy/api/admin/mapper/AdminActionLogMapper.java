@@ -4,7 +4,7 @@ import com.academy.api.admin.domain.AdminActionLog;
 import com.academy.api.admin.dto.response.ResponseAdminActionLog;
 import com.academy.api.admin.enums.AdminActionType;
 import com.academy.api.admin.enums.AdminTargetType;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.ResponseList;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 

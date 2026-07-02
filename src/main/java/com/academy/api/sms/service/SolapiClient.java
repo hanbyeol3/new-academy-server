@@ -19,6 +19,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.security.SecureRandom;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -39,6 +40,93 @@ public class SolapiClient {
     private static final String MESSAGES_ENDPOINT = "/messages/v4/send-many";
     private static final String ALGORITHM = "HmacSHA256";
     private static final SecureRandom RANDOM = new SecureRandom();
+
+    /**
+     * 카카오 알림톡 발송.
+     * 
+     * @param to 수신자 번호
+     * @param templateId 카카오 템플릿 ID
+     * @param variables 템플릿 변수
+     * @return SOLAPI 응답
+     * @throws SolapiException 알림톡 발송 실패 시
+     */
+    public SolapiSendResponse sendKakaoAlimtalk(String to, String templateId, 
+                                                Map<String, String> variables) throws SolapiException {
+        if (!solapiConfig.isConfigured()) {
+            throw new SolapiException("SOLAPI 설정이 완료되지 않았습니다");
+        }
+
+        String pfId = solapiConfig.getKakao().getPfId();
+        if (pfId == null || pfId.isEmpty()) {
+            throw new SolapiException("카카오톡 채널 ID가 설정되지 않았습니다");
+        }
+
+        try {
+            String fullUrl = solapiConfig.getBaseUrl() + MESSAGES_ENDPOINT;
+            
+            // 카카오 알림톡 JSON 생성
+            String requestBody = createKakaoAlimtalkJson(to, templateId, pfId, variables);
+            HttpHeaders headers = createAuthHeaders(requestBody);
+            HttpEntity<String> entity = new HttpEntity<>(requestBody, headers);
+
+            log.info("[SolapiClient] 카카오 알림톡 발송 요청. 수신자={}, 템플릿={}, pfId={}", 
+                    to, templateId, pfId);
+
+            // SOLAPI API 호출
+            ResponseEntity<SolapiSendResponse> response = restTemplate.exchange(
+                    fullUrl, HttpMethod.POST, entity, SolapiSendResponse.class);
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                SolapiSendResponse responseBody = response.getBody();
+                
+                if (responseBody.getGroupId() != null) {
+                    if (responseBody.getCount() != null && 
+                        responseBody.getCount().getRegisteredFailed() != null && 
+                        responseBody.getCount().getRegisteredFailed() > 0) {
+                        
+                        String errorInfo = String.format("알림톡 등록 실패 - 실패 수: %d", 
+                                                       responseBody.getCount().getRegisteredFailed());
+                        log.error("[SolapiClient] {}", errorInfo);
+                        throw new SolapiException(errorInfo);
+                    }
+                } else {
+                    log.error("[SolapiClient] groupId가 null - 그룹 생성 실패");
+                    throw new SolapiException("그룹 생성에 실패했습니다");
+                }
+                
+                log.info("[SolapiClient] 카카오 알림톡 발송 성공. messageId={}", responseBody.getMessageId());
+                return responseBody;
+            } else {
+                throw new SolapiException("카카오 알림톡 발송 실패: " + response.getStatusCode());
+            }
+
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            String responseBody = e.getResponseBodyAsString();
+            log.error("[SolapiClient] 카카오 알림톡 HTTP 에러 응답: {}", responseBody);
+            
+            try {
+                if (responseBody.contains("errorCode") && responseBody.contains("errorMessage")) {
+                    String errorCode = extractJsonValue(responseBody, "errorCode");
+                    String errorMessage = extractJsonValue(responseBody, "errorMessage");
+                    String detailedError = String.format("카카오 알림톡 에러 - 코드: %s, 메시지: %s", errorCode, errorMessage);
+                    log.error("[SolapiClient] {}", detailedError);
+                    throw new SolapiException(detailedError, e);
+                } else {
+                    throw new SolapiException("카카오 알림톡 API 호출 실패: " + e.getStatusText(), e);
+                }
+            } catch (Exception parseEx) {
+                log.warn("[SolapiClient] 에러 응답 파싱 실패: {}", parseEx.getMessage());
+                throw new SolapiException("카카오 알림톡 API 호출 실패: " + e.getStatusText(), e);
+            }
+            
+        } catch (RestClientException e) {
+            log.error("[SolapiClient] 카카오 알림톡 발송 중 REST 예외 발생: {}", e.getMessage(), e);
+            throw new SolapiException("카카오 알림톡 발송 중 통신 오류가 발생했습니다", e);
+        } catch (Exception e) {
+            log.error("[SolapiClient] 카카오 알림톡 발송 중 예상치 못한 오류: {}", e.getMessage(), e);
+            throw new SolapiException("카카오 알림톡 발송 중 오류가 발생했습니다", e);
+        }
+    }
 
     /**
      * SMS 메시지 발송.
@@ -71,13 +159,7 @@ public class SolapiClient {
             log.info("  - API Key: {}***", solapiConfig.getApiKey().substring(0, 8));
             log.info("  - Headers: {}", headers.toSingleValueMap());
 
-            // 🔍 Raw 응답을 먼저 String으로 받아서 확인
-            ResponseEntity<String> rawResponse = restTemplate.exchange(
-                    fullUrl, HttpMethod.POST, entity, String.class);
-            
-            log.info("[SolapiClient] 🔍 SOLAPI Raw 응답 JSON: {}", rawResponse.getBody());
-            
-            // 다시 실제 DTO로 파싱
+            // SOLAPI API 호출 (한 번만!)
             ResponseEntity<SolapiSendResponse> response = restTemplate.exchange(
                     fullUrl, HttpMethod.POST, entity, SolapiSendResponse.class);
 
@@ -216,8 +298,12 @@ public class SolapiClient {
      */
     private String convertToJson(SolapiSendRequest request) {
         // 간단한 JSON 수동 생성 (Jackson 의존성을 피해)
-        log.info("[SolapiClient] 🔍 JSON 생성: to={}, from={}, type={}", 
+        log.info("[SolapiClient] JSON 생성 시작: to={}, from={}, type={}", 
                 request.getTo(), request.getFrom(), request.getType());
+        
+        // 수신자 번호 정규화 (숫자만 남기기)
+        String normalizedTo = request.getTo().replaceAll("\\D", "");
+        log.info("[SolapiClient] 수신자 번호: 원본={}, 정규화={}", request.getTo(), normalizedTo);
         
         String jsonMessage;
         if ("LMS".equals(request.getType()) && request.getSubject() != null) {
@@ -258,7 +344,79 @@ public class SolapiClient {
                 request.getType());
         }
         
-        log.info("[SolapiClient] 🔍 생성된 JSON: {}", jsonMessage);
+        // messages 배열 크기 확인
+        int messageCount = 1; // 현재는 항상 1개
+        log.info("[SolapiClient] 🔍 SOLAPI REQUEST - messages 배열 크기={}, 수신자={}", messageCount, request.getTo());
+        
+        // JSON에서 to 필드가 몇 번 나타나는지 확인
+        int toOccurrences = jsonMessage.split("\"to\"").length - 1;
+        log.info("[SolapiClient] JSON 내 'to' 필드 개수: {}", toOccurrences);
+        
+        // 메시지 텍스트의 처음 부분만 로그에 표시
+        String textPreview = request.getText().length() > 50 ? 
+                request.getText().substring(0, 50) + "..." : request.getText();
+        log.info("[SolapiClient] 메시지 미리보기: {}", textPreview);
+        
+        return jsonMessage;
+    }
+
+    /**
+     * 카카오 알림톡 JSON 생성.
+     * 
+     * @param to 수신자 번호
+     * @param templateId 템플릿 ID
+     * @param pfId 카카오 채널 ID
+     * @param variables 템플릿 변수
+     * @return JSON 문자열
+     */
+    private String createKakaoAlimtalkJson(String to, String templateId, String pfId, 
+                                          Map<String, String> variables) {
+        log.info("[SolapiClient] 카카오 알림톡 JSON 생성. to={}, templateId={}, pfId={}", 
+                to, templateId, pfId);
+        
+        // 변수를 JSON 형식으로 변환 (카카오는 #{변수명} 형식 사용)
+        StringBuilder variablesJson = new StringBuilder();
+        if (variables != null && !variables.isEmpty()) {
+            log.info("[SolapiClient] 카카오 템플릿 변수 수신: {}", variables);
+            for (Map.Entry<String, String> entry : variables.entrySet()) {
+                if (variablesJson.length() > 0) {
+                    variablesJson.append(",");
+                }
+                String value = entry.getValue() != null ? entry.getValue() : "";
+                // 카카오 알림톡은 #{변수명} 형식으로 전달해야 함
+                variablesJson.append(String.format("\"#{%s}\":\"%s\"", 
+                    entry.getKey(), 
+                    value.replace("\"", "\\\"")));
+            }
+            log.info("[SolapiClient] 카카오 변수 JSON 생성: {}", variablesJson);
+        } else {
+            log.warn("[SolapiClient] 카카오 템플릿 변수가 비어있습니다!");
+        }
+        
+        // 카카오 알림톡 메시지 JSON 생성
+        String jsonMessage = String.format("""
+            {
+              "message": {
+                "to": "%s",
+                "from": "%s",
+                "type": "ATA",
+                "kakaoOptions": {
+                  "pfId": "%s",
+                  "templateId": "%s",
+                  "variables": {%s}
+                }
+              }
+            }""", 
+            to,
+            solapiConfig.getSenderNumber(),  // 대체발송용 발신번호
+            pfId,
+            templateId,
+            variablesJson.toString());
+        
+        log.info("[SolapiClient] 카카오 알림톡 JSON 생성 완료. 대체발송 번호={}, 변수={}", 
+                solapiConfig.getSenderNumber(), variablesJson.toString());
+        log.info("[SolapiClient] 생성된 카카오 알림톡 전체 JSON:\n{}", jsonMessage);
+        
         return jsonMessage;
     }
 

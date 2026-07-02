@@ -2,7 +2,7 @@ package com.academy.api.faq.mapper;
 
 import com.academy.api.category.domain.Category;
 import com.academy.api.common.util.SecurityUtils;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.faq.domain.Faq;
 import com.academy.api.faq.dto.RequestFaqCreate;
 import com.academy.api.faq.dto.RequestFaqUpdate;

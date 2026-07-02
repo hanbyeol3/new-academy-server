@@ -1,6 +1,6 @@
 package com.academy.api.popup.controller;
 
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.popup.dto.ResponsePopupPublic;
 import com.academy.api.popup.service.PopupService;
 import io.swagger.v3.oas.annotations.Operation;

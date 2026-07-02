@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -31,46 +32,6 @@ public class SmsTemplateProcessor {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
-    /**
-     * 템플릿 메시지 생성 (기존 enum 템플릿).
-     * 
-     * @param template SMS 템플릿
-     * @param variables 템플릿 변수 Map
-     * @return 치환된 메시지
-     */
-    public ProcessedMessage processTemplate(SmsTemplate template, Map<String, Object> variables) {
-        log.debug("[SmsTemplateProcessor] 템플릿 처리 시작. template={}", template.name());
-        
-        try {
-            // 기본 변수 추가
-            variables = addDefaultVariables(variables);
-            
-            // 템플릿 치환
-            String processedMessage = replaceVariables(template.getTemplate(), variables);
-            
-            // 메시지 타입과 길이 검증
-            SmsTemplate.SmsType messageType = determineMessageType(processedMessage, template.getDefaultType());
-            
-            ProcessedMessage result = ProcessedMessage.builder()
-                    .message(processedMessage)
-                    .type(messageType.getCode())
-                    .length(processedMessage.length())
-                    .template(template)
-                    .purposeCode(template.name()) // enum 이름을 purpose code로 사용
-                    .purpose(null) // enum 기반에서는 null
-                    .variables(variables)
-                    .build();
-            
-            log.debug("[SmsTemplateProcessor] 템플릿 처리 완료. 길이={}, 타입={}", 
-                     result.getLength(), result.getType());
-            
-            return result;
-            
-        } catch (Exception e) {
-            log.error("[SmsTemplateProcessor] 템플릿 처리 실패: {}", e.getMessage(), e);
-            throw new SmsTemplateException("템플릿 처리에 실패했습니다: " + e.getMessage(), e);
-        }
-    }
 
     /**
      * 목적 코드 기반 템플릿 메시지 생성.
@@ -96,6 +57,9 @@ public class SmsTemplateProcessor {
             log.debug("[SmsTemplateProcessor] 목적 코드 조회 성공. name={}, defaultChannel={}", 
                      purpose.getName(), purpose.getDefaultChannel());
             
+            // 필수 변수 검증
+            validateRequiredVariables(purpose, variables);
+            
             // 기본 변수 추가
             variables = addDefaultVariables(variables);
             
@@ -103,14 +67,23 @@ public class SmsTemplateProcessor {
             MessageLog.Channel selectedChannel = determineOptimalChannel(purpose, variables);
             String templateContent = purpose.getTemplateByChannel(selectedChannel);
             
-            if (templateContent == null || templateContent.trim().isEmpty()) {
-                log.warn("[SmsTemplateProcessor] 선택된 채널에 대한 템플릿이 없음. purposeCode={}, channel={}", 
-                        purposeCode, selectedChannel);
-                throw new SmsTemplateException("해당 채널에 대한 템플릿이 설정되지 않았습니다: " + selectedChannel);
+            // 카카오 알림톡은 템플릿 내용을 사용하지 않음 (템플릿 ID만 사용)
+            String processedMessage;
+            if (selectedChannel == MessageLog.Channel.KAKAO_AT) {
+                // 카카오 알림톡은 솔라피 서버의 템플릿을 사용하므로 여기서는 빈 메시지
+                log.debug("[SmsTemplateProcessor] 카카오 알림톡 선택. 템플릿 ID: {}", 
+                         purpose.getKakaoTemplateCode());
+                processedMessage = ""; // 실제 메시지는 솔라피 서버에서 처리
+            } else {
+                // SMS/LMS는 DB 템플릿 사용
+                if (templateContent == null || templateContent.trim().isEmpty()) {
+                    log.warn("[SmsTemplateProcessor] 선택된 채널에 대한 템플릿이 없음. purposeCode={}, channel={}", 
+                            purposeCode, selectedChannel);
+                    throw new SmsTemplateException("해당 채널에 대한 템플릿이 설정되지 않았습니다: " + selectedChannel);
+                }
+                // 템플릿 치환
+                processedMessage = replaceVariables(templateContent, variables);
             }
-            
-            // 템플릿 치환
-            String processedMessage = replaceVariables(templateContent, variables);
             
             // 메시지 타입 결정
             String messageType = selectedChannel.name();
@@ -119,7 +92,6 @@ public class SmsTemplateProcessor {
                     .message(processedMessage)
                     .type(messageType)
                     .length(processedMessage.length())
-                    .template(null) // DB 기반에서는 null
                     .purposeCode(purposeCode)
                     .purpose(purpose)
                     .variables(variables)
@@ -136,6 +108,34 @@ public class SmsTemplateProcessor {
             log.error("[SmsTemplateProcessor] 목적 코드 기반 템플릿 처리 실패: {}", e.getMessage(), e);
             throw new SmsTemplateException("목적 코드 기반 템플릿 처리에 실패했습니다: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * 필수 변수 검증.
+     * 템플릿에 정의된 필수 변수가 모두 제공되었는지 확인합니다.
+     */
+    private void validateRequiredVariables(MessagePurpose purpose, Map<String, Object> variables) {
+        List<String> requiredVariables = purpose.getParsedKakaoVariables();
+        
+        if (requiredVariables.isEmpty()) {
+            log.debug("[SmsTemplateProcessor] 필수 변수 없음. purposeCode={}", purpose.getCode());
+            return;
+        }
+        
+        log.debug("[SmsTemplateProcessor] 필수 변수 검증. purposeCode={}, required={}, provided={}", 
+                 purpose.getCode(), requiredVariables, variables.keySet());
+        
+        for (String required : requiredVariables) {
+            if (!variables.containsKey(required) || variables.get(required) == null) {
+                log.error("[SmsTemplateProcessor] 필수 변수 누락. purposeCode={}, missing={}", 
+                         purpose.getCode(), required);
+                throw new SmsTemplateException(
+                    String.format("필수 변수가 누락되었습니다: %s (목적코드: %s)", required, purpose.getCode())
+                );
+            }
+        }
+        
+        log.debug("[SmsTemplateProcessor] 필수 변수 검증 완료. purposeCode={}", purpose.getCode());
     }
 
     /**
@@ -228,7 +228,7 @@ public class SmsTemplateProcessor {
      * 솔라피 기준에 따라 SMS/LMS를 자동 선택합니다.
      * SMS: 90 bytes 이하 (EUC-KR 기준), LMS: 2000 bytes 이하
      */
-    private SmsTemplate.SmsType determineMessageType(String message, SmsTemplate.SmsType defaultType) {
+    private String determineMessageType(String message) {
         int characterLength = message.length();
         int eucKrByteLength = getEucKrByteLength(message);
         
@@ -236,13 +236,14 @@ public class SmsTemplateProcessor {
         
         if (eucKrByteLength <= 90) { // SMS 바이트 제한 (EUC-KR 기준)
             log.debug("[SmsTemplateProcessor] SMS로 발송 (EUC-KR 바이트: {})", eucKrByteLength);
-            return SmsTemplate.SmsType.SMS;
+            return "SMS";
         } else if (eucKrByteLength <= 2000) { // LMS 바이트 제한
             log.debug("[SmsTemplateProcessor] LMS로 발송 (EUC-KR 바이트: {})", eucKrByteLength);
-            return SmsTemplate.SmsType.LMS;
+            return "LMS";
         } else {
-            log.warn("[SmsTemplateProcessor] 메시지가 LMS 최대 길이를 초과했습니다. EUC-KR바이트={}, 문자수={}", eucKrByteLength, characterLength);
-            return SmsTemplate.SmsType.LMS; // 일단 LMS로 처리
+            // 2000바이트 초과해도 LMS로 시도 (SOLAPI가 자체 처리)
+            log.warn("[SmsTemplateProcessor] 메시지가 LMS 최대 길이(2000바이트)를 초과했습니다. LMS로 발송 시도합니다. EUC-KR바이트={}, 문자수={}", eucKrByteLength, characterLength);
+            return "LMS"; // SOLAPI가 자체적으로 처리하도록 LMS로 전송
         }
     }
     
@@ -288,18 +289,16 @@ public class SmsTemplateProcessor {
         private final String message;
         private final String type;
         private final int length;
-        private final SmsTemplate template;
         private final String purposeCode;
         private final MessagePurpose purpose;
         private final Map<String, Object> variables;
         
         private ProcessedMessage(String message, String type, int length, 
-                               SmsTemplate template, String purposeCode, MessagePurpose purpose, 
+                               String purposeCode, MessagePurpose purpose, 
                                Map<String, Object> variables) {
             this.message = message;
             this.type = type;
             this.length = length;
-            this.template = template;
             this.purposeCode = purposeCode;
             this.purpose = purpose;
             this.variables = variables;
@@ -313,7 +312,6 @@ public class SmsTemplateProcessor {
         public String getMessage() { return message; }
         public String getType() { return type; }
         public int getLength() { return length; }
-        public SmsTemplate getTemplate() { return template; }
         public String getPurposeCode() { return purposeCode; }
         public MessagePurpose getPurpose() { return purpose; }
         public Map<String, Object> getVariables() { return variables; }
@@ -323,7 +321,6 @@ public class SmsTemplateProcessor {
             private String message;
             private String type;
             private int length;
-            private SmsTemplate template;
             private String purposeCode;
             private MessagePurpose purpose;
             private Map<String, Object> variables;
@@ -343,11 +340,6 @@ public class SmsTemplateProcessor {
                 return this;
             }
             
-            public ProcessedMessageBuilder template(SmsTemplate template) {
-                this.template = template;
-                return this;
-            }
-            
             public ProcessedMessageBuilder purposeCode(String purposeCode) {
                 this.purposeCode = purposeCode;
                 return this;
@@ -364,7 +356,7 @@ public class SmsTemplateProcessor {
             }
             
             public ProcessedMessage build() {
-                return new ProcessedMessage(message, type, length, template, purposeCode, purpose, variables);
+                return new ProcessedMessage(message, type, length, purposeCode, purpose, variables);
             }
         }
     }

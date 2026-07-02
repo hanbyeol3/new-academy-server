@@ -1,9 +1,9 @@
 package com.academy.api.popup.service;
 
 import com.academy.api.common.util.SecurityUtils;
-import com.academy.api.data.responses.common.Response;
-import com.academy.api.data.responses.common.ResponseData;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.Response;
+import com.academy.api.data.responses.ResponseData;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.file.domain.FileRole;
 import com.academy.api.file.domain.UploadFile;
 import com.academy.api.file.domain.UploadFileLink;

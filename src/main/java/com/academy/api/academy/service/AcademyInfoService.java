@@ -3,8 +3,8 @@ package com.academy.api.academy.service;
 import com.academy.api.academy.dto.RequestAcademyInfoUpdate;
 import com.academy.api.academy.dto.RequestInstructorVideoUpdate;
 import com.academy.api.academy.dto.ResponseAcademyInfo;
-import com.academy.api.data.responses.common.Response;
-import com.academy.api.data.responses.common.ResponseData;
+import com.academy.api.data.responses.Response;
+import com.academy.api.data.responses.ResponseData;
 
 /**
  * 학원 정보 서비스 인터페이스.

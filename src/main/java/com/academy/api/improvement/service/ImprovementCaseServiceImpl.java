@@ -1,9 +1,9 @@
 package com.academy.api.improvement.service;
 
 import com.academy.api.common.util.SecurityUtils;
-import com.academy.api.data.responses.common.Response;
-import com.academy.api.data.responses.common.ResponseData;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.Response;
+import com.academy.api.data.responses.ResponseData;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.file.domain.FileRole;
 import com.academy.api.file.domain.UploadFileLink;
 import com.academy.api.file.repository.UploadFileLinkRepository;
@@ -12,8 +12,10 @@ import com.academy.api.improvement.domain.*;
 import com.academy.api.improvement.dto.*;
 import com.academy.api.improvement.mapper.ImprovementCaseMapper;
 import com.academy.api.improvement.repository.ImprovementCaseRepository;
+import com.academy.api.sms.service.SmsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -21,7 +23,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 성적 향상 사례 Service 구현체.
@@ -49,6 +53,10 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
     private final UploadFileRepository uploadFileRepository;
     private final UploadFileLinkRepository uploadFileLinkRepository;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final SmsService smsService;
+    
+    @Value("${academy.admin.phone:01083873610}")
+    private String adminPhoneNumber;
     
     // ==================== 공개 API ====================
     
@@ -164,6 +172,23 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
             // 파일 첨부 처리
             if (uploadFileIds != null && uploadFileIds.length > 0) {
                 attachFiles(savedEntity, uploadFileIds);
+            }
+            
+            // 관리자 SMS 발송 (실패해도 사례 등록은 유지)
+            try {
+                Map<String, Object> adminVariables = new HashMap<>();
+                adminVariables.put("name", savedEntity.getAuthorName());
+                adminVariables.put("phoneNumber", savedEntity.getPhoneNumber() != null ? savedEntity.getPhoneNumber() : "");
+                
+                smsService.sendMessageByPurposeCode(
+                    "ADMIN_IMPROVEMENT_REGISTERED",
+                    adminPhoneNumber,
+                    "관리자",
+                    adminVariables
+                );
+                log.info("[ImprovementCaseService] 관리자 SMS 발송 완료. phone={}", adminPhoneNumber);
+            } catch (Exception smsException) {
+                log.error("[ImprovementCaseService] SMS 발송 실패. 사례는 정상 처리됨. error={}", smsException.getMessage());
             }
             
             log.info("[ImprovementCaseService] 공개 사례 생성 성공. ID={}", savedEntity.getId());

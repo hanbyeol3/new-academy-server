@@ -4,9 +4,9 @@ import com.academy.api.category.dto.RequestCategoryCreate;
 import com.academy.api.category.dto.RequestCategoryUpdate;
 import com.academy.api.category.dto.ResponseCategory;
 import com.academy.api.category.dto.ResponseCategoryPublic;
-import com.academy.api.data.responses.common.Response;
-import com.academy.api.data.responses.common.ResponseData;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.Response;
+import com.academy.api.data.responses.ResponseData;
+import com.academy.api.data.responses.ResponseList;
 
 /**
  * 카테고리 서비스 인터페이스.

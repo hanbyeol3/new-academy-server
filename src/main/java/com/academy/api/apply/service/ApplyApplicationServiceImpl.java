@@ -7,9 +7,9 @@ import com.academy.api.apply.repository.*;
 import com.academy.api.common.exception.BusinessException;
 import com.academy.api.common.exception.ErrorCode;
 import com.academy.api.common.util.SecurityUtils;
-import com.academy.api.data.responses.common.Response;
-import com.academy.api.data.responses.common.ResponseData;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.Response;
+import com.academy.api.data.responses.ResponseData;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.file.domain.FileRole;
 import com.academy.api.file.domain.UploadFileLink;
 import com.academy.api.file.dto.FileReference;
@@ -18,8 +18,10 @@ import com.academy.api.file.repository.UploadFileLinkRepository;
 import com.academy.api.file.service.FileService;
 import com.academy.api.member.domain.Member;
 import com.academy.api.member.repository.MemberRepository;
+import com.academy.api.sms.service.SmsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -79,6 +81,10 @@ public class ApplyApplicationServiceImpl implements ApplyApplicationService {
     private final UploadFileLinkRepository uploadFileLinkRepository;
     private final FileService fileService;
     private final ApplyApplicationMapper applyApplicationMapper;
+    private final SmsService smsService;
+    
+    @Value("${academy.admin.phone:01083873610}")
+    private String adminPhoneNumber;
 
     @Override
     public ResponseList<ResponseApplyApplicationAdminList> getApplyApplicationList(String keyword, String status,
@@ -193,7 +199,39 @@ public class ApplyApplicationServiceImpl implements ApplyApplicationService {
 
         log.info("[ApplyApplicationService] 원서접수 생성 완료. ID={}, 관리자={}", application.getId(), currentUserName);
 
-        // TODO: SMS 발송 (guardian1Phone으로)
+        // SMS 발송 (실패해도 원서접수는 유지)
+        try {
+            // 1. 보호자 SMS 발송
+            if (request.getGuardian1Phone() != null) {
+                Map<String, Object> userVariables = new HashMap<>();
+                userVariables.put("name", request.getStudentName());
+                
+                smsService.sendMessageByPurposeCode(
+                    "USER_APPLICATION_CONFIRMED",
+                    request.getGuardian1Phone(),
+                    request.getGuardian1Name(),
+                    userVariables
+                );
+                log.info("[ApplyApplicationService] 보호자 SMS 발송 완료. phone={}", request.getGuardian1Phone());
+            }
+            
+            // 2. 관리자 SMS 발송
+            Map<String, Object> adminVariables = new HashMap<>();
+            adminVariables.put("name", request.getStudentName());
+            adminVariables.put("phoneNumber", request.getStudentPhone());
+            
+            smsService.sendMessageByPurposeCode(
+                "ADMIN_APPLICATION_REGISTERED",
+                adminPhoneNumber,
+                "관리자",
+                adminVariables
+            );
+            log.info("[ApplyApplicationService] 관리자 SMS 발송 완료. phone={}", adminPhoneNumber);
+            
+        } catch (Exception e) {
+            log.error("[ApplyApplicationService] SMS 발송 실패. 원서접수는 정상 처리됨. error={}", e.getMessage());
+            // SMS 실패해도 원서접수는 유지
+        }
         
         return ResponseData.ok("0000", "원서접수가 생성되었습니다.", application.getId());
     }

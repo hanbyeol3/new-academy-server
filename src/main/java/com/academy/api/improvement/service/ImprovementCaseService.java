@@ -1,11 +1,8 @@
 package com.academy.api.improvement.service;
 
-import com.academy.api.data.responses.common.Response;
-import com.academy.api.data.responses.common.ResponseData;
-import com.academy.api.data.responses.common.ResponseList;
-import com.academy.api.improvement.domain.Division;
-import com.academy.api.improvement.domain.Subject;
-import com.academy.api.improvement.domain.WriterType;
+import com.academy.api.data.responses.Response;
+import com.academy.api.data.responses.ResponseData;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.improvement.dto.*;
 import org.springframework.data.domain.Pageable;
 
@@ -24,7 +21,6 @@ public interface ImprovementCaseService {
      * @param keyword 검색 키워드
      * @param searchType 검색 타입
      * @param division 학년 구분
-     * @param subjectEnum 과목
      * @param sortBy 정렬 기준
      * @param pageable 페이징 정보
      * @return 사례 목록
@@ -92,7 +88,6 @@ public interface ImprovementCaseService {
      * @param searchType 검색 타입
      * @param writerType 작성자 유형
      * @param division 학년 구분
-     * @param subjectEnum 과목
      * @param isPublished 공개 여부
      * @param isPinned 고정글 여부
      * @param sortBy 정렬 기준

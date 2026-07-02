@@ -1,6 +1,6 @@
 package com.academy.api.sms.mapper;
 
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.sms.domain.MessageLog;
 import com.academy.api.sms.dto.RequestMessageLogCreate;
 import com.academy.api.sms.dto.ResponseMessageLog;

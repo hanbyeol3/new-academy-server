@@ -1,8 +1,8 @@
 package com.academy.api.popup.controller;
 
-import com.academy.api.data.responses.common.Response;
-import com.academy.api.data.responses.common.ResponseData;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.Response;
+import com.academy.api.data.responses.ResponseData;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.popup.domain.Popup;
 import com.academy.api.popup.dto.RequestPopupCreate;
 import com.academy.api.popup.dto.RequestPopupUpdate;

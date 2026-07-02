@@ -16,6 +16,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -546,5 +547,45 @@ public class ExplanationReservationRepositoryImpl implements ExplanationReservat
         if (left == null) return right;
         if (right == null) return left;
         return left.and(right);
+    }
+    
+    @Override
+    public List<com.academy.api.explanation.dto.ReservationWithSchedule> findReservationsForReminder(java.time.LocalDate targetDate) {
+        log.info("[ExplanationReservationRepositoryImpl] D-1 리마인더 대상 예약 조회. targetDate={}", targetDate);
+        
+        // targetDate의 시작과 끝 시간 계산
+        LocalDateTime startOfDay = targetDate.atStartOfDay();
+        LocalDateTime endOfDay = targetDate.plusDays(1).atStartOfDay();
+        
+        // 쿼리 실행: 내일 예정된 설명회의 확정 예약들을 조회
+        List<Tuple> results = queryFactory
+                .select(reservation, schedule, explanation)
+                .from(reservation)
+                .innerJoin(schedule).on(reservation.scheduleId.eq(schedule.id))
+                .innerJoin(explanation).on(schedule.explanationId.eq(explanation.id))
+                .where(
+                    reservation.status.eq(ReservationStatus.CONFIRMED),  // 확정된 예약만
+                    schedule.startAt.goe(startOfDay),                    // 대상 날짜 시작 이후
+                    schedule.startAt.lt(endOfDay),                       // 대상 날짜 끝 이전
+                    schedule.isCanceled.isFalse(),                       // 취소되지 않은 회차만
+                    schedule.isAdminClosed.isFalse(),                    // 관리자가 마감하지 않은 회차만
+                    explanation.isPublished.isTrue()                     // 공개된 설명회만
+                )
+                .orderBy(schedule.startAt.asc(), reservation.id.asc())
+                .fetch();
+        
+        // Tuple을 ReservationWithSchedule DTO로 변환
+        List<com.academy.api.explanation.dto.ReservationWithSchedule> reservationsWithSchedule = results.stream()
+                .map(tuple -> new com.academy.api.explanation.dto.ReservationWithSchedule(
+                    tuple.get(reservation),
+                    tuple.get(schedule),
+                    tuple.get(explanation)
+                ))
+                .collect(Collectors.toList());
+        
+        log.info("[ExplanationReservationRepositoryImpl] D-1 리마인더 대상 예약 조회 완료. 건수={}", 
+                reservationsWithSchedule.size());
+        
+        return reservationsWithSchedule;
     }
 }

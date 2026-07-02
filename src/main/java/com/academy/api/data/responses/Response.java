@@ -1,6 +1,5 @@
-package com.academy.api.data.responses.common;
+package com.academy.api.data.responses;
 
-import com.academy.api.data.responses.ResponseResult;
 import lombok.ToString;
 
 /**

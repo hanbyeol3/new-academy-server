@@ -1,8 +1,8 @@
 package com.academy.api.qna.controller;
 
-import com.academy.api.data.responses.common.Response;
-import com.academy.api.data.responses.common.ResponseData;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.Response;
+import com.academy.api.data.responses.ResponseData;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.qna.dto.*;
 import com.academy.api.qna.service.QnaService;
 import io.swagger.v3.oas.annotations.Operation;

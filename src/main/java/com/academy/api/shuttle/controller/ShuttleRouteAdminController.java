@@ -1,9 +1,9 @@
 package com.academy.api.shuttle.controller;
 
 import com.academy.api.common.util.SecurityUtils;
-import com.academy.api.data.responses.common.Response;
-import com.academy.api.data.responses.common.ResponseData;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.Response;
+import com.academy.api.data.responses.ResponseData;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.shuttle.dto.*;
 import com.academy.api.shuttle.service.ShuttleRouteService;
 import io.swagger.v3.oas.annotations.Operation;

@@ -1,10 +1,8 @@
 package com.academy.api.inquiry.service;
 
-import com.academy.api.data.responses.common.Response;
-import com.academy.api.data.responses.common.ResponseData;
-import com.academy.api.data.responses.common.ResponseList;
-import com.academy.api.inquiry.domain.InquirySourceType;
-import com.academy.api.inquiry.domain.InquiryStatus;
+import com.academy.api.data.responses.Response;
+import com.academy.api.data.responses.ResponseData;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.inquiry.dto.*;
 import org.springframework.data.domain.Pageable;
 

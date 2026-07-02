@@ -89,4 +89,13 @@ public interface ExplanationReservationRepositoryCustom {
                                                                        Boolean isMarketingAgree,
                                                                        LocalDateTime startDateTime, LocalDateTime endDateTime,
                                                                        Pageable pageable);
+    
+    /**
+     * D-1 리마인더 대상 예약 목록 조회.
+     * 내일 예정된 설명회에 대한 확정된 예약들을 조회합니다.
+     * 
+     * @param targetDate 대상 날짜 (설명회가 열리는 날짜)
+     * @return 예약 정보와 회차/설명회 정보가 포함된 목록
+     */
+    java.util.List<com.academy.api.explanation.dto.ReservationWithSchedule> findReservationsForReminder(java.time.LocalDate targetDate);
 }

@@ -2,7 +2,7 @@ package com.academy.api.notice.mapper;
 
 import com.academy.api.category.domain.Category;
 import com.academy.api.common.util.SecurityUtils;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.notice.domain.Notice;
 import com.academy.api.notice.dto.RequestNoticeCreate;
 import com.academy.api.notice.dto.RequestNoticeUpdate;

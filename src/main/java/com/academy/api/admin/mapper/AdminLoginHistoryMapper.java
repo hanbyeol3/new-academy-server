@@ -3,7 +3,7 @@ package com.academy.api.admin.mapper;
 import com.academy.api.admin.domain.AdminLoginHistory;
 import com.academy.api.admin.dto.response.ResponseAdminLoginHistory;
 import com.academy.api.admin.enums.AdminFailReason;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.ResponseList;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 

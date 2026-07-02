@@ -5,8 +5,8 @@ import com.academy.api.admin.dto.response.ResponseAdminLoginHistory;
 import com.academy.api.admin.enums.AdminActionType;
 import com.academy.api.admin.enums.AdminFailReason;
 import com.academy.api.admin.enums.AdminTargetType;
-import com.academy.api.data.responses.common.ResponseData;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.ResponseData;
+import com.academy.api.data.responses.ResponseList;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;

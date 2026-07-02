@@ -3,9 +3,9 @@ package com.academy.api.category.service;
 import com.academy.api.category.dto.RequestCategoryGroupCreate;
 import com.academy.api.category.dto.RequestCategoryGroupUpdate;
 import com.academy.api.category.dto.ResponseCategoryGroup;
-import com.academy.api.data.responses.common.Response;
-import com.academy.api.data.responses.common.ResponseData;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.Response;
+import com.academy.api.data.responses.ResponseData;
+import com.academy.api.data.responses.ResponseList;
 
 /**
  * 카테고리 그룹 서비스 인터페이스.

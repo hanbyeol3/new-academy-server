@@ -1,6 +1,6 @@
 package com.academy.api.faq.controller;
 
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.faq.dto.ResponseFaqListItem;
 import com.academy.api.faq.service.FaqService;
 import io.swagger.v3.oas.annotations.Operation;

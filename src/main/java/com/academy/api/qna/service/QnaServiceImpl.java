@@ -3,9 +3,9 @@ package com.academy.api.qna.service;
 import com.academy.api.auth.jwt.JwtProvider;
 import com.academy.api.common.exception.BusinessException;
 import com.academy.api.common.exception.ErrorCode;
-import com.academy.api.data.responses.common.Response;
-import com.academy.api.data.responses.common.ResponseData;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.Response;
+import com.academy.api.data.responses.ResponseData;
+import com.academy.api.data.responses.ResponseList;
 import com.academy.api.member.domain.Member;
 import com.academy.api.member.repository.MemberRepository;
 import com.academy.api.qna.domain.DeletedByType;
@@ -18,8 +18,10 @@ import com.academy.api.qna.repository.QnaQuestionRepository;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.academy.api.qna.domain.QQnaQuestion;
 import com.academy.api.qna.domain.QQnaAnswer;
+import com.academy.api.sms.service.SmsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
@@ -29,7 +31,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * QnA 서비스 구현체.
@@ -58,6 +62,10 @@ public class QnaServiceImpl implements QnaService {
     private final JwtProvider jwtProvider;
     private final QnaRateLimitService rateLimitService;
     private final JPAQueryFactory queryFactory;
+    private final SmsService smsService;
+    
+    @Value("${academy.admin.phone:01083873610}")
+    private String adminPhoneNumber;
     
     private static final QQnaQuestion qnaQuestion = QQnaQuestion.qnaQuestion;
     private static final QQnaAnswer qnaAnswer = QQnaAnswer.qnaAnswer;
@@ -147,6 +155,23 @@ public class QnaServiceImpl implements QnaService {
             
             log.info("[QnaService] 질문 생성 완료. id={}, authorName={}", 
                     savedQuestion.getId(), savedQuestion.getAuthorName());
+            
+            // 관리자 SMS 발송 (실패해도 질문 등록은 유지)
+            try {
+                Map<String, Object> adminVariables = new HashMap<>();
+                adminVariables.put("name", savedQuestion.getAuthorName());
+                adminVariables.put("phoneNumber", savedQuestion.getPhoneNumber() != null ? savedQuestion.getPhoneNumber() : "");
+                
+                smsService.sendMessageByPurposeCode(
+                    "ADMIN_QNA_REGISTERED",
+                    adminPhoneNumber,
+                    "관리자",
+                    adminVariables
+                );
+                log.info("[QnaService] 관리자 SMS 발송 완료. phone={}", adminPhoneNumber);
+            } catch (Exception smsException) {
+                log.error("[QnaService] SMS 발송 실패. 질문은 정상 처리됨. error={}", smsException.getMessage());
+            }
             
             // 응답 생성
             ResponseQnaQuestionCreate response = qnaMapper.toCreateResponse(savedQuestion);
@@ -448,6 +473,24 @@ public class QnaServiceImpl implements QnaService {
                 // updatedAt은 변경하지 않음
                 .where(qnaQuestion.id.eq(questionId))
                 .execute();
+            
+            // 작성자 전화번호가 있는 경우 SMS 발송
+            if (question.getPhoneNumber() != null && !question.getPhoneNumber().trim().isEmpty()) {
+                try {
+                    Map<String, Object> userVariables = new HashMap<>();
+                    // USER_QNA_ANSWERED는 변수가 없음
+                    
+                    smsService.sendMessageByPurposeCode(
+                        "USER_QNA_ANSWERED",
+                        question.getPhoneNumber(),
+                        question.getAuthorName(),
+                        userVariables
+                    );
+                    log.info("[QnaService] 질문자 SMS 발송 완료. phone={}", question.getPhoneNumber());
+                } catch (Exception smsException) {
+                    log.error("[QnaService] SMS 발송 실패. 답변은 정상 처리됨. error={}", smsException.getMessage());
+                }
+            }
             
             log.info("[QnaService] 답변 Upsert 완료. questionId={}", questionId);
             return Response.ok("0000", "답변이 저장되었습니다.");

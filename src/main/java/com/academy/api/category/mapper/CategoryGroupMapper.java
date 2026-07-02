@@ -5,7 +5,7 @@ import com.academy.api.category.dto.RequestCategoryGroupCreate;
 import com.academy.api.category.dto.RequestCategoryGroupUpdate;
 import com.academy.api.category.dto.ResponseCategoryGroup;
 import com.academy.api.common.util.SecurityUtils;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.ResponseList;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 

@@ -2,7 +2,7 @@ package com.academy.api.apply.mapper;
 
 import com.academy.api.apply.domain.*;
 import com.academy.api.apply.dto.*;
-import com.academy.api.data.responses.common.ResponseList;
+import com.academy.api.data.responses.ResponseList;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
