@@ -1,6 +1,6 @@
 package com.academy.api.common.exception;
 
-import com.academy.api.common.response.ApiResponse;
+import com.academy.api.data.responses.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 전역 예외 처리 핸들러.

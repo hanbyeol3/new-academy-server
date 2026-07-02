@@ -963,11 +963,11 @@ public class ExplanationServiceImpl implements ExplanationService {
             return Response.error("R400", "이미 취소된 예약입니다.");
         }
         
-        // 3. 3분 이내 재요청 제한
-        LocalDateTime oneMinuteAgo = LocalDateTime.now().minusMinutes(3);
+        // 3. 1분 이내 재요청 제한
+        LocalDateTime oneMinuteAgo = LocalDateTime.now().minusMinutes(1);
         verificationRepository.findRecentRequest(reservationId, oneMinuteAgo)
                 .ifPresent(recent -> {
-                    throw new BusinessException(ErrorCode.TOO_MANY_REQUESTS, "3분 후에 다시 시도해주세요.");
+                    throw new BusinessException(ErrorCode.TOO_MANY_REQUESTS, "1분 후에 다시 시도해주세요.");
                 });
         
         // 4. 인증번호 생성 및 저장
