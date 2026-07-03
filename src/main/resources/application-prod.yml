@@ -14,7 +14,7 @@ spring:
   
   jpa:
     hibernate:
-      ddl-auto: validate  # 운영 DB 보호 - 절대 스키마 변경 안함
+      ddl-auto: none  # 운영 DB 보호 - 절대 스키마 변경 안함
     show-sql: false
     open-in-view: false  # 성능 최적화
     defer-datasource-initialization: false
@@ -25,7 +25,7 @@ spring:
         jdbc:
           time_zone: Asia/Seoul
         hbm2ddl:
-          auto: validate
+          auto: none
         schema_update:
           unique_constraint_schema_update_strategy: skip
         globally_quoted_identifiers: false

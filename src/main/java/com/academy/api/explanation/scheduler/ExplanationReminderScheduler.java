@@ -38,7 +38,7 @@ public class ExplanationReminderScheduler {
      * D-1 리마인더 SMS 발송.
      * 매일 오후 2시에 실행되며, 내일 예정된 설명회 예약자들에게 알림 SMS를 발송합니다.
      */
-    @Scheduled(cron = "0 30 14 * * *")  // 매일 오후 2시 30분
+    @Scheduled(cron = "0 0 14 * * *", zone = "Asia/Seoul") // 매일 오후 2시
     public void sendDayBeforeReminder() {
         if (!reminderEnabled) {
             log.debug("[ExplanationReminderScheduler] D-1 리마인더 비활성화 상태");
@@ -123,13 +123,15 @@ public class ExplanationReminderScheduler {
     
     /**
      * 관리자에게 발송 결과 알림.
-     * DB 템플릿의 {title}과 {attendeeCount}를 사용합니다.
+     * DB 템플릿의 {title}, {totalTeamCount}, {totalAttendeeCount}를 사용합니다.
      */
-    private void sendAdminNotification(List<ReservationWithSchedule> reservations, int attendeeCount) {
+    private void sendAdminNotification(List<ReservationWithSchedule> reservations, int successCount) {
         try {
             // 첫 번째 설명회 정보 가져오기
             String explanationTitle = "";
             String scheduleDate = "";
+            int totalAttendeeCount = 0;
+            
             if (!reservations.isEmpty()) {
                 ReservationWithSchedule firstReservation = reservations.get(0);
                 if (firstReservation.getExplanation() != null) {
@@ -139,18 +141,25 @@ public class ExplanationReminderScheduler {
                     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy년 MM월 dd일");
                     scheduleDate = firstReservation.getSchedule().getStartAt().format(formatter);
                 }
+                
+                // 총 참석 인원 계산
+                for (ReservationWithSchedule res : reservations) {
+                    totalAttendeeCount += res.getReservation().getAttendeeCount();
+                }
             }
             
             Map<String, Object> variables = new HashMap<>();
             variables.put("title", explanationTitle);
-            variables.put("totalAttendeeCount", String.valueOf(attendeeCount));
+            variables.put("totalTeamCount", String.valueOf(reservations.size()));  // 팀 수 = 예약 건수
+            variables.put("totalAttendeeCount", String.valueOf(totalAttendeeCount));  // 총 참석 인원
             variables.put("scheduleDate", scheduleDate);
             
             // DB 템플릿 ADMIN_NOTIFICATION 사용
             // 템플릿 내용:
             // [대치숨마투스학원]
             // ■ {title}
-            // ■ 신청인원: {attendeeCount}
+            // ■ 일시: {scheduleDate}
+            // ■ 신청인원: {totalAttendeeCount}명 ({totalTeamCount}팀)
             // 설명회 리마인더 문자 전송이 완료되었습니다.
             smsService.sendMessageByPurposeCode(
                 "ADMIN_NOTIFICATION",
@@ -159,8 +168,8 @@ public class ExplanationReminderScheduler {
                 variables
             );
             
-            log.info("[ExplanationReminderScheduler] 관리자 알림 SMS 발송 완료. 설명회={}, 발송건수={}", 
-                    explanationTitle, attendeeCount);
+            log.info("[ExplanationReminderScheduler] 관리자 알림 SMS 발송 완료. 설명회={}, 팀수={}, 총인원={}", 
+                    explanationTitle, reservations.size(), totalAttendeeCount);
             
         } catch (Exception e) {
             log.error("[ExplanationReminderScheduler] 관리자 알림 SMS 발송 실패", e);
