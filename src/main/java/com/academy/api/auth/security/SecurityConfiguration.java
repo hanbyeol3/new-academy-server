@@ -134,7 +134,9 @@ public class SecurityConfiguration {
 				"https://summatus.kr",
 				"https://www.summatus.kr",
 				"https://summatus.co.kr",
-				"https://www.summatus.co.kr"
+				"https://www.summatus.co.kr",
+				"https://admin.summatus.co.kr",
+				"https://www.admin.summatus.co.kr"
 		));
 
 		config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
