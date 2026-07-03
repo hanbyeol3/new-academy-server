@@ -1,11 +1,11 @@
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 spring:
   application:
     name: new-academy-api-server
   profiles:
-    active: local
+    active: ${SPRING_PROFILES_ACTIVE:local}
   
   jpa:
     defer-datasource-initialization: true

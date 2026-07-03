@@ -55,7 +55,7 @@ public class SecurityConfiguration {
 						.requestMatchers("/api/auth/**").permitAll()
 
 						// ✅ 헬스체크/문서/콘솔
-						.requestMatchers("/actuator/health").permitAll()
+						.requestMatchers("/actuator/health", "/actuator/info").permitAll()
 						.requestMatchers("/v3/api-docs/**", "/swagger-ui/**").permitAll()
 						.requestMatchers("/swagger-ui.html", "/swagger-ui-custom.js", "/swagger-helper.js").permitAll()
 						.requestMatchers("/h2-console/**").permitAll()
@@ -118,16 +118,23 @@ public class SecurityConfiguration {
 	public CorsConfigurationSource corsConfigSource() {
 		CorsConfiguration config = new CorsConfiguration();
 
-		// ⚠️ 여기 Origin에 네 프론트 포트를 전부 추가
-		config.setAllowedOriginPatterns(List.of(
-				"http://localhost:3000",   // web
-				"http://localhost:3001",   // 혹시 다른 dev
-				"http://localhost:3002",   // admin (지금 이거 중요)
+		// CORS 허용 Origin 설정
+		config.setAllowedOrigins(List.of(
+				// 로컬 개발
+				"http://localhost:3000",
+				"http://localhost:3001",
+				"http://localhost:3002",
 				"http://localhost:5173",
 				"http://127.0.0.1:3000",
 				"http://127.0.0.1:3001",
 				"http://127.0.0.1:3002",
-				"http://127.0.0.1:5173"
+				"http://127.0.0.1:5173",
+
+				// 운영 프론트
+				"https://summatus.kr",
+				"https://www.summatus.kr",
+				"https://summatus.co.kr",
+				"https://www.summatus.co.kr"
 		));
 
 		config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));

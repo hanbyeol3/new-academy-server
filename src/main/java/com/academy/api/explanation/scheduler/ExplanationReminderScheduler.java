@@ -38,7 +38,7 @@ public class ExplanationReminderScheduler {
      * D-1 리마인더 SMS 발송.
      * 매일 오후 2시에 실행되며, 내일 예정된 설명회 예약자들에게 알림 SMS를 발송합니다.
      */
-    @Scheduled(cron = "0 0 14 * * *")  // 매일 오후 2시
+    @Scheduled(cron = "0 30 14 * * *")  // 매일 오후 2시 30분
     public void sendDayBeforeReminder() {
         if (!reminderEnabled) {
             log.debug("[ExplanationReminderScheduler] D-1 리마인더 비활성화 상태");

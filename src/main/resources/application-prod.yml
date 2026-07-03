@@ -1,0 +1,105 @@
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    hikari:
+      connection-timeout: 30000
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      maximum-pool-size: ${DB_MAX_POOL_SIZE:20}
+      minimum-idle: ${DB_MIN_IDLE:10}
+      connection-test-query: SELECT 1
+  
+  jpa:
+    hibernate:
+      ddl-auto: validate  # 운영 DB 보호 - 절대 스키마 변경 안함
+    show-sql: false
+    open-in-view: false  # 성능 최적화
+    defer-datasource-initialization: false
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.MySQLDialect
+        jdbc:
+          time_zone: Asia/Seoul
+        hbm2ddl:
+          auto: validate
+        schema_update:
+          unique_constraint_schema_update_strategy: skip
+        globally_quoted_identifiers: false
+        auto_quote_keyword: false
+
+# SOLAPI SMS 서비스 설정
+solapi:
+  api-key: ${SOLAPI_API_KEY}
+  api-secret: ${SOLAPI_API_SECRET}
+  sender-number: ${SOLAPI_SENDER_NUMBER}
+  base-url: https://api.solapi.com
+  kakao:
+    pf-id: ${SOLAPI_KAKAO_PF_ID}
+
+# JWT 설정
+jwt:
+  secret: ${JWT_SECRET}
+  access-expire-minutes: ${JWT_ACCESS_EXPIRE_MINUTES:15}
+  refresh-expire-days: ${JWT_REFRESH_EXPIRE_DAYS:14}
+
+# 학원 설정
+academy:
+  admin:
+    phone: ${ACADEMY_ADMIN_PHONE}  # 관리자 전화번호 (SMS 알림 수신용)
+  scheduler:
+    explanation-reminder:
+      enabled: ${SCHEDULER_ENABLED:true}  # D-1 리마인더 활성화 여부
+
+# 공휴일 API 설정 (한국천문연구원 특일 정보)
+holiday:
+  kasi:
+    api-key: ${HOLIDAY_API_KEY}
+    base-url: https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService
+    max-rows: 50
+    timeout: 5000
+
+# 로깅 설정 (운영 환경)
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:INFO}
+    com.academy.api: ${LOG_LEVEL_APP:INFO}
+    org.springframework.web: WARN
+    org.springframework.security: WARN
+    org.hibernate: WARN
+    org.hibernate.SQL: WARN
+    org.hibernate.type: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# Swagger UI 설정 (운영에서는 보통 비활성화)
+springdoc:
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:false}
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:false}
+
+# Actuator 설정
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: ${ACTUATOR_HEALTH_SHOW_DETAILS:never}  # 운영에서는 민감정보 숨김
+  info:
+    env:
+      enabled: true
+
+# 파일 업로드 설정
+file:
+  upload-dir: ${FILE_UPLOAD_DIR:./uploads}
+  max-size: ${FILE_MAX_SIZE:20971520} # 20MB (단일 파일)
+  max-total-size: ${FILE_MAX_TOTAL_SIZE:104857600} # 100MB (전체 파일)
+  max-file-count: ${FILE_MAX_FILE_COUNT:10} # 최대 파일 개수
+  allowed-extensions: ${FILE_ALLOWED_EXTENSIONS:jpg,jpeg,png,gif,bmp,pdf,doc,docx,xls,xlsx,ppt,pptx,txt,hwp,zip}
