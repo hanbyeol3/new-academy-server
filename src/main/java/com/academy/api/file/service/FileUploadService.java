@@ -12,11 +12,11 @@ import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -31,7 +31,6 @@ import java.util.stream.Collectors;
 
 /**
  * 파일 업로드 서비스.
- * 
  * 파일의 실제 저장, 메타데이터 관리, 다운로드 기능을 제공합니다.
  */
 @Slf4j
@@ -128,8 +127,9 @@ public class FileUploadService {
             
             // 파일 저장
             Path filePath = uploadPath.resolve(serverFileName);
-            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-            
+	        try (InputStream inputStream = file.getInputStream()) {
+		        Files.copy(inputStream, filePath, StandardCopyOption.REPLACE_EXISTING);
+	        }
             // NOTE: 현재 UploadFile 엔티티는 groupKey 필드가 없음 (BIGINT ID 사용)
             // 임시로 더미 응답 반환 (향후 리팩토링 필요)
             log.warn("FileUploadService는 현재 비활성화됨 - 더미 응답 반환");

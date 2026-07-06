@@ -19,7 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
+import java.io.*;
 import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -33,8 +33,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.UUID;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.FileInputStream;
-import java.io.OutputStream;
+
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 import java.util.Set;
@@ -74,13 +73,23 @@ public class FileServiceImpl implements FileService {
             String year = String.valueOf(now.getYear());
             String month = String.format("%02d", now.getMonthValue());
             
-            Path uploadPath = Paths.get(uploadDir, "temp", year, month);
+            // Railway 환경을 위한 절대 경로 처리
+            File uploadDirFile = new File(uploadDir);
+            if (!uploadDirFile.isAbsolute()) {
+                uploadDirFile = new File(System.getProperty("user.dir"), uploadDir);
+            }
+            
+            Path uploadPath = Paths.get(uploadDirFile.getAbsolutePath(), "temp", year, month);
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
             }
             
             Path filePath = uploadPath.resolve(serverFileName);
-            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+            
+            // 파일 저장을 try-with-resources로 처리하여 스트림 확실히 닫기
+            try (InputStream inputStream = file.getInputStream()) {
+                Files.copy(inputStream, filePath, StandardCopyOption.REPLACE_EXISTING);
+            }
             
             FileUploadResponse response = FileUploadResponse.of(
                 fileId,
@@ -91,8 +100,8 @@ public class FileServiceImpl implements FileService {
                 file.getContentType()
             );
             
-            log.info("[FileService] 임시 파일 업로드 완료. ID={}, 파일명={}, 경로={}", 
-                    fileId, originalFileName, filePath.toString());
+            log.info("[FileService] 임시 파일 업로드 완료. tempFileId={}, 파일명={}, 경로={}", 
+                    fileId, originalFileName, filePath.toAbsolutePath());
             
             return ResponseData.ok(response);
             
