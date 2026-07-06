@@ -19,30 +19,27 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.annotation.PostConstruct;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.net.MalformedURLException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
-import java.util.Base64;
-import java.util.Optional;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.util.Map;
-import java.util.UUID;
-import jakarta.servlet.http.HttpServletResponse;
-
-import java.util.regex.Pattern;
+import java.util.*;
 import java.util.regex.Matcher;
-import java.util.Set;
-import java.util.HashSet;
-import java.util.HashMap;
-import java.util.List;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * 파일 관리 서비스 구현체.
+ * 
+ * Railway 환경과 로컬 환경 모두 지원하도록 절대경로 기반으로 통합 구현.
  */
 @Slf4j
 @Service
@@ -57,6 +54,90 @@ public class FileServiceImpl implements FileService {
 
     @Value("${file.max-size}")
     private long maxFileSize;
+    
+    @Value("${file.allowed-extensions}")
+    private String allowedExtensions;
+    
+    // 업로드 루트 경로 (절대경로로 변환된 값)
+    private Path uploadRootPath;
+    
+    /**
+     * 애플리케이션 시작 시 업로드 경로 초기화.
+     */
+    @PostConstruct
+    public void init() {
+        // 업로드 디렉토리를 절대경로로 변환
+        uploadRootPath = resolveUploadRoot();
+        
+        // 디렉토리 생성
+        try {
+            Files.createDirectories(uploadRootPath);
+            
+            // 경로 정보 로그
+            log.info("[FileService] ========== 파일 업로드 경로 정보 ==========");
+            log.info("[FileService] uploadDir(설정값): {}", uploadDir);
+            log.info("[FileService] uploadRootPath(절대경로): {}", uploadRootPath);
+            log.info("[FileService] exists: {}", Files.exists(uploadRootPath));
+            log.info("[FileService] writable: {}", Files.isWritable(uploadRootPath));
+            log.info("[FileService] ==========================================");
+            
+        } catch (IOException e) {
+            log.error("[FileService] 업로드 디렉토리 생성 실패: {}", e.getMessage());
+            throw new RuntimeException("업로드 디렉토리 초기화 실패", e);
+        }
+    }
+    
+    /**
+     * 업로드 루트 경로를 절대경로로 변환.
+     */
+    private Path resolveUploadRoot() {
+        Path path = Paths.get(uploadDir);
+        
+        // 이미 절대경로인 경우 그대로 사용
+        if (path.isAbsolute()) {
+            return path.toAbsolutePath().normalize();
+        }
+        
+        // 상대경로인 경우 현재 작업 디렉토리 기준으로 절대경로 변환
+        return Paths.get(System.getProperty("user.dir"))
+                .resolve(path)
+                .toAbsolutePath()
+                .normalize();
+    }
+    
+    /**
+     * 업로드 루트 경로 반환.
+     */
+    private Path getUploadRootPath() {
+        return uploadRootPath;
+    }
+    
+    /**
+     * 안전한 경로 생성 (Path Traversal 방어).
+     * 
+     * @param paths 결합할 경로 요소들
+     * @return 검증된 안전한 경로
+     * @throws IllegalArgumentException 업로드 루트를 벗어나는 경우
+     */
+    private Path resolveUploadPath(String... paths) {
+        Path resolved = getUploadRootPath();
+        
+        for (String path : paths) {
+            if (path != null && !path.trim().isEmpty()) {
+                resolved = resolved.resolve(path);
+            }
+        }
+        
+        resolved = resolved.normalize();
+        
+        // Path Traversal 방어: 업로드 루트 밖으로 벗어나는지 검증
+        if (!resolved.startsWith(getUploadRootPath())) {
+            log.error("[FileService] Path Traversal 시도 감지: {}", resolved);
+            throw new IllegalArgumentException("허용되지 않은 파일 경로입니다");
+        }
+        
+        return resolved;
+    }
 
     @Override
     public ResponseData<FileUploadResponse> uploadMultipartFile(MultipartFile file) {
@@ -68,25 +149,17 @@ public class FileServiceImpl implements FileService {
             String extension = getFileExtension(originalFileName);
             String serverFileName = fileId + "." + extension;
             
-            // 실제 DB 저장은 공지사항 생성 시 수행
             LocalDateTime now = LocalDateTime.now();
             String year = String.valueOf(now.getYear());
             String month = String.format("%02d", now.getMonthValue());
             
-            // Railway 환경을 위한 절대 경로 처리
-            File uploadDirFile = new File(uploadDir);
-            if (!uploadDirFile.isAbsolute()) {
-                uploadDirFile = new File(System.getProperty("user.dir"), uploadDir);
-            }
-            
-            Path uploadPath = Paths.get(uploadDirFile.getAbsolutePath(), "temp", year, month);
-            if (!Files.exists(uploadPath)) {
-                Files.createDirectories(uploadPath);
-            }
+            // 안전한 경로 생성
+            Path uploadPath = resolveUploadPath("temp", year, month);
+            Files.createDirectories(uploadPath);
             
             Path filePath = uploadPath.resolve(serverFileName);
             
-            // 파일 저장을 try-with-resources로 처리하여 스트림 확실히 닫기
+            // 파일 저장 (스트림 안전 처리)
             try (InputStream inputStream = file.getInputStream()) {
                 Files.copy(inputStream, filePath, StandardCopyOption.REPLACE_EXISTING);
             }
@@ -130,15 +203,13 @@ public class FileServiceImpl implements FileService {
             String extension = getFileExtension(originalFileName);
             String serverFileName = fileId + "." + extension;
             
-            // 도메인별 폴더 구조 생성 (GENERAL 컨텍스트)
             LocalDateTime now = LocalDateTime.now();
             String year = String.valueOf(now.getYear());
             String month = String.format("%02d", now.getMonthValue());
             
-            Path uploadPath = Paths.get(uploadDir, FileContext.GENERAL.getFolder(), year, month);
-            if (!Files.exists(uploadPath)) {
-                Files.createDirectories(uploadPath);
-            }
+            // 안전한 경로 생성
+            Path uploadPath = resolveUploadPath(FileContext.GENERAL.getFolder(), year, month);
+            Files.createDirectories(uploadPath);
             
             Path filePath = uploadPath.resolve(serverFileName);
             Files.write(filePath, fileBytes);
@@ -154,21 +225,21 @@ public class FileServiceImpl implements FileService {
                 mimeType
             );
             
-            log.info("Base64 파일 업로드 완료: {}", response.getOriginalFileName());
+            log.info("[FileService] Base64 파일 업로드 완료: {}", response.getOriginalFileName());
             
             return ResponseData.ok(response);
             
         } catch (Exception e) {
-            log.error("Base64 파일 업로드 실패: {}", e.getMessage());
+            log.error("[FileService] Base64 파일 업로드 실패: {}", e.getMessage());
             return ResponseData.error("FILE_ERROR", "파일 업로드에 실패했습니다");
         }
     }
 
     @Override
     public ResponseEntity<Resource> downloadFile(String fileId) {
-        log.info("[FileService] downloadFile 시작. fileId={}", fileId);
+        log.info("[FileService] 파일 다운로드 시작. fileId={}", fileId);
         try {
-            // 1. 파일 정보를 DB에서 조회하여 원본 파일명 획득
+            // DB에서 파일 정보 조회
             Optional<UploadFile> uploadFileOpt = uploadFileRepository.findByIdAndDeletedFalse(fileId);
             if (uploadFileOpt.isEmpty()) {
                 log.warn("[FileService] 파일을 찾을 수 없음. fileId={}", fileId);
@@ -176,7 +247,9 @@ public class FileServiceImpl implements FileService {
             }
             
             UploadFile uploadFile = uploadFileOpt.get();
-            Path filePath = Paths.get(uploadDir, uploadFile.getServerPath());
+            
+            // 안전한 경로 생성 (DB의 상대경로를 절대경로로 변환)
+            Path filePath = resolveUploadPath(uploadFile.getServerPath());
             
             log.info("[FileService] 파일 조회 완료. fileId={}, originalName={}, 경로={}", 
                     fileId, uploadFile.getOriginalName(), filePath);
@@ -194,13 +267,11 @@ public class FileServiceImpl implements FileService {
                     contentType = "application/octet-stream";
                 }
                 
-                // 원본 파일명으로 Content-Disposition 설정
                 String originalName = uploadFile.getOriginalName();
                 if (originalName == null || originalName.trim().isEmpty()) {
-                    originalName = uploadFile.getFileName(); // fallback to server name
+                    originalName = uploadFile.getFileName();
                 }
                 
-                // RFC 6266 표준에 따른 UTF-8 인코딩된 파일명 설정
                 String encodedFilename = encodeFilenameForContentDisposition(originalName);
                 
                 return ResponseEntity.ok()
@@ -212,10 +283,10 @@ public class FileServiceImpl implements FileService {
             }
             
         } catch (MalformedURLException e) {
-            log.error("파일 다운로드 실패: {}", e.getMessage());
+            log.error("[FileService] 파일 다운로드 실패: {}", e.getMessage());
             return ResponseEntity.badRequest().build();
         } catch (IOException e) {
-            log.error("파일 다운로드 실패: {}", e.getMessage());
+            log.error("[FileService] 파일 다운로드 실패: {}", e.getMessage());
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -224,11 +295,11 @@ public class FileServiceImpl implements FileService {
     public ResponseData<FileUploadResponse> getFileInfo(String fileId) {
         log.info("[FileService] 파일 정보 조회 시작. fileId={}", fileId);
         
-        // 1순위: DB에서 정식 저장된 파일 찾기  
+        // 1순위: DB에서 정식 저장된 파일 찾기
         Optional<UploadFile> uploadFileOpt = uploadFileRepository.findByIdAndDeletedFalse(fileId);
         if (uploadFileOpt.isPresent()) {
             UploadFile uploadFile = uploadFileOpt.get();
-            Path fullPath = Paths.get(uploadDir, uploadFile.getServerPath());
+            Path fullPath = resolveUploadPath(uploadFile.getServerPath());
             
             if (Files.exists(fullPath)) {
                 try {
@@ -236,8 +307,8 @@ public class FileServiceImpl implements FileService {
                     
                     FileUploadResponse response = FileUploadResponse.of(
                         String.valueOf(uploadFile.getId()),
+                        uploadFile.getOriginalName(),
                         uploadFile.getFileName(),
-                        fullPath.getFileName().toString(),
                         uploadFile.getSize(),
                         uploadFile.getExt(),
                         mimeType
@@ -261,8 +332,6 @@ public class FileServiceImpl implements FileService {
                 long fileSize = Files.size(tempFilePath);
                 String mimeType = Files.probeContentType(tempFilePath);
                 
-                // 임시파일의 경우 원본 파일명을 추출할 수 없음 (UUID 기반이므로)
-                // 실제로는 프론트엔드에서 FileReference로 원본명을 전달해야 함
                 String originalFileName = "temporary_file." + extension;
                 
                 FileUploadResponse response = FileUploadResponse.of(
@@ -295,12 +364,12 @@ public class FileServiceImpl implements FileService {
             }
             
             Files.deleteIfExists(filePath);
-            log.info("파일 삭제 완료: {}", fileId);
+            log.info("[FileService] 파일 삭제 완료: {}", fileId);
             
             return ResponseData.ok(true);
             
         } catch (IOException e) {
-            log.error("파일 삭제 실패: {}", e.getMessage());
+            log.error("[FileService] 파일 삭제 실패: {}", e.getMessage());
             return ResponseData.error("FILE_ERROR", "파일 삭제에 실패했습니다");
         }
     }
@@ -313,7 +382,7 @@ public class FileServiceImpl implements FileService {
         Optional<UploadFile> uploadFileOpt = uploadFileRepository.findByIdAndDeletedFalse(fileId);
         if (uploadFileOpt.isPresent()) {
             UploadFile uploadFile = uploadFileOpt.get();
-            Path fullPath = Paths.get(uploadDir, uploadFile.getServerPath());
+            Path fullPath = resolveUploadPath(uploadFile.getServerPath());
             if (Files.exists(fullPath)) {
                 log.debug("[FileService] DB 파일 존재: fileId={}", fileId);
                 return true;
@@ -326,87 +395,6 @@ public class FileServiceImpl implements FileService {
         
         log.debug("[FileService] 파일 존재 여부: fileId={}, tempExists={}", fileId, tempExists);
         return tempExists;
-    }
-
-    private void validateFile(MultipartFile file) {
-        if (file.isEmpty()) {
-            throw new IllegalArgumentException("업로드할 파일이 없습니다");
-        }
-        
-        if (file.getSize() > maxFileSize) {
-            throw new IllegalArgumentException("파일 크기가 너무 큽니다");
-        }
-        
-        String fileName = file.getOriginalFilename();
-        if (fileName == null || fileName.trim().isEmpty()) {
-            throw new IllegalArgumentException("파일명이 유효하지 않습니다");
-        }
-    }
-
-    private String getFileExtension(String fileName) {
-        if (fileName == null || fileName.lastIndexOf('.') == -1) {
-            return "";
-        }
-        return fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase();
-    }
-
-    /**
-     * 임시 파일에서 fileId로 파일 찾기.
-     */
-    private Path findTempFileByFileId(String fileId) {
-        try {
-            Path tempPath = Paths.get(uploadDir, "temp");
-            log.debug("[FileService] 임시 폴더 확인. 경로={}, 존재={}", tempPath, Files.exists(tempPath));
-            if (!Files.exists(tempPath)) {
-                return null;
-            }
-            
-            // temp 폴더 하위의 년/월 폴더들을 재귀적으로 검색
-            Path result = Files.walk(tempPath)
-                .filter(Files::isRegularFile)
-                .filter(path -> {
-                    String fileName = path.getFileName().toString();
-                    boolean matches = fileName.startsWith(fileId + ".");
-                    log.debug("[FileService] 파일 확인. 파일={}, 매칭={}", fileName, matches);
-                    return matches;
-                })
-                .findFirst()
-                .orElse(null);
-            
-            log.debug("[FileService] 임시 파일 검색 완료. fileId={}, 결과={}", fileId, result);
-            return result;
-                
-        } catch (IOException e) {
-            log.error("[FileService] 임시 파일 검색 실패: {}", e.getMessage());
-            return null;
-        }
-    }
-
-    /**
-     * 기존 findFileByFileId 메서드 (하위 호환용).
-     */
-    private Path findFileByFileId(String fileId) {
-        log.info("[FileService] findFileByFileId 시작. fileId={}", fileId);
-        
-        // 먼저 DB에서 찾기
-        Optional<UploadFile> uploadFileOpt = uploadFileRepository.findByIdAndDeletedFalse(fileId);
-        if (uploadFileOpt.isPresent()) {
-            UploadFile uploadFile = uploadFileOpt.get();
-            Path fullPath = Paths.get(uploadFile.getServerPath()).isAbsolute() 
-                ? Paths.get(uploadFile.getServerPath())
-                : Paths.get(uploadDir, uploadFile.getServerPath());
-            log.debug("[FileService] DB 파일 경로 확인. fileId={}, 경로={}, 존재={}", 
-                     fileId, fullPath, Files.exists(fullPath));
-            if (Files.exists(fullPath)) {
-                return fullPath;
-            }
-        }
-        
-        // 임시 파일에서 찾기
-        log.debug("[FileService] 임시 파일에서 검색 시작. fileId={}", fileId);
-        Path tempPath = findTempFileByFileId(fileId);
-        log.debug("[FileService] 임시 파일 검색 결과. fileId={}, 경로={}", fileId, tempPath);
-        return tempPath;
     }
 
     @Override
@@ -422,19 +410,20 @@ public class FileServiceImpl implements FileService {
             String extension = getFileExtension(originalFileName);
             String serverFileName = tempFileId + "." + extension;
             
-            // 임시 파일 저장 경로 (년/월 기준)
             LocalDateTime now = LocalDateTime.now();
             String year = String.valueOf(now.getYear());
             String month = String.format("%02d", now.getMonthValue());
             
-            Path uploadPath = Paths.get(uploadDir, "temp", year, month);
-            if (!Files.exists(uploadPath)) {
-                Files.createDirectories(uploadPath);
-                log.debug("[FileService] 임시 폴더 생성: {}", uploadPath);
-            }
+            // 안전한 경로 생성
+            Path uploadPath = resolveUploadPath("temp", year, month);
+            Files.createDirectories(uploadPath);
             
             Path filePath = uploadPath.resolve(serverFileName);
-            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+            
+            // 파일 저장 (스트림 안전 처리)
+            try (InputStream inputStream = file.getInputStream()) {
+                Files.copy(inputStream, filePath, StandardCopyOption.REPLACE_EXISTING);
+            }
             
             String mimeType = file.getContentType();
             if (mimeType == null) {
@@ -454,7 +443,7 @@ public class FileServiceImpl implements FileService {
             );
             
             log.info("[FileService] 임시파일 업로드 완료. tempFileId={}, 파일명={}, 경로={}", 
-                    tempFileId, originalFileName, filePath.toString());
+                    tempFileId, originalFileName, filePath.toAbsolutePath());
             
             return ResponseData.ok("0000", "임시파일 업로드 완료", response);
             
@@ -472,7 +461,7 @@ public class FileServiceImpl implements FileService {
         log.info("[FileService] 임시파일 다운로드 시작. tempFileId={}", tempFileId);
         
         try {
-            // 1. 임시 파일 찾기
+            // 임시 파일 찾기
             Path tempFilePath = findTempFileByFileId(tempFileId);
             if (tempFilePath == null || !Files.exists(tempFilePath)) {
                 log.warn("[FileService] 임시파일을 찾을 수 없음. tempFileId={}", tempFileId);
@@ -480,23 +469,22 @@ public class FileServiceImpl implements FileService {
                 return;
             }
             
-            // 2. MIME 타입 확인
             String mimeType = Files.probeContentType(tempFilePath);
             if (mimeType == null) {
                 mimeType = "application/octet-stream";
             }
             
-            // 3. HTTP 응답 헤더 설정 (inline으로 브라우저에서 바로 표시)
+            // HTTP 응답 헤더 설정
             response.setContentType(mimeType);
             response.setContentLengthLong(Files.size(tempFilePath));
             response.setHeader("Content-Disposition", "inline; filename=\"" + tempFilePath.getFileName().toString() + "\"");
-            response.setHeader("Cache-Control", "max-age=3600"); // 1시간 캐시
+            response.setHeader("Cache-Control", "max-age=3600");
             
             log.debug("[FileService] 임시파일 응답 헤더 설정 완료. mimeType={}, size={}", 
                      mimeType, Files.size(tempFilePath));
             
-            // 4. 파일 스트리밍
-            try (FileInputStream fis = new FileInputStream(tempFilePath.toFile());
+            // 파일 스트리밍 (스트림 안전 처리)
+            try (InputStream fis = Files.newInputStream(tempFilePath);
                  OutputStream os = response.getOutputStream()) {
                 
                 byte[] buffer = new byte[8192];
@@ -509,7 +497,6 @@ public class FileServiceImpl implements FileService {
                 
                 log.info("[FileService] 임시파일 다운로드 완료. tempFileId={}, 경로={}", 
                         tempFileId, tempFilePath);
-                
             }
             
         } catch (IOException e) {
@@ -518,7 +505,6 @@ public class FileServiceImpl implements FileService {
             try {
                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             } catch (IllegalStateException ex) {
-                // Response already committed, ignore
                 log.debug("[FileService] Response already committed");
             }
         }
@@ -527,103 +513,66 @@ public class FileServiceImpl implements FileService {
     @Override
     @Transactional
     public Long promoteToFormalFile(String tempFileId, String originalFileName) {
-        log.info("🔧 [DEBUG] promoteToFormalFile 시작. tempFileId={}, originalFileName={}", 
+        log.info("[FileService] 임시파일 → 정식파일 승격 시작. tempFileId={}, originalFileName={}", 
                 tempFileId, originalFileName);
         
         try {
-            // 1. 임시 파일 찾기
-            log.debug("🔧 [DEBUG] 1단계: 임시 파일 검색 시작");
+            // 임시 파일 찾기
             Path tempFilePath = findTempFileByFileId(tempFileId);
-            log.debug("🔧 [DEBUG] 임시 파일 검색 결과. tempFilePath={}", tempFilePath);
-            
-            if (tempFilePath == null) {
-                log.warn("🔧 [DEBUG] 임시 파일 경로가 null. tempFileId={}", tempFileId);
+            if (tempFilePath == null || !Files.exists(tempFilePath)) {
+                log.warn("[FileService] 임시 파일을 찾을 수 없음. tempFileId={}", tempFileId);
                 return null;
             }
             
-            if (!Files.exists(tempFilePath)) {
-                log.warn("🔧 [DEBUG] 임시 파일이 물리적으로 존재하지 않음. tempFileId={}, 경로={}", tempFileId, tempFilePath);
-                return null;
-            }
-            
-            log.debug("🔧 [DEBUG] 임시 파일 확인 완료. 경로={}, 크기={}", tempFilePath, Files.size(tempFilePath));
-            
-            // 2. 정식 파일 경로 생성 (GENERAL 컨텍스트)
-            log.debug("🔧 [DEBUG] 2단계: 정식 파일 경로 생성 시작");
+            // 정식 파일 경로 생성
             LocalDateTime now = LocalDateTime.now();
             String year = String.valueOf(now.getYear());
             String month = String.format("%02d", now.getMonthValue());
             
             String extension = getFileExtension(originalFileName);
             String serverFileName = tempFileId + "." + extension;
-            log.debug("🔧 [DEBUG] 서버 파일명 생성. serverFileName={}, extension={}", serverFileName, extension);
             
-            Path formalPath = Paths.get(uploadDir, FileContext.GENERAL.getFolder(), year, month);
-            log.debug("🔧 [DEBUG] 정식 파일 폴더 경로. formalPath={}, 존재여부={}", formalPath, Files.exists(formalPath));
-            
-            if (!Files.exists(formalPath)) {
-                Files.createDirectories(formalPath);
-                log.debug("🔧 [DEBUG] 정식 파일 폴더 생성 완료. formalPath={}", formalPath);
-            }
+            // 안전한 경로 생성
+            Path formalPath = resolveUploadPath(FileContext.GENERAL.getFolder(), year, month);
+            Files.createDirectories(formalPath);
             
             Path formalFilePath = formalPath.resolve(serverFileName);
-            log.debug("🔧 [DEBUG] 정식 파일 전체 경로. formalFilePath={}", formalFilePath);
             
-            // 3. 파일 이동 (임시 → 정식)
-            log.debug("🔧 [DEBUG] 3단계: 파일 이동 시작. {} → {}", tempFilePath, formalFilePath);
+            // 파일 이동 (임시 → 정식)
             Files.move(tempFilePath, formalFilePath, StandardCopyOption.REPLACE_EXISTING);
-            log.debug("🔧 [DEBUG] 파일 이동 완료. 이동 후 파일 존재여부={}", Files.exists(formalFilePath));
+            log.debug("[FileService] 파일 이동 완료. {} → {}", tempFilePath, formalFilePath);
             
-            // 4. DB에 파일 메타데이터 저장
-            log.debug("🔧 [DEBUG] 4단계: DB 메타데이터 저장 시작");
+            // DB에 파일 메타데이터 저장 (상대경로만 저장)
             String relativePath = Paths.get(FileContext.GENERAL.getFolder(), year, month, serverFileName).toString();
-            log.debug("🔧 [DEBUG] DB 저장용 상대경로. relativePath={}", relativePath);
             
+            String mimeType;
             try {
-                String mimeType = Files.probeContentType(formalFilePath);
-                log.debug("🔧 [DEBUG] MIME 타입 감지. mimeType={}", mimeType);
-                
-                UploadFile uploadFile = UploadFile.builder()
-                        .serverPath(relativePath)
-                        .fileName(serverFileName)
-                        .originalName(originalFileName)
-                        .mimeType(mimeType)
-                        .ext(extension)
-                        .size(Files.size(formalFilePath))
-                        .build();
-                
-                log.debug("🔧 [DEBUG] UploadFile 엔티티 생성 완료. 저장 시작");
-                UploadFile savedFile = uploadFileRepository.save(uploadFile);
-                log.debug("🔧 [DEBUG] DB 저장 완료. savedFileId={}", savedFile.getId());
-                
-                log.info("🔧 [DEBUG] promoteToFormalFile 성공. tempFileId={} → formalFileId={}, 최종경로={}", 
-                        tempFileId, savedFile.getId(), formalFilePath);
-                
-                return savedFile.getId();
-                
+                mimeType = Files.probeContentType(formalFilePath);
+                if (mimeType == null) {
+                    mimeType = "application/octet-stream";
+                }
             } catch (IOException e) {
-                log.error("🔧 [DEBUG] MIME 타입 확인 실패, 기본값 적용. tempFileId={}, error={}", tempFileId, e.getMessage());
-                
-                UploadFile uploadFile = UploadFile.builder()
-                        .serverPath(relativePath)
-                        .fileName(serverFileName)
-                        .originalName(originalFileName)
-                        .mimeType("application/octet-stream")
-                        .ext(extension)
-                        .size(Files.size(formalFilePath))
-                        .build();
-                
-                UploadFile savedFile = uploadFileRepository.save(uploadFile);
-                log.debug("🔧 [DEBUG] fallback DB 저장 완료. savedFileId={}", savedFile.getId());
-                
-                return savedFile.getId();
+                mimeType = "application/octet-stream";
             }
             
+            UploadFile uploadFile = UploadFile.builder()
+                    .serverPath(relativePath)
+                    .fileName(serverFileName)
+                    .originalName(originalFileName)
+                    .mimeType(mimeType)
+                    .ext(extension)
+                    .size(Files.size(formalFilePath))
+                    .build();
+            
+            UploadFile savedFile = uploadFileRepository.save(uploadFile);
+            
+            log.info("[FileService] 임시파일 → 정식파일 승격 완료. tempFileId={} → formalFileId={}", 
+                    tempFileId, savedFile.getId());
+            
+            return savedFile.getId();
+            
         } catch (IOException e) {
-            log.error("🔧 [DEBUG] promoteToFormalFile 실패. tempFileId={}, error={}", tempFileId, e.getMessage(), e);
-            return null;
-        } catch (Exception e) {
-            log.error("🔧 [DEBUG] promoteToFormalFile 예상치 못한 오류. tempFileId={}, error={}", tempFileId, e.getMessage(), e);
+            log.error("[FileService] 파일 승격 실패. tempFileId={}, error={}", tempFileId, e.getMessage());
             return null;
         }
     }
@@ -648,21 +597,16 @@ public class FileServiceImpl implements FileService {
             String tempFileId = entry.getKey();
             Long formalFileId = entry.getValue();
             
-            // 임시 URL 패턴: /api/public/files/temp/tempFileId
             String tempUrl = "/api/public/files/temp/" + tempFileId;
-            // 정식 URL 패턴: /api/public/files/download/formalFileId  
             String formalUrl = "/api/public/files/download/" + formalFileId;
             
-            // content에서 임시 URL을 정식 URL로 치환
             String previousResult = result;
             result = result.replace(tempUrl, formalUrl);
             
-            // 치환이 발생했는지 확인
             if (!previousResult.equals(result)) {
                 int count = (previousResult.length() - result.length()) / (tempUrl.length() - formalUrl.length());
-                totalReplacements += count;
-                log.debug("[FileService] URL 변환 완료. {} → {}, 치환횟수={}", 
-                         tempUrl, formalUrl, count);
+                totalReplacements += Math.abs(count);
+                log.debug("[FileService] URL 변환: {} → {}", tempUrl, formalUrl);
             }
         }
         
@@ -688,21 +632,19 @@ public class FileServiceImpl implements FileService {
         int totalRemovals = 0;
         
         for (Long deletedFileId : deletedFileIds) {
-            // 정식 URL 패턴: /api/public/files/download/fileId
             String deletedUrl = "/api/public/files/download/" + deletedFileId;
             
-            // img 태그 전체 제거 (src에 해당 URL이 있는 경우)
-            String imgTagPattern = "<img[^>]*src=[\"'][^\"']*" + deletedUrl + "[^\"']*[\"'][^>]*>";
+            // img 태그 전체 제거
+            String imgTagPattern = "<img[^>]*src=[\"'][^\"']*" + Pattern.quote(deletedUrl) + "[^\"']*[\"'][^>]*>";
             String previousResult = result;
             result = result.replaceAll(imgTagPattern, "");
             
-            // 단순 URL만 있는 경우도 제거
+            // 단순 URL 제거
             result = result.replace(deletedUrl, "");
             
             if (!previousResult.equals(result)) {
                 totalRemovals++;
-                log.debug("[FileService] 삭제된 이미지 URL 제거 완료. fileId={}, URL={}", 
-                         deletedFileId, deletedUrl);
+                log.debug("[FileService] 삭제된 이미지 URL 제거: fileId={}", deletedFileId);
             }
         }
         
@@ -719,7 +661,6 @@ public class FileServiceImpl implements FileService {
         
         log.info("[FileService] content에서 모든 temp URL 변환 시작");
         
-        // 정규식으로 모든 temp URL 패턴 추출: /api/public/files/temp/{tempFileId}
         Pattern tempUrlPattern = Pattern.compile("/api/public/files/temp/([a-zA-Z0-9-]+)");
         Matcher matcher = tempUrlPattern.matcher(content);
         
@@ -736,23 +677,19 @@ public class FileServiceImpl implements FileService {
         
         log.info("[FileService] content에서 발견된 temp URL 개수: {}", foundTempFileIds.size());
         
-        // DB에서 temp → formal 매핑 조회
         Map<String, Long> tempToFormalMap = new HashMap<>();
         
         for (String tempFileId : foundTempFileIds) {
-            // 임시 파일이 정식 파일로 변환되었는지 확인
-            // 정식 파일의 서버 파일명은 tempFileId + extension 형태임
             Optional<UploadFile> formalFile = uploadFileRepository.findByFileNameStartingWith(tempFileId + ".");
             if (formalFile.isPresent()) {
                 tempToFormalMap.put(tempFileId, formalFile.get().getId());
-                log.debug("[FileService] temp → formal 매핑 발견. tempId={} → formalId={}", 
+                log.debug("[FileService] temp → formal 매핑: {} → {}", 
                          tempFileId, formalFile.get().getId());
             } else {
-                log.warn("[FileService] temp 파일에 대응하는 정식 파일을 찾을 수 없음. tempId={}", tempFileId);
+                log.warn("[FileService] temp 파일에 대응하는 정식 파일 없음: {}", tempFileId);
             }
         }
         
-        // 기존 메서드를 사용하여 URL 변환
         String result = convertTempUrlsInContent(content, tempToFormalMap);
         
         log.info("[FileService] 모든 temp URL 변환 완료. 변환된 매핑={}개", tempToFormalMap.size());
@@ -768,7 +705,8 @@ public class FileServiceImpl implements FileService {
         }
         
         try {
-            Path fullPath = Paths.get(uploadDir, filePath);
+            // 안전한 경로 생성
+            Path fullPath = resolveUploadPath(filePath);
             
             log.info("[FileService] 물리적 파일 삭제 시작. 경로={}", fullPath);
             
@@ -777,7 +715,6 @@ public class FileServiceImpl implements FileService {
                 return false;
             }
             
-            // 파일 삭제
             boolean deleted = Files.deleteIfExists(fullPath);
             
             if (deleted) {
@@ -789,26 +726,130 @@ public class FileServiceImpl implements FileService {
             return deleted;
             
         } catch (IOException e) {
-            log.error("[FileService] 물리적 파일 삭제 중 오류 발생. filePath={}, error={}", filePath, e.getMessage());
+            log.error("[FileService] 물리적 파일 삭제 중 오류: filePath={}, error={}", filePath, e.getMessage());
+            return false;
+        } catch (IllegalArgumentException e) {
+            log.error("[FileService] 허용되지 않은 경로: filePath={}", filePath);
             return false;
         }
     }
 
+    /**
+     * 파일 유효성 검증.
+     */
+    private void validateFile(MultipartFile file) {
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("업로드할 파일이 없습니다");
+        }
+        
+        if (file.getSize() > maxFileSize) {
+            throw new IllegalArgumentException("파일 크기가 너무 큽니다");
+        }
+        
+        String fileName = file.getOriginalFilename();
+        if (fileName == null || fileName.trim().isEmpty()) {
+            throw new IllegalArgumentException("파일명이 유효하지 않습니다");
+        }
+        
+        // 확장자 검증 추가
+        String extension = getFileExtension(fileName);
+        
+        // 확장자 형식 검증
+        if (!extension.isEmpty() && !extension.matches("^[a-z0-9]{1,10}$")) {
+            throw new IllegalArgumentException("허용되지 않은 파일 확장자입니다");
+        }
+        
+        // 허용된 확장자 목록 검증
+        Set<String> allowedExtensionSet = Arrays.stream(allowedExtensions.split(","))
+                .map(String::trim)
+                .map(String::toLowerCase)
+                .filter(value -> !value.isEmpty())
+                .collect(Collectors.toSet());
+        
+        if (!extension.isEmpty() && !allowedExtensionSet.contains(extension)) {
+            throw new IllegalArgumentException(
+                    "허용되지 않은 파일 형식입니다: " + extension
+            );
+        }
+    }
+
+    /**
+     * 파일 확장자 추출.
+     */
+    private String getFileExtension(String fileName) {
+        if (fileName == null || fileName.lastIndexOf('.') == -1) {
+            return "";
+        }
+        return fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase();
+    }
+
+    /**
+     * 임시 파일에서 fileId로 파일 찾기.
+     */
+    private Path findTempFileByFileId(String fileId) {
+	    try {
+		    Path tempPath = resolveUploadPath("temp");
+
+		    if (!Files.exists(tempPath)) {
+			    return null;
+		    }
+
+		    try (Stream<Path> paths = Files.walk(tempPath)) {
+			    return paths
+					    .filter(Files::isRegularFile)
+					    .filter(path -> path.getFileName().toString()
+							    .startsWith(fileId + "."))
+					    .findFirst()
+					    .orElse(null);
+		    }
+
+	    } catch (IOException e) {
+		    log.error("[FileService] 임시 파일 검색 실패: {}", e.getMessage());
+		    return null;
+	    }
+    }
+
+    /**
+     * DB와 임시 폴더에서 파일 찾기.
+     */
+    private Path findFileByFileId(String fileId) {
+        log.debug("[FileService] 파일 찾기 시작. fileId={}", fileId);
+        
+        // DB에서 찾기
+        Optional<UploadFile> uploadFileOpt = uploadFileRepository.findByIdAndDeletedFalse(fileId);
+        if (uploadFileOpt.isPresent()) {
+            UploadFile uploadFile = uploadFileOpt.get();
+            try {
+                Path fullPath = resolveUploadPath(uploadFile.getServerPath());
+                if (Files.exists(fullPath)) {
+                    return fullPath;
+                }
+            } catch (IllegalArgumentException e) {
+                log.warn("[FileService] 잘못된 파일 경로: {}", uploadFile.getServerPath());
+            }
+        }
+        
+        // 임시 파일에서 찾기
+        return findTempFileByFileId(fileId);
+    }
+
+    /**
+     * Content-Disposition 헤더용 파일명 인코딩.
+     */
     private String encodeFilenameForContentDisposition(String originalFilename) {
         if (originalFilename == null || originalFilename.trim().isEmpty()) {
             return "attachment";
         }
         
         try {
-            // RFC 6266 표준: filename*=UTF-8''encoded_filename
+            // RFC 6266 표준
             String encodedFilename = URLEncoder.encode(originalFilename, StandardCharsets.UTF_8)
-                    .replace("+", "%20"); // 공백을 %20으로 변경 (URL 인코딩 표준)
+                    .replace("+", "%20");
             
             return String.format("attachment; filename*=UTF-8''%s", encodedFilename);
             
         } catch (Exception e) {
-            log.warn("[FileService] 파일명 인코딩 실패, ASCII 대체. 원본={}, 에러={}", originalFilename, e.getMessage());
-            // 인코딩 실패 시 ASCII 안전 문자로 대체
+            log.warn("[FileService] 파일명 인코딩 실패: {}", e.getMessage());
             String safeFilename = originalFilename.replaceAll("[^a-zA-Z0-9._-]", "_");
             return String.format("attachment; filename=\"%s\"", safeFilename);
         }
