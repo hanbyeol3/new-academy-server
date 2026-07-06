@@ -349,7 +349,29 @@ public class ExplanationServiceImpl implements ExplanationService {
             throw new BusinessException(ErrorCode.EXPLANATION_NOT_FOUND);
         }
 
-        // CASCADE 삭제로 회차 및 예약도 함께 삭제됨
+        // 1. 해당 설명회의 모든 회차 조회
+        List<ExplanationSchedule> schedules = scheduleRepository.findByExplanationIdOrderByRoundNoAsc(id);
+        
+        // 2. 각 회차의 예약 삭제
+        for (ExplanationSchedule schedule : schedules) {
+            // 해당 회차의 모든 예약 삭제
+            List<ExplanationReservation> reservations = reservationRepository
+                    .findByScheduleIdOrderByCreatedAtDesc(schedule.getId(), Pageable.unpaged())
+                    .getContent();
+            
+            if (!reservations.isEmpty()) {
+                log.debug("[ExplanationService] 회차 {} 예약 {}건 삭제", schedule.getId(), reservations.size());
+                reservationRepository.deleteAll(reservations);
+            }
+        }
+        
+        // 3. 모든 회차 삭제
+        if (!schedules.isEmpty()) {
+            log.debug("[ExplanationService] 설명회 {} 회차 {}건 삭제", id, schedules.size());
+            scheduleRepository.deleteAll(schedules);
+        }
+        
+        // 4. 설명회 삭제
         explanationRepository.deleteById(id);
 
         log.debug("[ExplanationService] 설명회 삭제 완료. id={}", id);
@@ -614,7 +636,17 @@ public class ExplanationServiceImpl implements ExplanationService {
                 .findByIdAndExplanationId(scheduleId, explanationId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.EXPLANATION_SCHEDULE_MISMATCH));
 
-        // CASCADE 삭제로 예약도 함께 삭제됨
+        // 1. 해당 회차의 모든 예약 삭제
+        List<ExplanationReservation> reservations = reservationRepository
+                .findByScheduleIdOrderByCreatedAtDesc(scheduleId, Pageable.unpaged())
+                .getContent();
+        
+        if (!reservations.isEmpty()) {
+            log.debug("[ExplanationService] 회차 {} 예약 {}건 삭제", scheduleId, reservations.size());
+            reservationRepository.deleteAll(reservations);
+        }
+        
+        // 2. 회차 삭제
         scheduleRepository.delete(schedule);
 
         log.debug("[ExplanationService] 회차 삭제 완료. scheduleId={}", scheduleId);

@@ -452,6 +452,7 @@ public class QnaServiceImpl implements QnaService {
 
         try {
             QnaAnswer existingAnswer = answerRepository.findByQuestionId(questionId).orElse(null);
+            boolean isNewAnswer = (existingAnswer == null);  // 새 답변인지 확인
             
             if (existingAnswer != null) {
                 // 기존 답변 수정
@@ -474,8 +475,8 @@ public class QnaServiceImpl implements QnaService {
                 .where(qnaQuestion.id.eq(questionId))
                 .execute();
             
-            // 작성자 전화번호가 있는 경우 SMS 발송
-            if (question.getPhoneNumber() != null && !question.getPhoneNumber().trim().isEmpty()) {
+            // 새 답변 등록 시에만 SMS 발송 (수정 시에는 발송하지 않음)
+            if (isNewAnswer && question.getPhoneNumber() != null && !question.getPhoneNumber().trim().isEmpty()) {
                 try {
                     Map<String, Object> userVariables = new HashMap<>();
                     // USER_QNA_ANSWERED는 변수가 없음
