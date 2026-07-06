@@ -40,11 +40,6 @@ holiday:
   api:
     key: ${HOLIDAY_API_KEY:}
 
-# 임시 파일 정리 정책
-file:
-  temp-cleanup-enabled: ${TEMP_CLEANUP_ENABLED:true}  # 임시 파일 정리 활성화
-  temp-file-max-age-hours: ${TEMP_FILE_MAX_AGE:24}   # 삭제 기준 시간 (기본 24시간)
-
 management:
   endpoints:
     web:
@@ -70,6 +65,10 @@ file:
   max-total-size: ${FILE_MAX_TOTAL_SIZE:104857600} # 100MB (전체 파일)
   max-file-count: ${FILE_MAX_FILE_COUNT:10} # 최대 파일 개수
   allowed-extensions: ${FILE_ALLOWED_EXTENSIONS:jpg,jpeg,png,gif,bmp,webp,pdf,doc,docx,xls,xlsx,ppt,pptx,txt,hwp,zip}
+
+  # 임시 파일 정리 정책
+  temp-cleanup-enabled: ${FILE_TEMP_CLEANUP_ENABLED:true}
+  temp-file-max-age-hours: ${FILE_TEMP_FILE_MAX_AGE_HOURS:24}
 
 # Spring Multipart 설정 (위의 spring 섹션에 통합됨)
 
