@@ -1563,6 +1563,13 @@ public class ExplanationServiceImpl implements ExplanationService {
                 // 임시파일을 정식파일로 변환
                 Long fileId = fileService.promoteToFormalFile(imageInfo.getTempFileId(), imageInfo.getFileName());
                 
+                // fileId가 null인 경우 처리
+                if (fileId == null) {
+                    log.warn("[ExplanationService] 임시파일 승격 실패. tempFileId={}, fileName={}", 
+                            imageInfo.getTempFileId(), imageInfo.getFileName());
+                    continue;
+                }
+                
                 // 파일링크 생성
                 UploadFileLink fileLink = UploadFileLink.builder()
                         .fileId(fileId)
@@ -1601,6 +1608,13 @@ public class ExplanationServiceImpl implements ExplanationService {
             try {
                 // 임시파일을 정식파일로 변환
                 Long fileId = fileService.promoteToFormalFile(fileRef.getTempFileId(), fileRef.getFileName());
+                
+                // fileId가 null인 경우 처리
+                if (fileId == null) {
+                    log.warn("[ExplanationService] 임시파일 승격 실패. tempFileId={}, fileName={}", 
+                            fileRef.getTempFileId(), fileRef.getFileName());
+                    continue;
+                }
                 
                 // 파일링크 생성
                 UploadFileLink fileLink = UploadFileLink.builder()

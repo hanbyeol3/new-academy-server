@@ -132,4 +132,14 @@ public interface FileService {
      * @return 삭제 성공 여부
      */
     boolean deletePhysicalFileByPath(String filePath);
+    
+    /**
+     * 만료된 임시 파일 정리.
+     * temp 디렉토리 하위의 지정된 시간이 지난 파일들을 삭제합니다.
+     * 빈 디렉토리도 함께 정리됩니다.
+     * 
+     * @param retention 보관 기간
+     * @return 삭제된 파일 개수
+     */
+    int cleanupExpiredTempFiles(java.time.Duration retention);
 }

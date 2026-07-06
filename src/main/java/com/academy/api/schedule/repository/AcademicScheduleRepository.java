@@ -171,5 +171,11 @@ public interface AcademicScheduleRepository extends JpaRepository<AcademicSchedu
         """)
     List<AcademicSchedule> findSchedulesOnDate(@Param("date") LocalDate date);
 
+    /**
+     * 제목과 기간으로 일정 조회 (공휴일 중복 체크용).
+     */
+    List<AcademicSchedule> findByTitleContainingAndStartAtBetween(String titleKeyword, 
+                                                                  LocalDateTime startAt, 
+                                                                  LocalDateTime endAt);
 
 }

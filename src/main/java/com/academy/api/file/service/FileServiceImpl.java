@@ -29,8 +29,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.DirectoryStream;
+import java.nio.file.FileVisitResult;
+import java.nio.file.SimpleFileVisitor;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -852,6 +859,73 @@ public class FileServiceImpl implements FileService {
             log.warn("[FileService] 파일명 인코딩 실패: {}", e.getMessage());
             String safeFilename = originalFilename.replaceAll("[^a-zA-Z0-9._-]", "_");
             return String.format("attachment; filename=\"%s\"", safeFilename);
+        }
+    }
+    
+    @Override
+    public int cleanupExpiredTempFiles(java.time.Duration retention) {
+        Path tempRootPath = resolveUploadPath("temp");
+        
+        if (!Files.exists(tempRootPath)) {
+            log.debug("[FileService] 임시 파일 디렉토리가 존재하지 않음: {}", tempRootPath);
+            return 0;
+        }
+        
+        java.time.Instant cutoff = java.time.Instant.now().minus(retention);
+        java.util.concurrent.atomic.AtomicInteger deletedCount = new java.util.concurrent.atomic.AtomicInteger(0);
+        
+        log.info("🧹 [FileService] 임시 파일 정리 시작. 삭제 기준: {} 이전 파일", cutoff);
+        
+        try {
+            Files.walkFileTree(tempRootPath, new java.nio.file.SimpleFileVisitor<Path>() {
+                @Override
+                public java.nio.file.FileVisitResult visitFile(Path file, java.nio.file.attribute.BasicFileAttributes attrs) throws IOException {
+                    // 파일 수정 시간 체크
+                    if (attrs.lastModifiedTime().toInstant().isBefore(cutoff)) {
+                        try {
+                            Files.delete(file);
+                            deletedCount.incrementAndGet();
+                            log.debug("[FileService] 임시 파일 삭제: {}", file);
+                        } catch (IOException e) {
+                            log.warn("[FileService] 임시 파일 삭제 실패: {} - {}", file, e.getMessage());
+                        }
+                    }
+                    return java.nio.file.FileVisitResult.CONTINUE;
+                }
+                
+                @Override
+                public java.nio.file.FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                    // temp 루트는 삭제하지 않음
+                    if (!dir.equals(tempRootPath)) {
+                        try {
+                            // 빈 디렉토리 삭제 시도
+                            if (isDirectoryEmpty(dir)) {
+                                Files.delete(dir);
+                                log.debug("[FileService] 빈 디렉토리 삭제: {}", dir);
+                            }
+                        } catch (IOException e) {
+                            // 빈 디렉토리 삭제 실패는 무시 (파일이 새로 생성되었을 수 있음)
+                        }
+                    }
+                    return java.nio.file.FileVisitResult.CONTINUE;
+                }
+            });
+            
+            log.info("🧹 [FileService] 임시 파일 정리 완료. 삭제된 파일: {}개", deletedCount.get());
+            
+        } catch (IOException e) {
+            log.error("🚨 [FileService] 임시 파일 정리 중 오류: {}", e.getMessage(), e);
+        }
+        
+        return deletedCount.get();
+    }
+    
+    /**
+     * 디렉토리가 비어있는지 확인.
+     */
+    private boolean isDirectoryEmpty(Path directory) throws IOException {
+        try (java.nio.file.DirectoryStream<Path> stream = Files.newDirectoryStream(directory)) {
+            return !stream.iterator().hasNext();
         }
     }
 }

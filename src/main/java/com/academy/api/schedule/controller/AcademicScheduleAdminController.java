@@ -5,6 +5,7 @@ import com.academy.api.data.responses.ResponseData;
 import com.academy.api.data.responses.ResponseList;
 import com.academy.api.schedule.dto.*;
 import com.academy.api.schedule.service.AcademicScheduleService;
+import com.academy.api.holiday.service.HolidaySyncService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -32,6 +33,7 @@ import org.springframework.web.bind.annotation.*;
 public class AcademicScheduleAdminController {
 
     private final AcademicScheduleService academicScheduleService;
+    private final HolidaySyncService holidaySyncService;
 
     @GetMapping("/monthly")
     @Operation(
@@ -332,6 +334,64 @@ public class AcademicScheduleAdminController {
         log.info("[AcademicScheduleAdminController] 일정 삭제 요청. id={}", id);
 
         return academicScheduleService.deleteSchedule(id);
+    }
+
+    @PostMapping("/holidays/sync")
+    @Operation(
+        summary = "공휴일 데이터 동기화",
+        description = """
+                공공 데이터 포털에서 공휴일 정보를 가져와 DB에 저장합니다.
+                
+                파라미터:
+                - startYear: 시작 연도 (필수, 예: 2025)
+                - endYear: 종료 연도 (필수, 예: 2027)
+                
+                동작:
+                - 지정된 연도 범위의 공휴일을 API에서 조회
+                - 기존 동일 연도 공휴일이 있으면 삭제 후 재등록
+                - [공휴일] 접두사를 붙여 학사일정으로 저장
+                
+                사용 예시:
+                - POST /api/admin/academic-schedules/holidays/sync?startYear=2025&endYear=2027
+                - 2025년부터 2027년까지 3년치 공휴일 일괄 등록
+                
+                권한 요구사항:
+                - ADMIN 역할 필수
+                - JWT 토큰 인증 필요
+                
+                주의사항:
+                - API 키가 application.yml에 설정되어 있어야 함
+                - 기존 공휴일 데이터는 삭제되고 새로 등록됨
+                - 네트워크 문제로 실패할 수 있으니 재시도 필요
+                """
+    )
+    public ResponseData<String> syncHolidays(
+            @Parameter(description = "시작 연도", example = "2025", required = true)
+            @RequestParam Integer startYear,
+            @Parameter(description = "종료 연도", example = "2027", required = true)
+            @RequestParam Integer endYear) {
+        
+        log.info("[AcademicScheduleAdminController] 공휴일 동기화 요청. startYear={}, endYear={}", startYear, endYear);
+        
+        if (startYear > endYear) {
+            return ResponseData.error("4000", "시작 연도가 종료 연도보다 클 수 없습니다.");
+        }
+        
+        if (endYear - startYear > 10) {
+            return ResponseData.error("4001", "최대 10년치 데이터만 한 번에 동기화할 수 있습니다.");
+        }
+        
+        try {
+            // 연도별로 동기화
+            for (int year = startYear; year <= endYear; year++) {
+                holidaySyncService.syncYearlyHolidays(year);
+            }
+            String message = String.format("%d-%d년 공휴일이 동기화되었습니다.", startYear, endYear);
+            return ResponseData.ok("0000", message, message);
+        } catch (Exception e) {
+            log.error("[AcademicScheduleAdminController] 공휴일 동기화 실패", e);
+            return ResponseData.error("9999", "공휴일 동기화 중 오류가 발생했습니다.");
+        }
     }
 
 }

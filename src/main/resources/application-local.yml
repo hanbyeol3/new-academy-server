@@ -48,9 +48,6 @@ jwt:
 academy:
   admin:
     phone: "01083873610"  # 관리자 전화번호 (SMS 알림 수신용)
-  scheduler:
-    explanation-reminder:
-      enabled: true  # D-1 리마인더 활성화 여부
 
 # 공휴일 API 설정 (한국천문연구원 특일 정보)
 holiday:
