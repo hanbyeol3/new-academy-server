@@ -48,7 +48,7 @@ solapi:
 # JWT 설정
 jwt:
   secret: ${JWT_SECRET}
-  access-expire-minutes: ${JWT_ACCESS_EXPIRE_MINUTES:15}
+  access-expire-minutes: ${JWT_ACCESS_EXPIRE_MINUTES:30}
   refresh-expire-days: ${JWT_REFRESH_EXPIRE_DAYS:14}
 
 # 학원 설정
