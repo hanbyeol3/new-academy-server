@@ -103,15 +103,8 @@ management:
 
 # 파일 업로드 설정
 file:
-  upload-dir: ${FILE_UPLOAD_DIR:/tmp/uploads}  # Railway에서는 /tmp 사용
+  upload-dir: ${FILE_UPLOAD_DIR:./uploads}  # 환경변수로 제어
   max-size: ${FILE_MAX_SIZE:20971520} # 20MB (단일 파일)
   max-total-size: ${FILE_MAX_TOTAL_SIZE:104857600} # 100MB (전체 파일)
   max-file-count: ${FILE_MAX_FILE_COUNT:10} # 최대 파일 개수
   allowed-extensions: ${FILE_ALLOWED_EXTENSIONS:jpg,jpeg,png,gif,bmp,pdf,doc,docx,xls,xlsx,ppt,pptx,txt,hwp,zip}
-
-# 서버 타임아웃 설정 (Railway 환경용)
-server:
-  tomcat:
-    connection-timeout: ${SERVER_CONNECTION_TIMEOUT:60000}  # 60초
-    keep-alive-timeout: ${SERVER_KEEP_ALIVE_TIMEOUT:60000}
-    max-swallow-size: ${SERVER_MAX_SWALLOW_SIZE:104857600}  # 100MB
