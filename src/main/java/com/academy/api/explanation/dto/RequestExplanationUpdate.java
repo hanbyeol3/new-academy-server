@@ -1,5 +1,6 @@
 package com.academy.api.explanation.dto;
 
+import com.academy.api.explanation.domain.ExplanationDivision;
 import com.academy.api.file.dto.FileReference;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
@@ -18,6 +19,11 @@ import java.util.List;
 @NoArgsConstructor
 @Schema(description = "설명회 수정 요청")
 public class RequestExplanationUpdate {
+
+    @Schema(description = "설명회 구분 (중등부/고등부/독학재수)",
+            example = "HIGH_SCHOOL",
+            allowableValues = {"MIDDLE_SCHOOL", "HIGH_SCHOOL", "SELF_STUDY_REPEAT"})
+    private ExplanationDivision division;
 
     @NotBlank(message = "설명회 제목을 입력해주세요")
     @Size(max = 255, message = "설명회 제목은 255자 이하여야 합니다")

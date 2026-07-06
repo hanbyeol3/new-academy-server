@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -293,7 +294,7 @@ public class ExplanationServiceImpl implements ExplanationService {
         Explanation explanation = explanationRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.EXPLANATION_NOT_FOUND));
 
-        explanation.update(request.getTitle(), request.getContent(), 
+        explanation.update(request.getDivision(), request.getTitle(), request.getContent(), 
                           request.getIsPublished(), request.getViewCount(), updatedBy);
 
         // 인라인 이미지 처리
@@ -389,8 +390,10 @@ public class ExplanationServiceImpl implements ExplanationService {
         if (request.getBasic() != null) {
             RequestExplanationFullUpdate.BasicInfo basic = request.getBasic();
             
-            log.debug("[ExplanationService] 기본 정보 수정. title={}", basic.getTitle());
+            log.debug("[ExplanationService] 기본 정보 수정. title={}, division={}", 
+                    basic.getTitle(), basic.getDivision());
             explanation.update(
+                    basic.getDivision(),
                     basic.getTitle(),
                     basic.getContent(),
                     basic.getIsPublished(),
@@ -727,7 +730,7 @@ public class ExplanationServiceImpl implements ExplanationService {
             }
             
             // 날짜/시간 포맷팅 (요일 포함)
-            DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy년 MM월 dd일(E)");
+            DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy년 MM월 dd일(E)", Locale.KOREAN);
             DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
             String scheduleDate = schedule.getStartAt().format(dateFormatter);
             String scheduleTime = schedule.getStartAt().format(timeFormatter);
