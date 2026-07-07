@@ -1,10 +1,10 @@
 package com.academy.api.explanation.dto;
 
-import com.academy.api.explanation.domain.ScheduleStatus;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
  * 설명회 회차 응답 DTO.
  */
 @Getter
+@Setter
 @Builder
 @Schema(description = "설명회 회차 응답")
 public class ResponseExplanationSchedule {
@@ -44,9 +45,12 @@ public class ResponseExplanationSchedule {
     @Schema(description = "회차 상태 (PENDING/OPEN/FULL/CLOSED/ADMIN_CLOSED/CANCELED)", example = "OPEN")
     private String status;
 
-    @Schema(description = "회차 정원 (null=무제한)", example = "50")
-    private Integer capacity;
+    @Schema(description = "회차 팀 정원 (null=무제한)", example = "30")
+    private Integer teamCapacity;
 
-    @Schema(description = "예약 인원수", example = "25")
-    private Integer reservedCount;
+    @Schema(description = "예약 팀 수", example = "15")
+    private Integer reservedTeamCount;
+    
+    @Schema(description = "총 참석 예정 인원 (확정된 예약의 참석인원 합계)", example = "45")
+    private Integer totalAttendeeCount;
 }

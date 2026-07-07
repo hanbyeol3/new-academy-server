@@ -254,7 +254,7 @@ public class ExplanationAdminController {
                     
                     주의사항:
                     - 회차 번호는 중복될 수 없습니다
-                    - 정원은 현재 예약 인원보다 적게 설정할 수 없습니다
+                    - 팀 정원은 현재 예약 팀 수보다 적게 설정할 수 없습니다
                     - 실패 시 모든 변경사항이 롤백됩니다
                     """
     )
@@ -287,12 +287,12 @@ public class ExplanationAdminController {
                     선택 입력 사항:
                     - roundNo: 회차 번호 (기본값: 1)
                     - status: 회차 상태 (기본값: CLOSED)
-                    - capacity: 정원 (null=무제한)
+                    - teamCapacity: 팀 정원 (null=무제한)
                     
                     검증 규칙:
                     - endAt >= startAt
                     - applyEndAt >= applyStartAt  
-                    - capacity > 0 (설정 시)
+                    - teamCapacity > 0 (설정 시)
                     - roundNo는 동일 설명회 내 중복 불가
                     """
     )
@@ -321,11 +321,11 @@ public class ExplanationAdminController {
                     - 시간 정보: startAt, endAt, applyStartAt, applyEndAt
                     - 장소 정보: location
                     - 상태 정보: status
-                    - 정원 정보: capacity
+                    - 팀 정원 정보: teamCapacity
                     
                     검증 규칙:
                     - explanationId와 scheduleId가 일치해야 함
-                    - capacity는 현재 예약 인원수보다 커야 함
+                    - teamCapacity는 현재 예약 팀 수보다 커야 함
                     - 과거 시간으로 변경 제한 (선택사항)
                     - CLOSED로 변경 시 즉시 예약 불가 처리
                     
@@ -569,8 +569,8 @@ public class ExplanationAdminController {
                     - scheduleId: 회차 ID
                     - roundNo: 회차 번호
                     - startAt: 회차 시작 일시
-                    - capacity: 정원 (null이면 무제한)
-                    - reservedCount: 현재 예약 인원
+                    - teamCapacity: 팀 정원 (null이면 무제한)
+                    - reservedTeamCount: 현재 예약 팀 수
                     - totalReservations: 총 신청 건수 (취소 포함)
                     - confirmedReservations: 확정 예약 건수
                     

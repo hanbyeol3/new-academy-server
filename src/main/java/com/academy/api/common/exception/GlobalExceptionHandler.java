@@ -2,6 +2,7 @@ package com.academy.api.common.exception;
 
 import com.academy.api.data.responses.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.catalina.connector.ClientAbortException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -50,6 +51,19 @@ public class GlobalExceptionHandler {
         Response response = Response.error("VALIDATION_FAILED", message);
         
         return ResponseEntity.badRequest().body(response);
+    }
+
+    /**
+     * 클라이언트 연결 중단 예외 처리.
+     * 
+     * 클라이언트가 연결을 중단한 경우(브라우저 닫기, 새로고침, 네트워크 끊김 등)
+     * 발생하는 예외를 처리합니다. 서버 문제가 아니므로 DEBUG 레벨로만 기록합니다.
+     */
+    @ExceptionHandler(ClientAbortException.class)
+    public void handleClientAbortException(ClientAbortException e) {
+        // DEBUG 레벨로만 기록 (평상시 로그에 나타나지 않음)
+        log.debug("Client aborted the connection: {}", e.getMessage());
+        // 클라이언트가 이미 연결을 끊었으므로 응답을 보낼 필요 없음
     }
 
     /**

@@ -75,13 +75,13 @@ public class ExplanationSchedule {
     @Column(name = "is_canceled", nullable = false)
     private Boolean isCanceled = false;
 
-    /** 회차 정원 (NULL = 무제한) */
-    @Column(name = "capacity")
-    private Integer capacity;
+    /** 회차 팀 정원 (NULL = 무제한) */
+    @Column(name = "team_capacity")
+    private Integer teamCapacity;
 
-    /** 예약 인원수 (캐시) */
-    @Column(name = "reserved_count", nullable = false)
-    private Integer reservedCount = 0;
+    /** 예약 팀 수 (캐시) */
+    @Column(name = "reserved_team_count", nullable = false)
+    private Integer reservedTeamCount = 0;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -109,13 +109,13 @@ public class ExplanationSchedule {
      * @param location 회차 장소
      * @param applyStartAt 예약 신청 시작 일시
      * @param applyEndAt 예약 신청 종료 일시
-     * @param capacity 회차 정원
+     * @param teamCapacity 회차 팀 정원
      * @param createdBy 생성자 ID
      */
     @Builder
     private ExplanationSchedule(Long explanationId, Integer roundNo, LocalDateTime startAt,
                                LocalDateTime endAt, String location, LocalDateTime applyStartAt,
-                               LocalDateTime applyEndAt, Integer capacity, Long createdBy) {
+                               LocalDateTime applyEndAt, Integer teamCapacity, Long createdBy) {
         this.explanationId = explanationId;
         this.roundNo = roundNo;
         this.startAt = startAt;
@@ -123,8 +123,8 @@ public class ExplanationSchedule {
         this.location = location;
         this.applyStartAt = applyStartAt;
         this.applyEndAt = applyEndAt;
-        this.capacity = capacity;
-        this.reservedCount = 0;
+        this.teamCapacity = teamCapacity;
+        this.reservedTeamCount = 0;
         this.isAdminClosed = false;
         this.isCanceled = false;
         this.createdBy = createdBy;
@@ -139,12 +139,12 @@ public class ExplanationSchedule {
      * @param location 회차 장소
      * @param applyStartAt 예약 신청 시작 일시
      * @param applyEndAt 예약 신청 종료 일시
-     * @param capacity 회차 정원
+     * @param teamCapacity 회차 팀 정원
      * @param updatedBy 수정자 ID
      */
     public void update(LocalDateTime startAt, LocalDateTime endAt, String location,
                       LocalDateTime applyStartAt, LocalDateTime applyEndAt,
-                      Integer capacity, Long updatedBy) {
+                      Integer teamCapacity, Long updatedBy) {
         if (startAt != null) {
             this.startAt = startAt;
         }
@@ -160,8 +160,8 @@ public class ExplanationSchedule {
         if (applyEndAt != null) {
             this.applyEndAt = applyEndAt;
         }
-        if (capacity != null) {
-            this.capacity = capacity;
+        if (teamCapacity != null) {
+            this.teamCapacity = teamCapacity;
         }
         this.updatedBy = updatedBy;
     }
@@ -189,35 +189,35 @@ public class ExplanationSchedule {
     }
 
     /**
-     * 예약 인원수 증가.
+     * 예약 팀 수 증가.
      * 
-     * @param count 증가할 인원수
+     * @param count 증가할 팀 수
      */
-    public void incrementReservedCount(int count) {
-        this.reservedCount += count;
+    public void incrementReservedTeamCount(int count) {
+        this.reservedTeamCount += count;
     }
 
     /**
-     * 예약 인원수 감소.
+     * 예약 팀 수 감소.
      * 
-     * @param count 감소할 인원수
+     * @param count 감소할 팀 수
      */
-    public void decrementReservedCount(int count) {
-        this.reservedCount = Math.max(0, this.reservedCount - count);
+    public void decrementReservedTeamCount(int count) {
+        this.reservedTeamCount = Math.max(0, this.reservedTeamCount - count);
     }
     
     /**
-     * 예약 인원수 증가 (1명).
+     * 예약 팀 수 증가 (1팀).
      */
-    public void incrementReservedCount() {
-        incrementReservedCount(1);
+    public void incrementReservedTeamCount() {
+        incrementReservedTeamCount(1);
     }
 
     /**
-     * 예약 인원수 감소 (1명).
+     * 예약 팀 수 감소 (1팀).
      */
-    public void decrementReservedCount() {
-        decrementReservedCount(1);
+    public void decrementReservedTeamCount() {
+        decrementReservedTeamCount(1);
     }
 
     /**
@@ -247,8 +247,8 @@ public class ExplanationSchedule {
             return ScheduleStatus.CLOSED;
         }
         
-        // 신청 기간 중 - 정원 확인
-        if (this.capacity != null && this.reservedCount >= this.capacity) {
+        // 신청 기간 중 - 팀 정원 확인
+        if (this.teamCapacity != null && this.reservedTeamCount >= this.teamCapacity) {
             return ScheduleStatus.FULL;
         }
         
@@ -266,22 +266,22 @@ public class ExplanationSchedule {
     }
 
     /**
-     * 정원 여유 확인.
+     * 팀 정원 여유 확인.
      * 
-     * @return 정원에 여유가 있거나 무제한이면 true
+     * @return 팀 정원에 여유가 있거나 무제한이면 true
      */
-    public boolean hasAvailableCapacity() {
-        return hasAvailableCapacity(1);
+    public boolean hasAvailableTeamCapacity() {
+        return hasAvailableTeamCapacity(1);
     }
     
     /**
-     * 정원 여유 확인 (인원수 지정).
+     * 팀 정원 여유 확인 (팀 수 지정).
      * 
-     * @param requiredCount 필요한 인원수
-     * @return 정원에 여유가 있거나 무제한이면 true
+     * @param requiredTeamCount 필요한 팀 수
+     * @return 팀 정원에 여유가 있거나 무제한이면 true
      */
-    public boolean hasAvailableCapacity(int requiredCount) {
-        return this.capacity == null || (this.reservedCount + requiredCount) <= this.capacity;
+    public boolean hasAvailableTeamCapacity(int requiredTeamCount) {
+        return this.teamCapacity == null || (this.reservedTeamCount + requiredTeamCount) <= this.teamCapacity;
     }
 
     /**

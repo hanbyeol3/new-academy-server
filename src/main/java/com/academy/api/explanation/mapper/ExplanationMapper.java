@@ -137,8 +137,32 @@ public class ExplanationMapper {
                 .applyStartAt(schedule.getApplyStartAt())
                 .applyEndAt(schedule.getApplyEndAt())
                 .status(schedule.calculateStatus().name())  // 동적 계산된 상태
-                .capacity(schedule.getCapacity())
-                .reservedCount(schedule.getReservedCount())
+                .teamCapacity(schedule.getTeamCapacity())
+                .reservedTeamCount(schedule.getReservedTeamCount())
+                .totalAttendeeCount(null)  // 서비스에서 별도 설정
+                .build();
+    }
+    
+    /**
+     * ExplanationSchedule Entity를 Response DTO로 변환 (총 참석인원 포함).
+     * 
+     * @param schedule 회차 엔티티
+     * @param totalAttendeeCount 총 참석인원
+     * @return 회차 응답 DTO
+     */
+    public ResponseExplanationSchedule toScheduleResponseWithAttendeeCount(ExplanationSchedule schedule, Integer totalAttendeeCount) {
+        return ResponseExplanationSchedule.builder()
+                .scheduleId(schedule.getId())
+                .roundNo(schedule.getRoundNo())
+                .startAt(schedule.getStartAt())
+                .endAt(schedule.getEndAt())
+                .location(schedule.getLocation())
+                .applyStartAt(schedule.getApplyStartAt())
+                .applyEndAt(schedule.getApplyEndAt())
+                .status(schedule.calculateStatus().name())  // 동적 계산된 상태
+                .teamCapacity(schedule.getTeamCapacity())
+                .reservedTeamCount(schedule.getReservedTeamCount())
+                .totalAttendeeCount(totalAttendeeCount)
                 .build();
     }
 
@@ -205,7 +229,7 @@ public class ExplanationMapper {
                 .location(request.getLocation())
                 .applyStartAt(request.getApplyStartAt())
                 .applyEndAt(request.getApplyEndAt())
-                .capacity(request.getCapacity())
+                .teamCapacity(request.getTeamCapacity())
                 .createdBy(createdBy)
                 .build();
     }

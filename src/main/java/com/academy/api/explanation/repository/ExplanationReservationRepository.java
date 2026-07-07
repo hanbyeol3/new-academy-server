@@ -111,14 +111,21 @@ public interface ExplanationReservationRepository extends JpaRepository<Explanat
            "s.id as scheduleId, " +
            "s.roundNo as roundNo, " +
            "s.startAt as startAt, " +
-           "s.capacity as capacity, " +
-           "s.reservedCount as reservedCount, " +
+           "s.teamCapacity as teamCapacity, " +
+           "s.reservedTeamCount as reservedTeamCount, " +
            "COUNT(r) as totalReservations, " +
            "SUM(CASE WHEN r.status = 'CONFIRMED' THEN 1 ELSE 0 END) as confirmedReservations) " +
            "FROM ExplanationSchedule s " +
            "LEFT JOIN ExplanationReservation r ON r.scheduleId = s.id " +
            "WHERE (:explanationId IS NULL OR s.explanationId = :explanationId) " +
-           "GROUP BY s.id, s.roundNo, s.startAt, s.capacity, s.reservedCount " +
+           "GROUP BY s.id, s.roundNo, s.startAt, s.teamCapacity, s.reservedTeamCount " +
            "ORDER BY s.startAt")
     List<Map<String, Object>> getReservationStatsBySchedule(@Param("explanationId") Long explanationId);
+    
+    /**
+     * 회차별 총 참석인원 조회 (확정된 예약만).
+     */
+    @Query("SELECT COALESCE(SUM(r.attendeeCount), 0) FROM ExplanationReservation r " +
+           "WHERE r.scheduleId = :scheduleId AND r.status = 'CONFIRMED'")
+    Integer getTotalAttendeeCountBySchedule(@Param("scheduleId") Long scheduleId);
 }

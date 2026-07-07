@@ -54,7 +54,7 @@ public class RequestExplanationScheduleUpdate {
             defaultValue = "false")
     private Boolean isCanceled;
 
-    @Min(value = 1, message = "정원은 1명 이상이어야 합니다")
-    @Schema(description = "회차 정원 (null=무제한)", example = "50")
-    private Integer capacity;
+    @Min(value = 1, message = "팀 정원은 1팀 이상이어야 합니다")
+    @Schema(description = "회차 팀 정원 (null=무제한)", example = "30")
+    private Integer teamCapacity;
 }

@@ -110,14 +110,14 @@ public class ExplanationScheduleRepositoryImpl implements ExplanationScheduleRep
         log.debug("[ExplanationScheduleRepositoryImpl] 높은 예약률 회차 조회. thresholdPercent={}, limit={}", 
                 thresholdPercent, limit);
 
-        // 정원이 있는 회차 중에서 예약률이 임계값 이상인 회차 조회
-        NumberExpression<Double> occupancyRate = schedule.reservedCount.castToNum(Double.class).multiply(100.0).divide(schedule.capacity.castToNum(Double.class));
+        // 팀 정원이 있는 회차 중에서 예약률이 임계값 이상인 회차 조회
+        NumberExpression<Double> occupancyRate = schedule.reservedTeamCount.castToNum(Double.class).multiply(100.0).divide(schedule.teamCapacity.castToNum(Double.class));
 
         List<ExplanationSchedule> schedules = queryFactory
                 .selectFrom(schedule)
                 .where(
-                        schedule.capacity.isNotNull(),
-                        schedule.capacity.gt(0),
+                        schedule.teamCapacity.isNotNull(),
+                        schedule.teamCapacity.gt(0),
                         occupancyRate.goe(thresholdPercent)
                 )
                 .orderBy(occupancyRate.desc(), schedule.roundNo.asc())
@@ -129,13 +129,13 @@ public class ExplanationScheduleRepositoryImpl implements ExplanationScheduleRep
     }
 
     /**
-     * 정원 조건 생성.
-     * 정원이 null(무제한)이거나 예약 인원이 정원보다 적은 경우.
+     * 팀 정원 조건 생성.
+     * 팀 정원이 null(무제한)이거나 예약 팀 수가 팀 정원보다 적은 경우.
      * 
-     * @return 정원 조건
+     * @return 팀 정원 조건
      */
     private BooleanExpression createCapacityCondition() {
-        return schedule.capacity.isNull()
-                .or(schedule.reservedCount.lt(schedule.capacity));
+        return schedule.teamCapacity.isNull()
+                .or(schedule.reservedTeamCount.lt(schedule.teamCapacity));
     }
 }

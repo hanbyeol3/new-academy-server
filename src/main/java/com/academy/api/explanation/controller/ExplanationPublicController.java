@@ -151,7 +151,7 @@ public class ExplanationPublicController {
                     검증 규칙:
                     - 회차 상태가 RESERVABLE이어야 함
                     - 현재 시각이 신청 기간 내여야 함 (applyStartAt <= now <= applyEndAt)
-                    - 정원 여유가 있어야 함 (capacity가 null이면 무제한, attendeeCount만큼 확인)
+                    - 팀 정원 여유가 있어야 함 (teamCapacity가 null이면 무제한, 1예약=1팀)
                     - 동일 회차에 같은 전화번호로 확정 예약이 없어야 함
                     
                     동시성 처리:
