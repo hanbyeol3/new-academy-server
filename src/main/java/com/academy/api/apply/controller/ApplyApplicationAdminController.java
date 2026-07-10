@@ -110,45 +110,8 @@ public class ApplyApplicationAdminController {
         return applyApplicationService.getApplyApplication(id);
     }
 
-    @Operation(
-        summary = "원서접수 생성",
-        description = """
-                새로운 원서접수를 생성합니다.
-                
-                필수 입력 사항:
-                - 구분 (중등부/고등부/독학재수)
-                - 학생정보 (이름, 성별, 학년, 휴대폰, 주소)
-                - 보호자정보 (최소 1명 이상)
-                
-                선택 입력 사항:
-                - 신청과목 (구분에 따라 제한)
-                - 성적표 파일
-                - 증명사진 파일
-                - 희망대학/학과 (독학재수만)
-                
-                과목 선택 규칙:
-                - 중등부: 국어, 영어, 수학, 사회, 과학
-                - 고등부: 국어, 영어, 수학
-                - 독학재수: 과목 선택 없음
-                
-                주의사항:
-                - 상태는 자동으로 REGISTERED로 설정
-                - 파일은 임시 파일에서 정식 파일로 승격
-                - 중복 원서접수 검증 수행
-                """
-    )
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public ResponseData<Long> createApplyApplication(
-            @Parameter(description = "원서접수 생성 요청")
-            @RequestBody @Valid RequestApplyApplicationCreate request) {
-        
-        log.info("원서접수 생성 요청. 학생명={}, 구분={}, 과목수={}", 
-                request.getStudentName(), request.getDivision(), 
-                request.getSubjects() != null ? request.getSubjects().size() : 0);
-        
-        return applyApplicationService.createApplyApplication(request);
-    }
+    // 원서접수는 사용자가 직접 생성하므로 관리자 생성 API 제거
+    // 사용자는 /api/public/apply 엔드포인트를 통해서만 원서접수 가능
 
     @Operation(
         summary = "원서접수 수정",

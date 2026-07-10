@@ -588,4 +588,62 @@ public class ExplanationReservationRepositoryImpl implements ExplanationReservat
         
         return reservationsWithSchedule;
     }
+
+    /**
+     * 이전 예약 조회 (목록에서 위에 있는 글).
+     * createdAt > current.createdAt OR (createdAt = current.createdAt AND id > current.id)
+     */
+    @Override
+    public ExplanationReservation findPreviousReservation(Long currentId) {
+        // 현재 예약 조회
+        ExplanationReservation current = queryFactory
+                .selectFrom(reservation)
+                .where(reservation.id.eq(currentId))
+                .fetchOne();
+                
+        if (current == null) {
+            return null;
+        }
+        
+        return queryFactory
+                .selectFrom(reservation)
+                .where(
+                    reservation.createdAt.gt(current.getCreatedAt())
+                    .or(
+                        reservation.createdAt.eq(current.getCreatedAt())
+                        .and(reservation.id.gt(currentId))
+                    )
+                )
+                .orderBy(reservation.createdAt.asc(), reservation.id.asc())
+                .fetchFirst();
+    }
+
+    /**
+     * 다음 예약 조회 (목록에서 아래에 있는 글).
+     * createdAt < current.createdAt OR (createdAt = current.createdAt AND id < current.id)
+     */
+    @Override
+    public ExplanationReservation findNextReservation(Long currentId) {
+        // 현재 예약 조회
+        ExplanationReservation current = queryFactory
+                .selectFrom(reservation)
+                .where(reservation.id.eq(currentId))
+                .fetchOne();
+                
+        if (current == null) {
+            return null;
+        }
+        
+        return queryFactory
+                .selectFrom(reservation)
+                .where(
+                    reservation.createdAt.lt(current.getCreatedAt())
+                    .or(
+                        reservation.createdAt.eq(current.getCreatedAt())
+                        .and(reservation.id.lt(currentId))
+                    )
+                )
+                .orderBy(reservation.createdAt.desc(), reservation.id.desc())
+                .fetchFirst();
+    }
 }

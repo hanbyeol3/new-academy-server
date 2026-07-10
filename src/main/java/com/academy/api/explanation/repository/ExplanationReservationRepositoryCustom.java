@@ -98,4 +98,20 @@ public interface ExplanationReservationRepositoryCustom {
      * @return 예약 정보와 회차/설명회 정보가 포함된 목록
      */
     java.util.List<com.academy.api.explanation.dto.ReservationWithSchedule> findReservationsForReminder(java.time.LocalDate targetDate);
+
+    /**
+     * 이전 예약 조회.
+     * 
+     * @param currentId 현재 예약 ID
+     * @return 이전 예약 (없으면 null)
+     */
+    ExplanationReservation findPreviousReservation(Long currentId);
+
+    /**
+     * 다음 예약 조회.
+     * 
+     * @param currentId 현재 예약 ID
+     * @return 다음 예약 (없으면 null)
+     */
+    ExplanationReservation findNextReservation(Long currentId);
 }

@@ -201,15 +201,14 @@ public class ApplyApplicationMapper {
     }
 
     /**
-     * 관리자 생성 이력 생성.
+     * 사용자 생성 이력 생성.
      */
-    public ApplyApplicationLog createAdminCreateLog(ApplyApplication applyApplication, 
-                                                   String adminName, Long createdBy) {
+    public ApplyApplicationLog createUserCreateLog(ApplyApplication applyApplication) {
         return ApplyApplicationLog.builder()
                 .applyApplication(applyApplication)
                 .logType(ApplicationLogType.CREATE)
-                .logContent("관리자 " + adminName + "이(가) 원서접수를 생성하였습니다.")
-                .createdBy(createdBy)
+                .logContent("사용자가 원서접수를 신청하였습니다.")
+                .createdBy(null)  // 사용자는 비회원이므로 null
                 .build();
     }
 
