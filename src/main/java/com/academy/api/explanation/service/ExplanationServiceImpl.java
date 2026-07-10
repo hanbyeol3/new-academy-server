@@ -1512,6 +1512,9 @@ public class ExplanationServiceImpl implements ExplanationService {
      * 예약 목록 엑셀 워크북 생성.
      */
     private Workbook createReservationExcelWorkbook(List<ReservationWithDetails> reservationsWithDetails) {
+        // headless 모드 설정 (폰트 관련 오류 방지)
+        System.setProperty("java.awt.headless", "true");
+        
         Workbook workbook = new XSSFWorkbook();
         Sheet sheet = workbook.createSheet("예약 목록");
 

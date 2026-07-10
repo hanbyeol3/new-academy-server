@@ -1,0 +1,9 @@
+[build]
+builder = "nixpacks"
+
+[build.nixpacksPlan.phases.setup]
+nixPkgs = ["...", "fontconfig", "freetype", "libfreetype6"]
+aptPkgs = ["fontconfig", "libfreetype6", "fonts-dejavu-core"]
+
+[deploy]
+startCommand = "java -Dfile.encoding=UTF-8 -Djava.awt.headless=true -jar build/libs/*.jar"
