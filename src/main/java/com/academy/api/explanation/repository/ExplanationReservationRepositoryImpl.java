@@ -29,563 +29,621 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ExplanationReservationRepositoryImpl implements ExplanationReservationRepositoryCustom {
 
-    private final JPAQueryFactory queryFactory;
-    
-    private static final QExplanationReservation reservation = QExplanationReservation.explanationReservation;
-    private static final QExplanationSchedule schedule = QExplanationSchedule.explanationSchedule;
-    private static final QExplanation explanation = QExplanation.explanation;
-
-    @Override
-    public Page<ExplanationReservation> searchReservationsForAdmin(Long explanationId, Long scheduleId,
-                                                                  String keyword, ReservationStatus status,
-                                                                  LocalDateTime startDateTime, LocalDateTime endDateTime,
-                                                                  Pageable pageable) {
-        log.debug("[ExplanationReservationRepositoryImpl] 관리자용 예약 검색. explanationId={}, scheduleId={}, keyword={}, status={}, startDateTime={}, endDateTime={}", 
-                explanationId, scheduleId, keyword, status, startDateTime, endDateTime);
-
-        BooleanExpression predicate = createSearchPredicate(explanationId, scheduleId, keyword, status, startDateTime, endDateTime);
-
-        JPAQuery<ExplanationReservation> query = queryFactory
-                .selectFrom(reservation)
-                .leftJoin(schedule).on(reservation.scheduleId.eq(schedule.id))
-                .leftJoin(explanation).on(schedule.explanationId.eq(explanation.id))
-                .where(predicate)
-                .offset(pageable.getOffset())
-                .limit(pageable.getPageSize());
-
-        // 정렬 적용
-        OrderSpecifier<?>[] orderSpecifiers = createOrderSpecifiers(pageable.getSort());
-        if (orderSpecifiers.length > 0) {
-            query.orderBy(orderSpecifiers);
-        }
-
-        List<ExplanationReservation> reservations = query.fetch();
-
-        // 카운트 쿼리
-        long total = queryFactory
-                .select(reservation.count())
-                .from(reservation)
-                .leftJoin(schedule).on(reservation.scheduleId.eq(schedule.id))
-                .leftJoin(explanation).on(schedule.explanationId.eq(explanation.id))
-                .where(predicate)
-                .fetchOne();
-
-        log.debug("[ExplanationReservationRepositoryImpl] 관리자용 예약 검색 완료. 결과수={}, 전체수={}", 
-                reservations.size(), total);
-
-        return new PageImpl<>(reservations, pageable, total);
-    }
-
-    @Override
-    public Page<ExplanationReservation> searchReservationsByPhone(String applicantPhone, String keyword,
-                                                                 Pageable pageable) {
-        log.debug("[ExplanationReservationRepositoryImpl] 전화번호 기반 예약 검색. applicantPhone={}, keyword={}", 
-                applicantPhone, keyword);
-
-        BooleanExpression predicate = createPhoneSearchPredicate(applicantPhone, keyword);
-
-        JPAQuery<ExplanationReservation> query = queryFactory
-                .selectFrom(reservation)
-                .leftJoin(schedule).on(reservation.scheduleId.eq(schedule.id))
-                .leftJoin(explanation).on(schedule.explanationId.eq(explanation.id))
-                .where(predicate)
-                .offset(pageable.getOffset())
-                .limit(pageable.getPageSize());
-
-        // 정렬 적용
-        OrderSpecifier<?>[] orderSpecifiers = createOrderSpecifiers(pageable.getSort());
-        if (orderSpecifiers.length > 0) {
-            query.orderBy(orderSpecifiers);
-        }
-
-        List<ExplanationReservation> reservations = query.fetch();
-
-        // 카운트 쿼리
-        long total = queryFactory
-                .select(reservation.count())
-                .from(reservation)
-                .leftJoin(schedule).on(reservation.scheduleId.eq(schedule.id))
-                .leftJoin(explanation).on(schedule.explanationId.eq(explanation.id))
-                .where(predicate)
-                .fetchOne();
-
-        log.debug("[ExplanationReservationRepositoryImpl] 전화번호 기반 예약 검색 완료. 결과수={}, 전체수={}", 
-                reservations.size(), total);
-
-        return new PageImpl<>(reservations, pageable, total);
-    }
-
-    @Override
-    public List<ReservationWithDetails> findReservationsForExport(Long explanationId, Long scheduleId,
-                                                                 String keyword, String applicantName,
-                                                                 String applicantPhone, String studentName,
-                                                                 String studentPhone, String schoolName,
-                                                                 ReservationStatus status,
-                                                                 LocalDateTime startDateTime, LocalDateTime endDateTime) {
-        log.debug("[ExplanationReservationRepositoryImpl] 엑셀용 예약 조회 (상세정보 포함). explanationId={}, scheduleId={}, keyword={}, " +
-                "applicantName={}, applicantPhone={}, studentName={}, studentPhone={}, schoolName={}, status={}", 
-                explanationId, scheduleId, keyword, applicantName, applicantPhone, studentName, studentPhone, schoolName, status);
-
-        BooleanExpression predicate = createAdvancedSearchPredicate(explanationId, scheduleId, keyword, applicantName, applicantPhone, 
-                studentName, studentPhone, schoolName, status, null, startDateTime, endDateTime);
-
-        List<Tuple> tuples = queryFactory
-                .select(reservation, schedule, explanation)
-                .from(reservation)
-                .leftJoin(schedule).on(reservation.scheduleId.eq(schedule.id))
-                .leftJoin(explanation).on(schedule.explanationId.eq(explanation.id))
-                .where(predicate)
-                .orderBy(reservation.createdAt.desc())
-                .fetch();
-
-        List<ReservationWithDetails> results = tuples.stream()
-                .map(tuple -> ReservationWithDetails.builder()
-                        .reservation(tuple.get(reservation))
-                        .schedule(tuple.get(schedule))
-                        .explanation(tuple.get(explanation))
-                        .build())
-                .toList();
-
-        log.debug("[ExplanationReservationRepositoryImpl] 엑셀용 예약 조회 완료. 개수={}", results.size());
-        return results;
-    }
-
-    /**
-     * 고급 검색 조건 생성 (개별 필드 검색 + 통합 키워드 검색).
-     * 
-     * @param explanationId 설명회 ID
-     * @param scheduleId 회차 ID
-     * @param keyword 통합 검색 키워드 (OR 조건)
-     * @param applicantName 신청자 이름 (개별 검색)
-     * @param applicantPhone 신청자 전화번호 (개별 검색)
-     * @param studentName 학생 이름 (개별 검색)
-     * @param studentPhone 학생 전화번호 (개별 검색)
-     * @param schoolName 학교명 (개별 검색)
-     * @param status 예약 상태
-     * @param isMarketingAgree 마케팅 동의 여부
-     * @param startDateTime 시작 일시
-     * @param endDateTime 종료 일시
-     * @return 검색 조건
-     */
-    private BooleanExpression createAdvancedSearchPredicate(Long explanationId, Long scheduleId,
-                                                           String keyword, String applicantName,
-                                                           String applicantPhone, String studentName,
-                                                           String studentPhone, String schoolName,
-                                                           ReservationStatus status,
-                                                           Boolean isMarketingAgree,
-                                                           LocalDateTime startDateTime, LocalDateTime endDateTime) {
-        BooleanExpression predicate = null;
-
-        // 설명회 ID 필터
-        if (explanationId != null) {
-            predicate = and(predicate, schedule.explanationId.eq(explanationId));
-        }
-
-        // 회차 ID 필터
-        if (scheduleId != null) {
-            predicate = and(predicate, reservation.scheduleId.eq(scheduleId));
-        }
-
-        // 예약 상태 필터
-        if (status != null) {
-            predicate = and(predicate, reservation.status.eq(status));
-        }
-
-        // 마케팅 수신 동의 여부 필터
-        if (isMarketingAgree != null) {
-            predicate = and(predicate, reservation.isMarketingAgree.eq(isMarketingAgree));
-        }
-
-        // 개별 필드 검색 조건 (AND 연산)
-        if (applicantName != null && !applicantName.trim().isEmpty()) {
-            predicate = and(predicate, reservation.applicantName.like("%" + applicantName.trim() + "%"));
-        }
-        
-        if (applicantPhone != null && !applicantPhone.trim().isEmpty()) {
-            // 전화번호 검색 시 하이픈 제거하고 검색
-            String phoneNumber = applicantPhone.trim().replaceAll("-", "");
-            StringTemplate phoneWithoutHyphen = Expressions.stringTemplate("REPLACE({0}, '-', '')", reservation.applicantPhone);
-            predicate = and(predicate, phoneWithoutHyphen.like("%" + phoneNumber + "%"));
-        }
-        
-        if (studentName != null && !studentName.trim().isEmpty()) {
-            predicate = and(predicate, reservation.studentName.like("%" + studentName.trim() + "%"));
-        }
-        
-        if (studentPhone != null && !studentPhone.trim().isEmpty()) {
-            // 전화번호 검색 시 하이픈 제거하고 검색
-            String phoneNumber = studentPhone.trim().replaceAll("-", "");
-            StringTemplate phoneWithoutHyphen = Expressions.stringTemplate("REPLACE({0}, '-', '')", reservation.studentPhone);
-            predicate = and(predicate, phoneWithoutHyphen.like("%" + phoneNumber + "%"));
-        }
-        
-        if (schoolName != null && !schoolName.trim().isEmpty()) {
-            predicate = and(predicate, reservation.schoolName.like("%" + schoolName.trim() + "%"));
-        }
-
-        // 통합 키워드 검색 (OR 연산) - 개별 필드 검색과 별개로 적용
-        if (keyword != null && !keyword.trim().isEmpty()) {
-            String likeKeyword = "%" + keyword.trim() + "%";
-            // 전화번호 검색용 키워드 (하이픈 제거)
-            String phoneKeyword = "%" + keyword.trim().replaceAll("-", "") + "%";
-            
-            StringTemplate applicantPhoneNoHyphen = Expressions.stringTemplate("REPLACE({0}, '-', '')", reservation.applicantPhone);
-            StringTemplate studentPhoneNoHyphen = Expressions.stringTemplate("REPLACE({0}, '-', '')", reservation.studentPhone);
-            
-            BooleanExpression keywordCondition = reservation.applicantName.like(likeKeyword)
-                    .or(applicantPhoneNoHyphen.like(phoneKeyword))
-                    .or(reservation.studentName.like(likeKeyword))
-                    .or(studentPhoneNoHyphen.like(phoneKeyword))
-                    .or(reservation.schoolName.like(likeKeyword));
-            predicate = and(predicate, keywordCondition);
-        }
-
-        // 날짜 범위 검색
-        if (startDateTime != null) {
-            predicate = and(predicate, reservation.createdAt.goe(startDateTime));
-        }
-        if (endDateTime != null) {
-            predicate = and(predicate, reservation.createdAt.loe(endDateTime));
-        }
-
-        return predicate;
-    }
-
-    /**
-     * 검색 조건 생성.
-     * 
-     * @param explanationId 설명회 ID
-     * @param scheduleId 회차 ID
-     * @param keyword 검색 키워드
-     * @param status 예약 상태
-     * @param startDateTime 시작 일시
-     * @param endDateTime 종료 일시
-     * @return 검색 조건
-     */
-    private BooleanExpression createSearchPredicate(Long explanationId, Long scheduleId,
-                                                   String keyword, ReservationStatus status,
-                                                   LocalDateTime startDateTime, LocalDateTime endDateTime) {
-        BooleanExpression predicate = null;
-
-        // 설명회 ID 필터
-        if (explanationId != null) {
-            predicate = and(predicate, schedule.explanationId.eq(explanationId));
-        }
-
-        // 회차 ID 필터 (우선순위 높음)
-        if (scheduleId != null) {
-            predicate = and(predicate, reservation.scheduleId.eq(scheduleId));
-        }
-
-        // 예약 상태 필터
-        if (status != null) {
-            predicate = and(predicate, reservation.status.eq(status));
-        }
-
-        // 키워드 검색 (신청자명, 전화번호, 학생명, 학교명)
-        if (keyword != null && !keyword.trim().isEmpty()) {
-            String likeKeyword = "%" + keyword.trim() + "%";
-            // 전화번호 검색용 키워드 (하이픈 제거)
-            String phoneKeyword = "%" + keyword.trim().replaceAll("-", "") + "%";
-            
-            StringTemplate applicantPhoneNoHyphen = Expressions.stringTemplate("REPLACE({0}, '-', '')", reservation.applicantPhone);
-            StringTemplate studentPhoneNoHyphen = Expressions.stringTemplate("REPLACE({0}, '-', '')", reservation.studentPhone);
-            
-            BooleanExpression keywordCondition = reservation.applicantName.like(likeKeyword)
-                    .or(applicantPhoneNoHyphen.like(phoneKeyword))
-                    .or(reservation.studentName.like(likeKeyword))
-                    .or(studentPhoneNoHyphen.like(phoneKeyword))
-                    .or(reservation.schoolName.like(likeKeyword));
-            predicate = and(predicate, keywordCondition);
-        }
-
-        // 날짜 범위 검색 (예약 생성일 기준)
-        if (startDateTime != null) {
-            predicate = and(predicate, reservation.createdAt.goe(startDateTime));
-        }
-        if (endDateTime != null) {
-            predicate = and(predicate, reservation.createdAt.loe(endDateTime));
-        }
-
-        return predicate;
-    }
-
-    /**
-     * 엑셀 다운로드용 검색 조건 생성 (날짜 필터 없음).
-     * 
-     * @param explanationId 설명회 ID
-     * @param scheduleId 회차 ID
-     * @param status 예약 상태
-     * @param keyword 검색 키워드
-     * @return 검색 조건
-     */
-    private BooleanExpression createSearchPredicateForExport(Long explanationId, Long scheduleId,
-                                                            ReservationStatus status, String keyword) {
-        BooleanExpression predicate = null;
-
-        // 설명회 ID 필터
-        if (explanationId != null) {
-            predicate = and(predicate, schedule.explanationId.eq(explanationId));
-        }
-
-        // 회차 ID 필터 (우선순위 높음)
-        if (scheduleId != null) {
-            predicate = and(predicate, reservation.scheduleId.eq(scheduleId));
-        }
-
-        // 예약 상태 필터
-        if (status != null) {
-            predicate = and(predicate, reservation.status.eq(status));
-        }
-
-        // 키워드 검색 (신청자명, 전화번호, 학생명, 학교명)
-        if (keyword != null && !keyword.trim().isEmpty()) {
-            String likeKeyword = "%" + keyword.trim() + "%";
-            // 전화번호 검색용 키워드 (하이픈 제거)
-            String phoneKeyword = "%" + keyword.trim().replaceAll("-", "") + "%";
-            
-            StringTemplate applicantPhoneNoHyphen = Expressions.stringTemplate("REPLACE({0}, '-', '')", reservation.applicantPhone);
-            StringTemplate studentPhoneNoHyphen = Expressions.stringTemplate("REPLACE({0}, '-', '')", reservation.studentPhone);
-            
-            BooleanExpression keywordCondition = reservation.applicantName.like(likeKeyword)
-                    .or(applicantPhoneNoHyphen.like(phoneKeyword))
-                    .or(reservation.studentName.like(likeKeyword))
-                    .or(studentPhoneNoHyphen.like(phoneKeyword))
-                    .or(reservation.schoolName.like(likeKeyword));
-            predicate = and(predicate, keywordCondition);
-        }
-
-        return predicate;
-    }
-
-    /**
-     * 전화번호 기반 검색 조건 생성.
-     * 
-     * @param applicantPhone 신청자 전화번호
-     * @param keyword 검색 키워드
-     * @return 검색 조건
-     */
-    private BooleanExpression createPhoneSearchPredicate(String applicantPhone, String keyword) {
-        BooleanExpression predicate = null;
-
-        // 전화번호 필터 (필수)
-        if (applicantPhone != null && !applicantPhone.trim().isEmpty()) {
-            predicate = and(predicate, reservation.applicantPhone.eq(applicantPhone.trim()));
-        }
-
-        // 키워드 검색 (설명회 제목, 학생명)
-        if (keyword != null && !keyword.trim().isEmpty()) {
-            String likeKeyword = "%" + keyword.trim() + "%";
-            BooleanExpression keywordCondition = explanation.title.like(likeKeyword)
-                    .or(reservation.studentName.like(likeKeyword));
-            predicate = and(predicate, keywordCondition);
-        }
-
-        return predicate;
-    }
-
-    /**
-     * 정렬 조건 생성.
-     * 
-     * @param sort 정렬 정보
-     * @return 정렬 조건 배열
-     */
-    private OrderSpecifier<?>[] createOrderSpecifiers(Sort sort) {
-        if (sort.isEmpty()) {
-            return new OrderSpecifier[]{reservation.createdAt.desc()};
-        }
-
-        return sort.stream()
-                .map(order -> {
-                    String property = order.getProperty();
-                    boolean ascending = order.getDirection().isAscending();
-
-                    return switch (property) {
-                        case "applicantName" -> ascending ? reservation.applicantName.asc() : reservation.applicantName.desc();
-                        case "studentName" -> ascending ? reservation.studentName.asc() : reservation.studentName.desc();
-                        case "status" -> ascending ? reservation.status.asc() : reservation.status.desc();
-                        case "createdAt" -> ascending ? reservation.createdAt.asc() : reservation.createdAt.desc();
-                        case "scheduleStartAt" -> ascending ? schedule.startAt.asc() : schedule.startAt.desc();
-                        default -> reservation.createdAt.desc();
-                    };
-                })
-                .toArray(OrderSpecifier[]::new);
-    }
-
-    @Override
-    public Page<ReservationWithDetails> searchReservationsWithDetailsForAdmin(Long explanationId, Long scheduleId,
-                                                                             String keyword, String applicantName,
-                                                                             String applicantPhone, String studentName,
-                                                                             String studentPhone, String schoolName,
-                                                                             ReservationStatus status,
-                                                                             Boolean isMarketingAgree,
-                                                                             LocalDateTime startDateTime, LocalDateTime endDateTime,
-                                                                             Pageable pageable) {
-        log.debug("[ExplanationReservationRepositoryImpl] 관리자용 예약 검색(상세정보 포함). explanationId={}, scheduleId={}, keyword={}, " +
-                "applicantName={}, applicantPhone={}, studentName={}, studentPhone={}, schoolName={}, status={}, isMarketingAgree={}", 
-                explanationId, scheduleId, keyword, applicantName, applicantPhone, studentName, studentPhone, schoolName, status, isMarketingAgree);
-
-        BooleanExpression predicate = createAdvancedSearchPredicate(explanationId, scheduleId, keyword, applicantName, applicantPhone, 
-                studentName, studentPhone, schoolName, status, isMarketingAgree, startDateTime, endDateTime);
-
-        // 메인 쿼리 - Tuple로 각 엔티티 조회
-        JPAQuery<Tuple> query = queryFactory
-                .select(reservation, schedule, explanation)
-                .from(reservation)
-                .leftJoin(schedule).on(reservation.scheduleId.eq(schedule.id))
-                .leftJoin(explanation).on(schedule.explanationId.eq(explanation.id))
-                .where(predicate)
-                .offset(pageable.getOffset())
-                .limit(pageable.getPageSize());
-
-        // 정렬 적용
-        OrderSpecifier<?>[] orderSpecifiers = createOrderSpecifiers(pageable.getSort());
-        if (orderSpecifiers.length > 0) {
-            query.orderBy(orderSpecifiers);
-        }
-
-        List<Tuple> results = query.fetch();
-        
-        // Tuple을 ReservationWithDetails로 변환
-        List<ReservationWithDetails> reservationDetails = results.stream()
-                .map(tuple -> ReservationWithDetails.builder()
-                        .reservation(tuple.get(reservation))
-                        .schedule(tuple.get(schedule))
-                        .explanation(tuple.get(explanation))
-                        .build())
-                .collect(Collectors.toList());
-
-        // 카운트 쿼리
-        long total = queryFactory
-                .select(reservation.count())
-                .from(reservation)
-                .leftJoin(schedule).on(reservation.scheduleId.eq(schedule.id))
-                .leftJoin(explanation).on(schedule.explanationId.eq(explanation.id))
-                .where(predicate)
-                .fetchOne();
-
-        log.debug("[ExplanationReservationRepositoryImpl] 관리자용 예약 검색(상세정보 포함) 완료. 결과수={}, 전체수={}", 
-                reservationDetails.size(), total);
-
-        return new PageImpl<>(reservationDetails, pageable, total);
-    }
-
-    /**
-     * 검색 조건 생성 (마케팅 동의 포함).
-     * 
-     * @param explanationId 설명회 ID
-     * @param scheduleId 회차 ID
-     * @param keyword 검색 키워드
-     * @param status 예약 상태
-     * @param isMarketingAgree 마케팅 수신 동의 여부
-     * @param startDateTime 시작 일시
-     * @param endDateTime 종료 일시
-     * @return 검색 조건
-     */
-    private BooleanExpression createSearchPredicateWithMarketing(Long explanationId, Long scheduleId,
-                                                                 String keyword, ReservationStatus status,
-                                                                 Boolean isMarketingAgree,
-                                                                 LocalDateTime startDateTime, LocalDateTime endDateTime) {
-        BooleanExpression predicate = null;
-
-        // 설명회 ID 필터
-        if (explanationId != null) {
-            predicate = and(predicate, schedule.explanationId.eq(explanationId));
-        }
-
-        // 회차 ID 필터 (우선순위 높음)
-        if (scheduleId != null) {
-            predicate = and(predicate, reservation.scheduleId.eq(scheduleId));
-        }
-
-        // 예약 상태 필터
-        if (status != null) {
-            predicate = and(predicate, reservation.status.eq(status));
-        }
-
-        // 마케팅 수신 동의 필터
-        if (isMarketingAgree != null) {
-            predicate = and(predicate, reservation.isMarketingAgree.eq(isMarketingAgree));
-        }
-
-        // 키워드 검색 (신청자명, 전화번호, 학생명, 학교명)
-        if (keyword != null && !keyword.trim().isEmpty()) {
-            String likeKeyword = "%" + keyword.trim() + "%";
-            // 전화번호 검색용 키워드 (하이픈 제거)
-            String phoneKeyword = "%" + keyword.trim().replaceAll("-", "") + "%";
-            
-            StringTemplate applicantPhoneNoHyphen = Expressions.stringTemplate("REPLACE({0}, '-', '')", reservation.applicantPhone);
-            StringTemplate studentPhoneNoHyphen = Expressions.stringTemplate("REPLACE({0}, '-', '')", reservation.studentPhone);
-            
-            BooleanExpression keywordCondition = reservation.applicantName.like(likeKeyword)
-                    .or(applicantPhoneNoHyphen.like(phoneKeyword))
-                    .or(reservation.studentName.like(likeKeyword))
-                    .or(studentPhoneNoHyphen.like(phoneKeyword))
-                    .or(reservation.schoolName.like(likeKeyword));
-            predicate = and(predicate, keywordCondition);
-        }
-
-        // 날짜 범위 검색 (예약 생성일 기준)
-        if (startDateTime != null) {
-            predicate = and(predicate, reservation.createdAt.goe(startDateTime));
-        }
-        if (endDateTime != null) {
-            predicate = and(predicate, reservation.createdAt.loe(endDateTime));
-        }
-
-        return predicate;
-    }
-
-    /**
-     * BooleanExpression AND 연산 도우미.
-     * 
-     * @param left 좌측 조건
-     * @param right 우측 조건
-     * @return AND 결과
-     */
-    private BooleanExpression and(BooleanExpression left, BooleanExpression right) {
-        if (left == null) return right;
-        if (right == null) return left;
-        return left.and(right);
-    }
-    
-    @Override
-    public List<com.academy.api.explanation.dto.ReservationWithSchedule> findReservationsForReminder(java.time.LocalDate targetDate) {
-        log.info("[ExplanationReservationRepositoryImpl] D-1 리마인더 대상 예약 조회. targetDate={}", targetDate);
-        
-        // targetDate의 시작과 끝 시간 계산
-        LocalDateTime startOfDay = targetDate.atStartOfDay();
-        LocalDateTime endOfDay = targetDate.plusDays(1).atStartOfDay();
-        
-        // 쿼리 실행: 내일 예정된 설명회의 확정 예약들을 조회
-        List<Tuple> results = queryFactory
-                .select(reservation, schedule, explanation)
-                .from(reservation)
-                .innerJoin(schedule).on(reservation.scheduleId.eq(schedule.id))
-                .innerJoin(explanation).on(schedule.explanationId.eq(explanation.id))
-                .where(
-                    reservation.status.eq(ReservationStatus.CONFIRMED),  // 확정된 예약만
-                    schedule.startAt.goe(startOfDay),                    // 대상 날짜 시작 이후
-                    schedule.startAt.lt(endOfDay),                       // 대상 날짜 끝 이전
-                    schedule.isCanceled.isFalse(),                       // 취소되지 않은 회차만
-                    schedule.isAdminClosed.isFalse(),                    // 관리자가 마감하지 않은 회차만
-                    explanation.isPublished.isTrue()                     // 공개된 설명회만
-                )
-                .orderBy(schedule.startAt.asc(), reservation.id.asc())
-                .fetch();
-        
-        // Tuple을 ReservationWithSchedule DTO로 변환
-        List<com.academy.api.explanation.dto.ReservationWithSchedule> reservationsWithSchedule = results.stream()
-                .map(tuple -> new com.academy.api.explanation.dto.ReservationWithSchedule(
-                    tuple.get(reservation),
-                    tuple.get(schedule),
-                    tuple.get(explanation)
-                ))
-                .collect(Collectors.toList());
-        
-        log.info("[ExplanationReservationRepositoryImpl] D-1 리마인더 대상 예약 조회 완료. 건수={}", 
-                reservationsWithSchedule.size());
-        
-        return reservationsWithSchedule;
-    }
+	private final JPAQueryFactory queryFactory;
+
+	private static final QExplanationReservation reservation = QExplanationReservation.explanationReservation;
+	private static final QExplanationSchedule schedule = QExplanationSchedule.explanationSchedule;
+	private static final QExplanation explanation = QExplanation.explanation;
+
+	@Override
+	public Page<ExplanationReservation> searchReservationsForAdmin(Long explanationId, Long scheduleId,
+	                                                               String keyword, ReservationStatus status,
+	                                                               LocalDateTime startDateTime, LocalDateTime endDateTime,
+	                                                               Pageable pageable) {
+		log.debug("[ExplanationReservationRepositoryImpl] 관리자용 예약 검색. explanationId={}, scheduleId={}, keyword={}, status={}, startDateTime={}, endDateTime={}",
+				explanationId, scheduleId, keyword, status, startDateTime, endDateTime);
+
+		BooleanExpression predicate = createSearchPredicate(explanationId, scheduleId, keyword, status, startDateTime, endDateTime);
+
+		JPAQuery<ExplanationReservation> query = queryFactory
+				.selectFrom(reservation)
+				.leftJoin(schedule).on(reservation.scheduleId.eq(schedule.id))
+				.leftJoin(explanation).on(schedule.explanationId.eq(explanation.id))
+				.where(predicate)
+				.offset(pageable.getOffset())
+				.limit(pageable.getPageSize());
+
+		// 정렬 적용
+		OrderSpecifier<?>[] orderSpecifiers = createOrderSpecifiers(pageable.getSort());
+		if (orderSpecifiers.length > 0) {
+			query.orderBy(orderSpecifiers);
+		}
+
+		List<ExplanationReservation> reservations = query.fetch();
+
+		// 카운트 쿼리
+		long total = queryFactory
+				.select(reservation.count())
+				.from(reservation)
+				.leftJoin(schedule).on(reservation.scheduleId.eq(schedule.id))
+				.leftJoin(explanation).on(schedule.explanationId.eq(explanation.id))
+				.where(predicate)
+				.fetchOne();
+
+		log.debug("[ExplanationReservationRepositoryImpl] 관리자용 예약 검색 완료. 결과수={}, 전체수={}",
+				reservations.size(), total);
+
+		return new PageImpl<>(reservations, pageable, total);
+	}
+
+	@Override
+	public Page<ExplanationReservation> searchReservationsByPhone(String applicantPhone, String keyword,
+	                                                              Pageable pageable) {
+		log.debug("[ExplanationReservationRepositoryImpl] 전화번호 기반 예약 검색. applicantPhone={}, keyword={}",
+				applicantPhone, keyword);
+
+		BooleanExpression predicate = createPhoneSearchPredicate(applicantPhone, keyword);
+
+		JPAQuery<ExplanationReservation> query = queryFactory
+				.selectFrom(reservation)
+				.leftJoin(schedule).on(reservation.scheduleId.eq(schedule.id))
+				.leftJoin(explanation).on(schedule.explanationId.eq(explanation.id))
+				.where(predicate)
+				.offset(pageable.getOffset())
+				.limit(pageable.getPageSize());
+
+		// 정렬 적용
+		OrderSpecifier<?>[] orderSpecifiers = createOrderSpecifiers(pageable.getSort());
+		if (orderSpecifiers.length > 0) {
+			query.orderBy(orderSpecifiers);
+		}
+
+		List<ExplanationReservation> reservations = query.fetch();
+
+		// 카운트 쿼리
+		long total = queryFactory
+				.select(reservation.count())
+				.from(reservation)
+				.leftJoin(schedule).on(reservation.scheduleId.eq(schedule.id))
+				.leftJoin(explanation).on(schedule.explanationId.eq(explanation.id))
+				.where(predicate)
+				.fetchOne();
+
+		log.debug("[ExplanationReservationRepositoryImpl] 전화번호 기반 예약 검색 완료. 결과수={}, 전체수={}",
+				reservations.size(), total);
+
+		return new PageImpl<>(reservations, pageable, total);
+	}
+
+	@Override
+	public List<ReservationWithDetails> findReservationsForExport(Long explanationId, Long scheduleId,
+	                                                              String keyword, String applicantName,
+	                                                              String applicantPhone, String studentName,
+	                                                              String studentPhone, String schoolName,
+	                                                              ReservationStatus status,
+	                                                              LocalDateTime startDateTime, LocalDateTime endDateTime) {
+		log.debug("[ExplanationReservationRepositoryImpl] 엑셀용 예약 조회 (상세정보 포함). explanationId={}, scheduleId={}, keyword={}, " +
+						"applicantName={}, applicantPhone={}, studentName={}, studentPhone={}, schoolName={}, status={}",
+				explanationId, scheduleId, keyword, applicantName, applicantPhone, studentName, studentPhone, schoolName, status);
+
+		BooleanExpression predicate = createAdvancedSearchPredicate(explanationId, scheduleId, keyword, applicantName, applicantPhone,
+				studentName, studentPhone, schoolName, status, null, startDateTime, endDateTime);
+
+		List<Tuple> tuples = queryFactory
+				.select(reservation, schedule, explanation)
+				.from(reservation)
+				.leftJoin(schedule).on(reservation.scheduleId.eq(schedule.id))
+				.leftJoin(explanation).on(schedule.explanationId.eq(explanation.id))
+				.where(predicate)
+				.orderBy(reservation.createdAt.desc())
+				.fetch();
+
+		List<ReservationWithDetails> results = tuples.stream()
+				.map(tuple -> ReservationWithDetails.builder()
+						.reservation(tuple.get(reservation))
+						.schedule(tuple.get(schedule))
+						.explanation(tuple.get(explanation))
+						.build())
+				.toList();
+
+		log.debug("[ExplanationReservationRepositoryImpl] 엑셀용 예약 조회 완료. 개수={}", results.size());
+		return results;
+	}
+
+	/**
+	 * 고급 검색 조건 생성 (개별 필드 검색 + 통합 키워드 검색).
+	 *
+	 * @param explanationId 설명회 ID
+	 * @param scheduleId 회차 ID
+	 * @param keyword 통합 검색 키워드 (OR 조건)
+	 * @param applicantName 신청자 이름 (개별 검색)
+	 * @param applicantPhone 신청자 전화번호 (개별 검색)
+	 * @param studentName 학생 이름 (개별 검색)
+	 * @param studentPhone 학생 전화번호 (개별 검색)
+	 * @param schoolName 학교명 (개별 검색)
+	 * @param status 예약 상태
+	 * @param isMarketingAgree 마케팅 동의 여부
+	 * @param startDateTime 시작 일시
+	 * @param endDateTime 종료 일시
+	 * @return 검색 조건
+	 */
+	private BooleanExpression createAdvancedSearchPredicate(Long explanationId, Long scheduleId,
+	                                                        String keyword, String applicantName,
+	                                                        String applicantPhone, String studentName,
+	                                                        String studentPhone, String schoolName,
+	                                                        ReservationStatus status,
+	                                                        Boolean isMarketingAgree,
+	                                                        LocalDateTime startDateTime, LocalDateTime endDateTime) {
+		BooleanExpression predicate = null;
+
+		// 설명회 ID 필터
+		if (explanationId != null) {
+			predicate = and(predicate, schedule.explanationId.eq(explanationId));
+		}
+
+		// 회차 ID 필터
+		if (scheduleId != null) {
+			predicate = and(predicate, reservation.scheduleId.eq(scheduleId));
+		}
+
+		// 예약 상태 필터
+		if (status != null) {
+			predicate = and(predicate, reservation.status.eq(status));
+		}
+
+		// 마케팅 수신 동의 여부 필터
+		if (isMarketingAgree != null) {
+			predicate = and(predicate, reservation.isMarketingAgree.eq(isMarketingAgree));
+		}
+
+		// 개별 필드 검색 조건 (AND 연산)
+		if (applicantName != null && !applicantName.trim().isEmpty()) {
+			predicate = and(predicate, reservation.applicantName.like("%" + applicantName.trim() + "%"));
+		}
+
+		if (applicantPhone != null && !applicantPhone.trim().isEmpty()) {
+			// 전화번호 검색 시 하이픈 제거하고 검색
+			String phoneNumber = applicantPhone.trim().replaceAll("-", "");
+			StringTemplate phoneWithoutHyphen = Expressions.stringTemplate("REPLACE({0}, '-', '')", reservation.applicantPhone);
+			predicate = and(predicate, phoneWithoutHyphen.like("%" + phoneNumber + "%"));
+		}
+
+		if (studentName != null && !studentName.trim().isEmpty()) {
+			predicate = and(predicate, reservation.studentName.like("%" + studentName.trim() + "%"));
+		}
+
+		if (studentPhone != null && !studentPhone.trim().isEmpty()) {
+			// 전화번호 검색 시 하이픈 제거하고 검색
+			String phoneNumber = studentPhone.trim().replaceAll("-", "");
+			StringTemplate phoneWithoutHyphen = Expressions.stringTemplate("REPLACE({0}, '-', '')", reservation.studentPhone);
+			predicate = and(predicate, phoneWithoutHyphen.like("%" + phoneNumber + "%"));
+		}
+
+		if (schoolName != null && !schoolName.trim().isEmpty()) {
+			predicate = and(predicate, reservation.schoolName.like("%" + schoolName.trim() + "%"));
+		}
+
+		// 통합 키워드 검색 (OR 연산) - 개별 필드 검색과 별개로 적용
+		if (keyword != null && !keyword.trim().isEmpty()) {
+			String likeKeyword = "%" + keyword.trim() + "%";
+			// 전화번호 검색용 키워드 (하이픈 제거)
+			String phoneKeyword = "%" + keyword.trim().replaceAll("-", "") + "%";
+
+			StringTemplate applicantPhoneNoHyphen = Expressions.stringTemplate("REPLACE({0}, '-', '')", reservation.applicantPhone);
+			StringTemplate studentPhoneNoHyphen = Expressions.stringTemplate("REPLACE({0}, '-', '')", reservation.studentPhone);
+
+			BooleanExpression keywordCondition = reservation.applicantName.like(likeKeyword)
+					.or(applicantPhoneNoHyphen.like(phoneKeyword))
+					.or(reservation.studentName.like(likeKeyword))
+					.or(studentPhoneNoHyphen.like(phoneKeyword))
+					.or(reservation.schoolName.like(likeKeyword));
+			predicate = and(predicate, keywordCondition);
+		}
+
+		// 날짜 범위 검색
+		if (startDateTime != null) {
+			predicate = and(predicate, reservation.createdAt.goe(startDateTime));
+		}
+		if (endDateTime != null) {
+			predicate = and(predicate, reservation.createdAt.loe(endDateTime));
+		}
+
+		return predicate;
+	}
+
+	/**
+	 * 검색 조건 생성.
+	 *
+	 * @param explanationId 설명회 ID
+	 * @param scheduleId 회차 ID
+	 * @param keyword 검색 키워드
+	 * @param status 예약 상태
+	 * @param startDateTime 시작 일시
+	 * @param endDateTime 종료 일시
+	 * @return 검색 조건
+	 */
+	private BooleanExpression createSearchPredicate(Long explanationId, Long scheduleId,
+	                                                String keyword, ReservationStatus status,
+	                                                LocalDateTime startDateTime, LocalDateTime endDateTime) {
+		BooleanExpression predicate = null;
+
+		// 설명회 ID 필터
+		if (explanationId != null) {
+			predicate = and(predicate, schedule.explanationId.eq(explanationId));
+		}
+
+		// 회차 ID 필터 (우선순위 높음)
+		if (scheduleId != null) {
+			predicate = and(predicate, reservation.scheduleId.eq(scheduleId));
+		}
+
+		// 예약 상태 필터
+		if (status != null) {
+			predicate = and(predicate, reservation.status.eq(status));
+		}
+
+		// 키워드 검색 (신청자명, 전화번호, 학생명, 학교명)
+		if (keyword != null && !keyword.trim().isEmpty()) {
+			String likeKeyword = "%" + keyword.trim() + "%";
+			// 전화번호 검색용 키워드 (하이픈 제거)
+			String phoneKeyword = "%" + keyword.trim().replaceAll("-", "") + "%";
+
+			StringTemplate applicantPhoneNoHyphen = Expressions.stringTemplate("REPLACE({0}, '-', '')", reservation.applicantPhone);
+			StringTemplate studentPhoneNoHyphen = Expressions.stringTemplate("REPLACE({0}, '-', '')", reservation.studentPhone);
+
+			BooleanExpression keywordCondition = reservation.applicantName.like(likeKeyword)
+					.or(applicantPhoneNoHyphen.like(phoneKeyword))
+					.or(reservation.studentName.like(likeKeyword))
+					.or(studentPhoneNoHyphen.like(phoneKeyword))
+					.or(reservation.schoolName.like(likeKeyword));
+			predicate = and(predicate, keywordCondition);
+		}
+
+		// 날짜 범위 검색 (예약 생성일 기준)
+		if (startDateTime != null) {
+			predicate = and(predicate, reservation.createdAt.goe(startDateTime));
+		}
+		if (endDateTime != null) {
+			predicate = and(predicate, reservation.createdAt.loe(endDateTime));
+		}
+
+		return predicate;
+	}
+
+	/**
+	 * 엑셀 다운로드용 검색 조건 생성 (날짜 필터 없음).
+	 *
+	 * @param explanationId 설명회 ID
+	 * @param scheduleId 회차 ID
+	 * @param status 예약 상태
+	 * @param keyword 검색 키워드
+	 * @return 검색 조건
+	 */
+	private BooleanExpression createSearchPredicateForExport(Long explanationId, Long scheduleId,
+	                                                         ReservationStatus status, String keyword) {
+		BooleanExpression predicate = null;
+
+		// 설명회 ID 필터
+		if (explanationId != null) {
+			predicate = and(predicate, schedule.explanationId.eq(explanationId));
+		}
+
+		// 회차 ID 필터 (우선순위 높음)
+		if (scheduleId != null) {
+			predicate = and(predicate, reservation.scheduleId.eq(scheduleId));
+		}
+
+		// 예약 상태 필터
+		if (status != null) {
+			predicate = and(predicate, reservation.status.eq(status));
+		}
+
+		// 키워드 검색 (신청자명, 전화번호, 학생명, 학교명)
+		if (keyword != null && !keyword.trim().isEmpty()) {
+			String likeKeyword = "%" + keyword.trim() + "%";
+			// 전화번호 검색용 키워드 (하이픈 제거)
+			String phoneKeyword = "%" + keyword.trim().replaceAll("-", "") + "%";
+
+			StringTemplate applicantPhoneNoHyphen = Expressions.stringTemplate("REPLACE({0}, '-', '')", reservation.applicantPhone);
+			StringTemplate studentPhoneNoHyphen = Expressions.stringTemplate("REPLACE({0}, '-', '')", reservation.studentPhone);
+
+			BooleanExpression keywordCondition = reservation.applicantName.like(likeKeyword)
+					.or(applicantPhoneNoHyphen.like(phoneKeyword))
+					.or(reservation.studentName.like(likeKeyword))
+					.or(studentPhoneNoHyphen.like(phoneKeyword))
+					.or(reservation.schoolName.like(likeKeyword));
+			predicate = and(predicate, keywordCondition);
+		}
+
+		return predicate;
+	}
+
+	/**
+	 * 전화번호 기반 검색 조건 생성.
+	 *
+	 * @param applicantPhone 신청자 전화번호
+	 * @param keyword 검색 키워드
+	 * @return 검색 조건
+	 */
+	private BooleanExpression createPhoneSearchPredicate(String applicantPhone, String keyword) {
+		BooleanExpression predicate = null;
+
+		// 전화번호 필터 (필수)
+		if (applicantPhone != null && !applicantPhone.trim().isEmpty()) {
+			predicate = and(predicate, reservation.applicantPhone.eq(applicantPhone.trim()));
+		}
+
+		// 키워드 검색 (설명회 제목, 학생명)
+		if (keyword != null && !keyword.trim().isEmpty()) {
+			String likeKeyword = "%" + keyword.trim() + "%";
+			BooleanExpression keywordCondition = explanation.title.like(likeKeyword)
+					.or(reservation.studentName.like(likeKeyword));
+			predicate = and(predicate, keywordCondition);
+		}
+
+		return predicate;
+	}
+
+	/**
+	 * 정렬 조건 생성.
+	 *
+	 * @param sort 정렬 정보
+	 * @return 정렬 조건 배열
+	 */
+	private OrderSpecifier<?>[] createOrderSpecifiers(Sort sort) {
+		if (sort.isEmpty()) {
+			return new OrderSpecifier[]{reservation.createdAt.desc()};
+		}
+
+		return sort.stream()
+				.map(order -> {
+					String property = order.getProperty();
+					boolean ascending = order.getDirection().isAscending();
+
+					return switch (property) {
+						case "applicantName" -> ascending ? reservation.applicantName.asc() : reservation.applicantName.desc();
+						case "studentName" -> ascending ? reservation.studentName.asc() : reservation.studentName.desc();
+						case "status" -> ascending ? reservation.status.asc() : reservation.status.desc();
+						case "createdAt" -> ascending ? reservation.createdAt.asc() : reservation.createdAt.desc();
+						case "scheduleStartAt" -> ascending ? schedule.startAt.asc() : schedule.startAt.desc();
+						default -> reservation.createdAt.desc();
+					};
+				})
+				.toArray(OrderSpecifier[]::new);
+	}
+
+	@Override
+	public Page<ReservationWithDetails> searchReservationsWithDetailsForAdmin(Long explanationId, Long scheduleId,
+	                                                                          String keyword, String applicantName,
+	                                                                          String applicantPhone, String studentName,
+	                                                                          String studentPhone, String schoolName,
+	                                                                          ReservationStatus status,
+	                                                                          Boolean isMarketingAgree,
+	                                                                          LocalDateTime startDateTime, LocalDateTime endDateTime,
+	                                                                          Pageable pageable) {
+		log.debug("[ExplanationReservationRepositoryImpl] 관리자용 예약 검색(상세정보 포함). explanationId={}, scheduleId={}, keyword={}, " +
+						"applicantName={}, applicantPhone={}, studentName={}, studentPhone={}, schoolName={}, status={}, isMarketingAgree={}",
+				explanationId, scheduleId, keyword, applicantName, applicantPhone, studentName, studentPhone, schoolName, status, isMarketingAgree);
+
+		BooleanExpression predicate = createAdvancedSearchPredicate(explanationId, scheduleId, keyword, applicantName, applicantPhone,
+				studentName, studentPhone, schoolName, status, isMarketingAgree, startDateTime, endDateTime);
+
+		// 메인 쿼리 - Tuple로 각 엔티티 조회
+		JPAQuery<Tuple> query = queryFactory
+				.select(reservation, schedule, explanation)
+				.from(reservation)
+				.leftJoin(schedule).on(reservation.scheduleId.eq(schedule.id))
+				.leftJoin(explanation).on(schedule.explanationId.eq(explanation.id))
+				.where(predicate)
+				.offset(pageable.getOffset())
+				.limit(pageable.getPageSize());
+
+		// 정렬 적용
+		OrderSpecifier<?>[] orderSpecifiers = createOrderSpecifiers(pageable.getSort());
+		if (orderSpecifiers.length > 0) {
+			query.orderBy(orderSpecifiers);
+		}
+
+		List<Tuple> results = query.fetch();
+
+		// Tuple을 ReservationWithDetails로 변환
+		List<ReservationWithDetails> reservationDetails = results.stream()
+				.map(tuple -> ReservationWithDetails.builder()
+						.reservation(tuple.get(reservation))
+						.schedule(tuple.get(schedule))
+						.explanation(tuple.get(explanation))
+						.build())
+				.collect(Collectors.toList());
+
+		// 카운트 쿼리
+		long total = queryFactory
+				.select(reservation.count())
+				.from(reservation)
+				.leftJoin(schedule).on(reservation.scheduleId.eq(schedule.id))
+				.leftJoin(explanation).on(schedule.explanationId.eq(explanation.id))
+				.where(predicate)
+				.fetchOne();
+
+		log.debug("[ExplanationReservationRepositoryImpl] 관리자용 예약 검색(상세정보 포함) 완료. 결과수={}, 전체수={}",
+				reservationDetails.size(), total);
+
+		return new PageImpl<>(reservationDetails, pageable, total);
+	}
+
+	/**
+	 * 검색 조건 생성 (마케팅 동의 포함).
+	 *
+	 * @param explanationId 설명회 ID
+	 * @param scheduleId 회차 ID
+	 * @param keyword 검색 키워드
+	 * @param status 예약 상태
+	 * @param isMarketingAgree 마케팅 수신 동의 여부
+	 * @param startDateTime 시작 일시
+	 * @param endDateTime 종료 일시
+	 * @return 검색 조건
+	 */
+	private BooleanExpression createSearchPredicateWithMarketing(Long explanationId, Long scheduleId,
+	                                                             String keyword, ReservationStatus status,
+	                                                             Boolean isMarketingAgree,
+	                                                             LocalDateTime startDateTime, LocalDateTime endDateTime) {
+		BooleanExpression predicate = null;
+
+		// 설명회 ID 필터
+		if (explanationId != null) {
+			predicate = and(predicate, schedule.explanationId.eq(explanationId));
+		}
+
+		// 회차 ID 필터 (우선순위 높음)
+		if (scheduleId != null) {
+			predicate = and(predicate, reservation.scheduleId.eq(scheduleId));
+		}
+
+		// 예약 상태 필터
+		if (status != null) {
+			predicate = and(predicate, reservation.status.eq(status));
+		}
+
+		// 마케팅 수신 동의 필터
+		if (isMarketingAgree != null) {
+			predicate = and(predicate, reservation.isMarketingAgree.eq(isMarketingAgree));
+		}
+
+		// 키워드 검색 (신청자명, 전화번호, 학생명, 학교명)
+		if (keyword != null && !keyword.trim().isEmpty()) {
+			String likeKeyword = "%" + keyword.trim() + "%";
+			// 전화번호 검색용 키워드 (하이픈 제거)
+			String phoneKeyword = "%" + keyword.trim().replaceAll("-", "") + "%";
+
+			StringTemplate applicantPhoneNoHyphen = Expressions.stringTemplate("REPLACE({0}, '-', '')", reservation.applicantPhone);
+			StringTemplate studentPhoneNoHyphen = Expressions.stringTemplate("REPLACE({0}, '-', '')", reservation.studentPhone);
+
+			BooleanExpression keywordCondition = reservation.applicantName.like(likeKeyword)
+					.or(applicantPhoneNoHyphen.like(phoneKeyword))
+					.or(reservation.studentName.like(likeKeyword))
+					.or(studentPhoneNoHyphen.like(phoneKeyword))
+					.or(reservation.schoolName.like(likeKeyword));
+			predicate = and(predicate, keywordCondition);
+		}
+
+		// 날짜 범위 검색 (예약 생성일 기준)
+		if (startDateTime != null) {
+			predicate = and(predicate, reservation.createdAt.goe(startDateTime));
+		}
+		if (endDateTime != null) {
+			predicate = and(predicate, reservation.createdAt.loe(endDateTime));
+		}
+
+		return predicate;
+	}
+
+	/**
+	 * BooleanExpression AND 연산 도우미.
+	 *
+	 * @param left 좌측 조건
+	 * @param right 우측 조건
+	 * @return AND 결과
+	 */
+	private BooleanExpression and(BooleanExpression left, BooleanExpression right) {
+		if (left == null) return right;
+		if (right == null) return left;
+		return left.and(right);
+	}
+
+	@Override
+	public List<com.academy.api.explanation.dto.ReservationWithSchedule> findReservationsForReminder(java.time.LocalDate targetDate) {
+		log.info("[ExplanationReservationRepositoryImpl] D-1 리마인더 대상 예약 조회. targetDate={}", targetDate);
+
+		// targetDate의 시작과 끝 시간 계산
+		LocalDateTime startOfDay = targetDate.atStartOfDay();
+		LocalDateTime endOfDay = targetDate.plusDays(1).atStartOfDay();
+
+		// 쿼리 실행: 내일 예정된 설명회의 확정 예약들을 조회
+		List<Tuple> results = queryFactory
+				.select(reservation, schedule, explanation)
+				.from(reservation)
+				.innerJoin(schedule).on(reservation.scheduleId.eq(schedule.id))
+				.innerJoin(explanation).on(schedule.explanationId.eq(explanation.id))
+				.where(
+						reservation.status.eq(ReservationStatus.CONFIRMED),  // 확정된 예약만
+						schedule.startAt.goe(startOfDay),                    // 대상 날짜 시작 이후
+						schedule.startAt.lt(endOfDay),                       // 대상 날짜 끝 이전
+						schedule.isCanceled.isFalse(),                       // 취소되지 않은 회차만
+						schedule.isAdminClosed.isFalse(),                    // 관리자가 마감하지 않은 회차만
+						explanation.isPublished.isTrue()                     // 공개된 설명회만
+				)
+				.orderBy(schedule.startAt.asc(), reservation.id.asc())
+				.fetch();
+
+		// Tuple을 ReservationWithSchedule DTO로 변환
+		List<com.academy.api.explanation.dto.ReservationWithSchedule> reservationsWithSchedule = results.stream()
+				.map(tuple -> new com.academy.api.explanation.dto.ReservationWithSchedule(
+						tuple.get(reservation),
+						tuple.get(schedule),
+						tuple.get(explanation)
+				))
+				.collect(Collectors.toList());
+
+		log.info("[ExplanationReservationRepositoryImpl] D-1 리마인더 대상 예약 조회 완료. 건수={}",
+				reservationsWithSchedule.size());
+
+		return reservationsWithSchedule;
+	}
+
+	/**
+	 * 이전 예약 조회 (목록에서 위에 있는 글).
+	 * createdAt > current.createdAt OR (createdAt = current.createdAt AND id > current.id)
+	 */
+	@Override
+	public ExplanationReservation findPreviousReservation(Long currentId) {
+		// 현재 예약 조회
+		ExplanationReservation current = queryFactory
+				.selectFrom(reservation)
+				.where(reservation.id.eq(currentId))
+				.fetchOne();
+
+		if (current == null) {
+			return null;
+		}
+
+		return queryFactory
+				.selectFrom(reservation)
+				.where(
+						reservation.createdAt.gt(current.getCreatedAt())
+								.or(
+										reservation.createdAt.eq(current.getCreatedAt())
+												.and(reservation.id.gt(currentId))
+								)
+				)
+				.orderBy(reservation.createdAt.asc(), reservation.id.asc())
+				.fetchFirst();
+	}
+
+	/**
+	 * 다음 예약 조회 (목록에서 아래에 있는 글).
+	 * createdAt < current.createdAt OR (createdAt = current.createdAt AND id < current.id)
+	 */
+	@Override
+	public ExplanationReservation findNextReservation(Long currentId) {
+		// 현재 예약 조회
+		ExplanationReservation current = queryFactory
+				.selectFrom(reservation)
+				.where(reservation.id.eq(currentId))
+				.fetchOne();
+
+		if (current == null) {
+			return null;
+		}
+
+		return queryFactory
+				.selectFrom(reservation)
+				.where(
+						reservation.createdAt.lt(current.getCreatedAt())
+								.or(
+										reservation.createdAt.eq(current.getCreatedAt())
+												.and(reservation.id.lt(currentId))
+								)
+				)
+				.orderBy(reservation.createdAt.desc(), reservation.id.desc())
+				.fetchFirst();
+	}
 }

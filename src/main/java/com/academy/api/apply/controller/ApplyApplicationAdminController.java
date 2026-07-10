@@ -34,11 +34,11 @@ import java.util.List;
 @PreAuthorize("hasRole('ADMIN')")
 public class ApplyApplicationAdminController {
 
-    private final ApplyApplicationService applyApplicationService;
+	private final ApplyApplicationService applyApplicationService;
 
-    @Operation(
-        summary = "원서접수 목록 조회 (관리자용)",
-        description = """
+	@Operation(
+			summary = "원서접수 목록 조회 (관리자용)",
+			description = """
                 관리자용 원서접수 목록을 조회합니다.
                 
                 검색 조건:
@@ -55,38 +55,38 @@ public class ApplyApplicationAdminController {
                 - 페이징 정보 포함
                 - 생성자/수정자 정보 포함
                 """
-    )
-    @GetMapping
-    public ResponseList<ResponseApplyApplicationAdminList> getApplyApplicationList(
-            @Parameter(description = "검색 키워드 (학생명, 휴대폰, 보호자명)", example = "김철수")
-            @RequestParam(required = false) String keyword,
-            @Parameter(description = "원서접수 상태", example = "REGISTERED")
-            @RequestParam(required = false) String status,
-            @Parameter(description = "구분", example = "MIDDLE")
-            @RequestParam(required = false) String division,
-            @Parameter(description = "담당자명", example = "김상담")
-            @RequestParam(required = false) String assigneeName,
-            @Parameter(description = "담당자 ID", example = "1")
-            @RequestParam(required = false) Long assigneeId,
-            @Parameter(description = "생성일 시작", example = "2024-01-01 00:00:00")
-            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime createdFrom,
-            @Parameter(description = "생성일 종료", example = "2024-12-31 23:59:59")
-            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime createdTo,
-            @Parameter(description = "정렬 기준", example = "createdat,desc")
-            @RequestParam(required = false) String sortBy,
-            @Parameter(description = "페이징 정보")
-            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        
-        log.info("원서접수 목록 조회 요청. keyword={}, status={}, division={}, assigneeName={}, page={}, size={}", 
-                keyword, status, division, assigneeName, pageable.getPageNumber(), pageable.getPageSize());
-        
-        return applyApplicationService.getApplyApplicationList(keyword, status, division, assigneeName, 
-                assigneeId, createdFrom, createdTo, sortBy, pageable);
-    }
+	)
+	@GetMapping
+	public ResponseList<ResponseApplyApplicationAdminList> getApplyApplicationList(
+			@Parameter(description = "검색 키워드 (학생명, 휴대폰, 보호자명)", example = "김철수")
+			@RequestParam(required = false) String keyword,
+			@Parameter(description = "원서접수 상태", example = "REGISTERED")
+			@RequestParam(required = false) String status,
+			@Parameter(description = "구분", example = "MIDDLE")
+			@RequestParam(required = false) String division,
+			@Parameter(description = "담당자명", example = "김상담")
+			@RequestParam(required = false) String assigneeName,
+			@Parameter(description = "담당자 ID", example = "1")
+			@RequestParam(required = false) Long assigneeId,
+			@Parameter(description = "생성일 시작", example = "2024-01-01 00:00:00")
+			@RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime createdFrom,
+			@Parameter(description = "생성일 종료", example = "2024-12-31 23:59:59")
+			@RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime createdTo,
+			@Parameter(description = "정렬 기준", example = "createdat,desc")
+			@RequestParam(required = false) String sortBy,
+			@Parameter(description = "페이징 정보")
+			@PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
-    @Operation(
-        summary = "원서접수 상세 조회",
-        description = """
+		log.info("원서접수 목록 조회 요청. keyword={}, status={}, division={}, assigneeName={}, page={}, size={}",
+				keyword, status, division, assigneeName, pageable.getPageNumber(), pageable.getPageSize());
+
+		return applyApplicationService.getApplyApplicationList(keyword, status, division, assigneeName,
+				assigneeId, createdFrom, createdTo, sortBy, pageable);
+	}
+
+	@Operation(
+			summary = "원서접수 상세 조회",
+			description = """
                 원서접수의 상세 정보를 조회합니다.
                 
                 응답 데이터:
@@ -99,60 +99,23 @@ public class ApplyApplicationAdminController {
                 - 존재하지 않는 ID인 경우 404 에러 반환
                 - 파일 정보는 URL 형태로 제공
                 """
-    )
-    @GetMapping("/{id}")
-    public ResponseData<ResponseApplyApplicationDetail> getApplyApplication(
-            @Parameter(description = "원서접수 ID", example = "1")
-            @PathVariable Long id) {
-        
-        log.info("원서접수 상세 조회 요청. id={}", id);
-        
-        return applyApplicationService.getApplyApplication(id);
-    }
+	)
+	@GetMapping("/{id}")
+	public ResponseData<ResponseApplyApplicationDetail> getApplyApplication(
+			@Parameter(description = "원서접수 ID", example = "1")
+			@PathVariable Long id) {
 
-    @Operation(
-        summary = "원서접수 생성",
-        description = """
-                새로운 원서접수를 생성합니다.
-                
-                필수 입력 사항:
-                - 구분 (중등부/고등부/독학재수)
-                - 학생정보 (이름, 성별, 학년, 휴대폰, 주소)
-                - 보호자정보 (최소 1명 이상)
-                
-                선택 입력 사항:
-                - 신청과목 (구분에 따라 제한)
-                - 성적표 파일
-                - 증명사진 파일
-                - 희망대학/학과 (독학재수만)
-                
-                과목 선택 규칙:
-                - 중등부: 국어, 영어, 수학, 사회, 과학
-                - 고등부: 국어, 영어, 수학
-                - 독학재수: 과목 선택 없음
-                
-                주의사항:
-                - 상태는 자동으로 REGISTERED로 설정
-                - 파일은 임시 파일에서 정식 파일로 승격
-                - 중복 원서접수 검증 수행
-                """
-    )
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public ResponseData<Long> createApplyApplication(
-            @Parameter(description = "원서접수 생성 요청")
-            @RequestBody @Valid RequestApplyApplicationCreate request) {
-        
-        log.info("원서접수 생성 요청. 학생명={}, 구분={}, 과목수={}", 
-                request.getStudentName(), request.getDivision(), 
-                request.getSubjects() != null ? request.getSubjects().size() : 0);
-        
-        return applyApplicationService.createApplyApplication(request);
-    }
+		log.info("원서접수 상세 조회 요청. id={}", id);
 
-    @Operation(
-        summary = "원서접수 수정",
-        description = """
+		return applyApplicationService.getApplyApplication(id);
+	}
+
+	// 원서접수는 사용자가 직접 생성하므로 관리자 생성 API 제거
+	// 사용자는 /api/public/apply 엔드포인트를 통해서만 원서접수 가능
+
+	@Operation(
+			summary = "원서접수 수정",
+			description = """
                 기존 원서접수 정보를 수정합니다.
                 
                 수정 가능 항목:
@@ -169,22 +132,22 @@ public class ApplyApplicationAdminController {
                 - 과목 변경 시 기존 과목 매핑 재구성
                 - 수정 시각 자동 업데이트
                 """
-    )
-    @PutMapping("/{id}")
-    public ResponseData<ResponseApplyApplicationDetail> updateApplyApplication(
-            @Parameter(description = "수정할 원서접수 ID", example = "1")
-            @PathVariable Long id,
-            @Parameter(description = "원서접수 수정 요청")
-            @RequestBody @Valid RequestApplyApplicationUpdate request) {
-        
-        log.info("원서접수 수정 요청. id={}, 학생명={}", id, request.getStudentName());
-        
-        return applyApplicationService.updateApplyApplication(id, request);
-    }
+	)
+	@PutMapping("/{id}")
+	public ResponseData<ResponseApplyApplicationDetail> updateApplyApplication(
+			@Parameter(description = "수정할 원서접수 ID", example = "1")
+			@PathVariable Long id,
+			@Parameter(description = "원서접수 수정 요청")
+			@RequestBody @Valid RequestApplyApplicationUpdate request) {
 
-    @Operation(
-        summary = "원서접수 삭제",
-        description = """
+		log.info("원서접수 수정 요청. id={}, 학생명={}", id, request.getStudentName());
+
+		return applyApplicationService.updateApplyApplication(id, request);
+	}
+
+	@Operation(
+			summary = "원서접수 삭제",
+			description = """
                 원서접수를 삭제합니다.
                 
                 삭제 조건:
@@ -201,20 +164,20 @@ public class ApplyApplicationAdminController {
                 - 실제 운영에서는 soft delete 고려 권장
                 - 통계 데이터에 영향을 줄 수 있습니다
                 """
-    )
-    @DeleteMapping("/{id}")
-    public Response deleteApplyApplication(
-            @Parameter(description = "삭제할 원서접수 ID", example = "1")
-            @PathVariable Long id) {
-        
-        log.info("원서접수 삭제 요청. id={}", id);
-        
-        return applyApplicationService.deleteApplyApplication(id);
-    }
+	)
+	@DeleteMapping("/{id}")
+	public Response deleteApplyApplication(
+			@Parameter(description = "삭제할 원서접수 ID", example = "1")
+			@PathVariable Long id) {
 
-    @Operation(
-        summary = "원서접수 통계 조회",
-        description = """
+		log.info("원서접수 삭제 요청. id={}", id);
+
+		return applyApplicationService.deleteApplyApplication(id);
+	}
+
+	@Operation(
+			summary = "원서접수 통계 조회",
+			description = """
                 원서접수 전체 통계 정보를 조회합니다.
                 
                 통계 항목:
@@ -228,18 +191,18 @@ public class ApplyApplicationAdminController {
                 - 업무량 파악
                 - 트렌드 분석
                 """
-    )
-    @GetMapping("/statistics")
-    public ResponseData<ResponseApplyApplicationStats> getApplyApplicationStats() {
-        
-        log.info("원서접수 통계 조회 요청");
-        
-        return applyApplicationService.getApplyApplicationStats();
-    }
+	)
+	@GetMapping("/statistics")
+	public ResponseData<ResponseApplyApplicationStats> getApplyApplicationStats() {
 
-    @Operation(
-        summary = "상세 통계 조회 (기간별)",
-        description = """
+		log.info("원서접수 통계 조회 요청");
+
+		return applyApplicationService.getApplyApplicationStats();
+	}
+
+	@Operation(
+			summary = "상세 통계 조회 (기간별)",
+			description = """
                 지정된 기간의 원서접수 상세 통계를 조회합니다.
                 
                 통계 항목:
@@ -256,22 +219,22 @@ public class ApplyApplicationAdminController {
                 - 최대 1년 범위까지 조회 가능
                 - 기간이 지정되지 않으면 최근 30일 기준
                 """
-    )
-    @GetMapping("/statistics/detailed")
-    public ResponseData<ResponseApplyApplicationStats> getDetailedStats(
-            @Parameter(description = "조회 시작일", example = "2024-01-01 00:00:00")
-            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startDate,
-            @Parameter(description = "조회 종료일", example = "2024-12-31 23:59:59")
-            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endDate) {
-        
-        log.info("상세 통계 조회 요청. startDate={}, endDate={}", startDate, endDate);
-        
-        return applyApplicationService.getDetailedStats(startDate, endDate);
-    }
+	)
+	@GetMapping("/statistics/detailed")
+	public ResponseData<ResponseApplyApplicationStats> getDetailedStats(
+			@Parameter(description = "조회 시작일", example = "2024-01-01 00:00:00")
+			@RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startDate,
+			@Parameter(description = "조회 종료일", example = "2024-12-31 23:59:59")
+			@RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endDate) {
 
-    @Operation(
-        summary = "원서접수 이력 추가",
-        description = """
+		log.info("상세 통계 조회 요청. startDate={}, endDate={}", startDate, endDate);
+
+		return applyApplicationService.getDetailedStats(startDate, endDate);
+	}
+
+	@Operation(
+			summary = "원서접수 이력 추가",
+			description = """
                 원서접수에 새로운 이력을 추가합니다.
                 
                 이력 타입:
@@ -291,23 +254,23 @@ public class ApplyApplicationAdminController {
                 - 시간순으로 정렬되어 표시
                 - 담당자 정보 자동 기록
                 """
-    )
-    @PostMapping("/{applyId}/logs")
-    @ResponseStatus(HttpStatus.CREATED)
-    public ResponseData<ResponseApplyApplicationLog> addApplyApplicationLog(
-            @Parameter(description = "원서접수 ID", example = "1")
-            @PathVariable Long applyId,
-            @Parameter(description = "이력 생성 요청")
-            @RequestBody @Valid RequestApplyApplicationLogCreate request) {
-        
-        log.info("원서접수 이력 추가 요청. applyId={}, logType={}", applyId, request.getLogType());
-        
-        return applyApplicationService.addApplyApplicationLog(applyId, request);
-    }
+	)
+	@PostMapping("/{applyId}/logs")
+	@ResponseStatus(HttpStatus.CREATED)
+	public ResponseData<ResponseApplyApplicationLog> addApplyApplicationLog(
+			@Parameter(description = "원서접수 ID", example = "1")
+			@PathVariable Long applyId,
+			@Parameter(description = "이력 생성 요청")
+			@RequestBody @Valid RequestApplyApplicationLogCreate request) {
 
-    @Operation(
-        summary = "원서접수 상태 변경",
-        description = """
+		log.info("원서접수 이력 추가 요청. applyId={}, logType={}", applyId, request.getLogType());
+
+		return applyApplicationService.addApplyApplicationLog(applyId, request);
+	}
+
+	@Operation(
+			summary = "원서접수 상태 변경",
+			description = """
                 원서접수의 상태를 변경합니다.
                 
                 상태 변경 규칙:
@@ -324,22 +287,22 @@ public class ApplyApplicationAdminController {
                 - 변경 시각 업데이트
                 - 담당자 정보 기록
                 """
-    )
-    @PutMapping("/{id}/status")
-    public Response updateApplyApplicationStatus(
-            @Parameter(description = "원서접수 ID", example = "1")
-            @PathVariable Long id,
-            @Parameter(description = "변경할 상태", example = "REVIEW")
-            @RequestParam String status) {
-        
-        log.info("원서접수 상태 변경 요청. id={}, status={}", id, status);
-        
-        return applyApplicationService.updateApplyApplicationStatus(id, status);
-    }
+	)
+	@PutMapping("/{id}/status")
+	public Response updateApplyApplicationStatus(
+			@Parameter(description = "원서접수 ID", example = "1")
+			@PathVariable Long id,
+			@Parameter(description = "변경할 상태", example = "REVIEW")
+			@RequestParam String status) {
 
-    @Operation(
-        summary = "원서접수 담당자 배정",
-        description = """
+		log.info("원서접수 상태 변경 요청. id={}, status={}", id, status);
+
+		return applyApplicationService.updateApplyApplicationStatus(id, status);
+	}
+
+	@Operation(
+			summary = "원서접수 담당자 배정",
+			description = """
                 원서접수에 담당자를 배정합니다.
                 
                 배정 규칙:
@@ -356,22 +319,22 @@ public class ApplyApplicationAdminController {
                 - 존재하지 않는 담당자명인 경우 에러
                 - 본인 배정도 가능
                 """
-    )
-    @PutMapping("/{id}/assignee")
-    public Response assignApplyApplication(
-            @Parameter(description = "원서접수 ID", example = "1")
-            @PathVariable Long id,
-            @Parameter(description = "담당자명", example = "김상담")
-            @RequestParam String assigneeName) {
-        
-        log.info("원서접수 담당자 배정 요청. id={}, assigneeName={}", id, assigneeName);
-        
-        return applyApplicationService.assignApplyApplication(id, assigneeName);
-    }
+	)
+	@PutMapping("/{id}/assignee")
+	public Response assignApplyApplication(
+			@Parameter(description = "원서접수 ID", example = "1")
+			@PathVariable Long id,
+			@Parameter(description = "담당자명", example = "김상담")
+			@RequestParam String assigneeName) {
 
-    @Operation(
-        summary = "중복 원서접수 검사",
-        description = """
+		log.info("원서접수 담당자 배정 요청. id={}, assigneeName={}", id, assigneeName);
+
+		return applyApplicationService.assignApplyApplication(id, assigneeName);
+	}
+
+	@Operation(
+			summary = "중복 원서접수 검사",
+			description = """
                 동일한 휴대폰 번호로 등록된 중복 원서접수를 검사합니다.
                 
                 검사 기준:
@@ -388,22 +351,22 @@ public class ApplyApplicationAdminController {
                 - 상담원 확인용
                 - 이상 접수 탐지
                 """
-    )
-    @GetMapping("/duplicates")
-    public ResponseData<List<ResponseApplyApplicationAdminList>> checkDuplicateApplications(
-            @Parameter(description = "학생 휴대폰", example = "010-1234-5678")
-            @RequestParam String studentPhone,
-            @Parameter(description = "검사할 시간 범위 (시간)", example = "24")
-            @RequestParam(defaultValue = "24") int hours) {
-        
-        log.info("중복 원서접수 검사 요청. studentPhone={}, hours={}", studentPhone, hours);
-        
-        return applyApplicationService.checkDuplicateApplications(studentPhone, hours);
-    }
+	)
+	@GetMapping("/duplicates")
+	public ResponseData<List<ResponseApplyApplicationAdminList>> checkDuplicateApplications(
+			@Parameter(description = "학생 휴대폰", example = "010-1234-5678")
+			@RequestParam String studentPhone,
+			@Parameter(description = "검사할 시간 범위 (시간)", example = "24")
+			@RequestParam(defaultValue = "24") int hours) {
 
-    @Operation(
-        summary = "지연 처리 원서접수 조회",
-        description = """
+		log.info("중복 원서접수 검사 요청. studentPhone={}, hours={}", studentPhone, hours);
+
+		return applyApplicationService.checkDuplicateApplications(studentPhone, hours);
+	}
+
+	@Operation(
+			summary = "지연 처리 원서접수 조회",
+			description = """
                 처리가 지연된 원서접수를 조회합니다.
                 
                 지연 기준:
@@ -422,23 +385,23 @@ public class ApplyApplicationAdminController {
                 - SLA 모니터링
                 - 고객 서비스 품질 관리
                 """
-    )
-    @GetMapping("/delayed")
-    public ResponseList<ResponseApplyApplicationAdminList> getDelayedApplications(
-            @Parameter(description = "지연 기준 일수", example = "7")
-            @RequestParam(defaultValue = "7") int days,
-            @Parameter(description = "페이징 정보")
-            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.ASC) Pageable pageable) {
-        
-        log.info("지연 처리 원서접수 조회 요청. days={}, page={}, size={}", 
-                days, pageable.getPageNumber(), pageable.getPageSize());
-        
-        return applyApplicationService.getDelayedApplications(days, pageable);
-    }
+	)
+	@GetMapping("/delayed")
+	public ResponseList<ResponseApplyApplicationAdminList> getDelayedApplications(
+			@Parameter(description = "지연 기준 일수", example = "7")
+			@RequestParam(defaultValue = "7") int days,
+			@Parameter(description = "페이징 정보")
+			@PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.ASC) Pageable pageable) {
 
-    @Operation(
-        summary = "담당자별 원서접수 조회",
-        description = """
+		log.info("지연 처리 원서접수 조회 요청. days={}, page={}, size={}",
+				days, pageable.getPageNumber(), pageable.getPageSize());
+
+		return applyApplicationService.getDelayedApplications(days, pageable);
+	}
+
+	@Operation(
+			summary = "담당자별 원서접수 조회",
+			description = """
                 특정 담당자의 원서접수를 조회합니다.
                 
                 검색 조건:
@@ -453,26 +416,26 @@ public class ApplyApplicationAdminController {
                 - 담당자별 성과 분석
                 - 업무 분배 조정
                 """
-    )
-    @GetMapping("/by-assignee")
-    public ResponseList<ResponseApplyApplicationAdminList> getApplicationsByAssignee(
-            @Parameter(description = "담당자명", example = "김상담")
-            @RequestParam String assigneeName,
-            @Parameter(description = "상태 필터", example = "REVIEW")
-            @RequestParam(required = false) String status,
-            @Parameter(description = "페이징 정보")
-            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        
-        log.info("담당자별 원서접수 조회 요청. assigneeName={}, status={}, page={}, size={}", 
-                assigneeName, status, pageable.getPageNumber(), pageable.getPageSize());
-        
-        return applyApplicationService.getApplicationsByAssignee(assigneeName, status, pageable);
-    }
+	)
+	@GetMapping("/by-assignee")
+	public ResponseList<ResponseApplyApplicationAdminList> getApplicationsByAssignee(
+			@Parameter(description = "담당자명", example = "김상담")
+			@RequestParam String assigneeName,
+			@Parameter(description = "상태 필터", example = "REVIEW")
+			@RequestParam(required = false) String status,
+			@Parameter(description = "페이징 정보")
+			@PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+
+		log.info("담당자별 원서접수 조회 요청. assigneeName={}, status={}, page={}, size={}",
+				assigneeName, status, pageable.getPageNumber(), pageable.getPageSize());
+
+		return applyApplicationService.getApplicationsByAssignee(assigneeName, status, pageable);
+	}
 
 
-    @Operation(
-        summary = "원서접수 목록 엑셀 다운로드",
-        description = """
+	@Operation(
+			summary = "원서접수 목록 엑셀 다운로드",
+			description = """
                 원서접수 목록을 엑셀 파일로 다운로드합니다.
                 
                 검색 조건:
@@ -493,38 +456,38 @@ public class ApplyApplicationAdminController {
                 - 서버 리소스 사용량 고려 필요
                 - 브라우저에서 파일 다운로드 시작됨
                 """
-    )
-    @GetMapping("/export/excel")
-    public void exportApplyApplicationListToExcel(
-            @Parameter(description = "검색 키워드 (학생명, 휴대폰, 보호자명)", example = "김철수")
-            @RequestParam(required = false) String keyword,
-            @Parameter(description = "원서접수 상태", example = "REGISTERED")
-            @RequestParam(required = false) String status,
-            @Parameter(description = "구분", example = "MIDDLE")
-            @RequestParam(required = false) String division,
-            @Parameter(description = "담당자명", example = "김상담")
-            @RequestParam(required = false) String assigneeName,
-            @Parameter(description = "담당자 ID", example = "1")
-            @RequestParam(required = false) Long assigneeId,
-            @Parameter(description = "생성일 시작", example = "2024-01-01 00:00:00")
-            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime createdFrom,
-            @Parameter(description = "생성일 종료", example = "2024-12-31 23:59:59")
-            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime createdTo,
-            @Parameter(description = "정렬 기준", example = "createdat,desc")
-            @RequestParam(required = false) String sortBy,
-            HttpServletResponse response) {
+	)
+	@GetMapping("/export/excel")
+	public void exportApplyApplicationListToExcel(
+			@Parameter(description = "검색 키워드 (학생명, 휴대폰, 보호자명)", example = "김철수")
+			@RequestParam(required = false) String keyword,
+			@Parameter(description = "원서접수 상태", example = "REGISTERED")
+			@RequestParam(required = false) String status,
+			@Parameter(description = "구분", example = "MIDDLE")
+			@RequestParam(required = false) String division,
+			@Parameter(description = "담당자명", example = "김상담")
+			@RequestParam(required = false) String assigneeName,
+			@Parameter(description = "담당자 ID", example = "1")
+			@RequestParam(required = false) Long assigneeId,
+			@Parameter(description = "생성일 시작", example = "2024-01-01 00:00:00")
+			@RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime createdFrom,
+			@Parameter(description = "생성일 종료", example = "2024-12-31 23:59:59")
+			@RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime createdTo,
+			@Parameter(description = "정렬 기준", example = "createdat,desc")
+			@RequestParam(required = false) String sortBy,
+			HttpServletResponse response) {
 
-        log.info("원서접수 목록 엑셀 다운로드 요청. keyword={}, status={}, division={}, assigneeName={}", 
-                keyword, status, division, assigneeName);
+		log.info("원서접수 목록 엑셀 다운로드 요청. keyword={}, status={}, division={}, assigneeName={}",
+				keyword, status, division, assigneeName);
 
-        applyApplicationService.exportApplyApplicationListToExcel(
-                keyword, status, division, assigneeName, assigneeId, 
-                createdFrom, createdTo, sortBy, response);
-    }
+		applyApplicationService.exportApplyApplicationListToExcel(
+				keyword, status, division, assigneeName, assigneeId,
+				createdFrom, createdTo, sortBy, response);
+	}
 
-    @Operation(
-        summary = "원서접수 상세 PDF 다운로드",
-        description = """
+	@Operation(
+			summary = "원서접수 상세 PDF 다운로드",
+			description = """
                 특정 원서접수의 상세 정보를 PDF 파일로 다운로드합니다.
                 
                 출력 내용:
@@ -550,15 +513,15 @@ public class ApplyApplicationAdminController {
                 - 존재하지 않는 ID인 경우 404 에러
                 - PDF 생성 실패 시 500 에러
                 """
-    )
-    @GetMapping("/{id}/export/pdf")
-    public void exportApplyApplicationToPdf(
-            @Parameter(description = "원서접수 ID", example = "1")
-            @PathVariable Long id,
-            HttpServletResponse response) {
+	)
+	@GetMapping("/{id}/export/pdf")
+	public void exportApplyApplicationToPdf(
+			@Parameter(description = "원서접수 ID", example = "1")
+			@PathVariable Long id,
+			HttpServletResponse response) {
 
-        log.info("원서접수 PDF 다운로드 요청. id={}", id);
+		log.info("원서접수 PDF 다운로드 요청. id={}", id);
 
-        applyApplicationService.exportApplyApplicationToPdf(id, response);
-    }
+		applyApplicationService.exportApplyApplicationToPdf(id, response);
+	}
 }

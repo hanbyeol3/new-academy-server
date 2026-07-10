@@ -12,90 +12,106 @@ import java.time.LocalDateTime;
  */
 public interface ExplanationReservationRepositoryCustom {
 
-    /**
-     * 관리자용 예약 목록 검색.
-     * 
-     * @param explanationId 설명회 ID (선택)
-     * @param scheduleId 회차 ID (선택)
-     * @param keyword 검색 키워드 (이름, 전화번호, 학교명)
-     * @param status 예약 상태 (선택)
-     * @param startDateTime 시작 일시 (선택)
-     * @param endDateTime 종료 일시 (선택)
-     * @param pageable 페이징 정보
-     * @return 예약 페이지
-     */
-    Page<ExplanationReservation> searchReservationsForAdmin(Long explanationId, Long scheduleId,
-                                                           String keyword, ReservationStatus status,
-                                                           LocalDateTime startDateTime, LocalDateTime endDateTime,
-                                                           Pageable pageable);
+	/**
+	 * 관리자용 예약 목록 검색.
+	 *
+	 * @param explanationId 설명회 ID (선택)
+	 * @param scheduleId 회차 ID (선택)
+	 * @param keyword 검색 키워드 (이름, 전화번호, 학교명)
+	 * @param status 예약 상태 (선택)
+	 * @param startDateTime 시작 일시 (선택)
+	 * @param endDateTime 종료 일시 (선택)
+	 * @param pageable 페이징 정보
+	 * @return 예약 페이지
+	 */
+	Page<ExplanationReservation> searchReservationsForAdmin(Long explanationId, Long scheduleId,
+	                                                        String keyword, ReservationStatus status,
+	                                                        LocalDateTime startDateTime, LocalDateTime endDateTime,
+	                                                        Pageable pageable);
 
-    /**
-     * 예약 조회 (전화번호 기반).
-     * 
-     * @param applicantPhone 신청자 전화번호
-     * @param keyword 검색 키워드 (설명회 제목, 학생 이름)
-     * @param pageable 페이징 정보
-     * @return 예약 페이지
-     */
-    Page<ExplanationReservation> searchReservationsByPhone(String applicantPhone, String keyword,
-                                                          Pageable pageable);
+	/**
+	 * 예약 조회 (전화번호 기반).
+	 *
+	 * @param applicantPhone 신청자 전화번호
+	 * @param keyword 검색 키워드 (설명회 제목, 학생 이름)
+	 * @param pageable 페이징 정보
+	 * @return 예약 페이지
+	 */
+	Page<ExplanationReservation> searchReservationsByPhone(String applicantPhone, String keyword,
+	                                                       Pageable pageable);
 
-    /**
-     * 엑셀 다운로드용 예약 목록 조회 (설명회/회차 정보 포함, 페이징 없음).
-     * 
-     * @param explanationId 설명회 ID (선택)
-     * @param scheduleId 회차 ID (선택)
-     * @param keyword 통합 검색 키워드
-     * @param applicantName 신청자 이름 (개별 검색)
-     * @param applicantPhone 신청자 전화번호 (개별 검색)
-     * @param studentName 학생 이름 (개별 검색)
-     * @param studentPhone 학생 전화번호 (개별 검색)
-     * @param schoolName 학교명 (개별 검색)
-     * @param status 예약 상태 (선택)
-     * @param startDateTime 시작 일시 (선택)
-     * @param endDateTime 종료 일시 (선택)
-     * @return 예약 목록 (설명회/회차 정보 포함)
-     */
-    java.util.List<ReservationWithDetails> findReservationsForExport(Long explanationId, Long scheduleId,
-                                                                     String keyword, String applicantName,
-                                                                     String applicantPhone, String studentName,
-                                                                     String studentPhone, String schoolName,
-                                                                     ReservationStatus status,
-                                                                     LocalDateTime startDateTime, LocalDateTime endDateTime);
+	/**
+	 * 엑셀 다운로드용 예약 목록 조회 (설명회/회차 정보 포함, 페이징 없음).
+	 *
+	 * @param explanationId 설명회 ID (선택)
+	 * @param scheduleId 회차 ID (선택)
+	 * @param keyword 통합 검색 키워드
+	 * @param applicantName 신청자 이름 (개별 검색)
+	 * @param applicantPhone 신청자 전화번호 (개별 검색)
+	 * @param studentName 학생 이름 (개별 검색)
+	 * @param studentPhone 학생 전화번호 (개별 검색)
+	 * @param schoolName 학교명 (개별 검색)
+	 * @param status 예약 상태 (선택)
+	 * @param startDateTime 시작 일시 (선택)
+	 * @param endDateTime 종료 일시 (선택)
+	 * @return 예약 목록 (설명회/회차 정보 포함)
+	 */
+	java.util.List<ReservationWithDetails> findReservationsForExport(Long explanationId, Long scheduleId,
+	                                                                 String keyword, String applicantName,
+	                                                                 String applicantPhone, String studentName,
+	                                                                 String studentPhone, String schoolName,
+	                                                                 ReservationStatus status,
+	                                                                 LocalDateTime startDateTime, LocalDateTime endDateTime);
 
-    /**
-     * 관리자용 예약 목록 검색 (설명회/회차 정보 포함).
-     * 
-     * @param explanationId 설명회 ID (선택)
-     * @param scheduleId 회차 ID (선택)
-     * @param keyword 통합 검색 키워드 (이름, 전화번호, 학교명)
-     * @param applicantName 신청자 이름 (개별 검색)
-     * @param applicantPhone 신청자 전화번호 (개별 검색)
-     * @param studentName 학생 이름 (개별 검색)
-     * @param studentPhone 학생 전화번호 (개별 검색)
-     * @param schoolName 학교명 (개별 검색)
-     * @param status 예약 상태 (선택)
-     * @param isMarketingAgree 마케팅 수신 동의 여부 (선택)
-     * @param startDateTime 시작 일시 (선택)
-     * @param endDateTime 종료 일시 (선택)
-     * @param pageable 페이징 정보
-     * @return 예약 정보와 설명회/회차 정보가 포함된 결과
-     */
-    Page<ReservationWithDetails> searchReservationsWithDetailsForAdmin(Long explanationId, Long scheduleId,
-                                                                       String keyword, String applicantName,
-                                                                       String applicantPhone, String studentName,
-                                                                       String studentPhone, String schoolName,
-                                                                       ReservationStatus status,
-                                                                       Boolean isMarketingAgree,
-                                                                       LocalDateTime startDateTime, LocalDateTime endDateTime,
-                                                                       Pageable pageable);
-    
-    /**
-     * D-1 리마인더 대상 예약 목록 조회.
-     * 내일 예정된 설명회에 대한 확정된 예약들을 조회합니다.
-     * 
-     * @param targetDate 대상 날짜 (설명회가 열리는 날짜)
-     * @return 예약 정보와 회차/설명회 정보가 포함된 목록
-     */
-    java.util.List<com.academy.api.explanation.dto.ReservationWithSchedule> findReservationsForReminder(java.time.LocalDate targetDate);
+	/**
+	 * 관리자용 예약 목록 검색 (설명회/회차 정보 포함).
+	 *
+	 * @param explanationId 설명회 ID (선택)
+	 * @param scheduleId 회차 ID (선택)
+	 * @param keyword 통합 검색 키워드 (이름, 전화번호, 학교명)
+	 * @param applicantName 신청자 이름 (개별 검색)
+	 * @param applicantPhone 신청자 전화번호 (개별 검색)
+	 * @param studentName 학생 이름 (개별 검색)
+	 * @param studentPhone 학생 전화번호 (개별 검색)
+	 * @param schoolName 학교명 (개별 검색)
+	 * @param status 예약 상태 (선택)
+	 * @param isMarketingAgree 마케팅 수신 동의 여부 (선택)
+	 * @param startDateTime 시작 일시 (선택)
+	 * @param endDateTime 종료 일시 (선택)
+	 * @param pageable 페이징 정보
+	 * @return 예약 정보와 설명회/회차 정보가 포함된 결과
+	 */
+	Page<ReservationWithDetails> searchReservationsWithDetailsForAdmin(Long explanationId, Long scheduleId,
+	                                                                   String keyword, String applicantName,
+	                                                                   String applicantPhone, String studentName,
+	                                                                   String studentPhone, String schoolName,
+	                                                                   ReservationStatus status,
+	                                                                   Boolean isMarketingAgree,
+	                                                                   LocalDateTime startDateTime, LocalDateTime endDateTime,
+	                                                                   Pageable pageable);
+
+	/**
+	 * D-1 리마인더 대상 예약 목록 조회.
+	 * 내일 예정된 설명회에 대한 확정된 예약들을 조회합니다.
+	 *
+	 * @param targetDate 대상 날짜 (설명회가 열리는 날짜)
+	 * @return 예약 정보와 회차/설명회 정보가 포함된 목록
+	 */
+	java.util.List<com.academy.api.explanation.dto.ReservationWithSchedule> findReservationsForReminder(java.time.LocalDate targetDate);
+
+	/**
+	 * 이전 예약 조회.
+	 *
+	 * @param currentId 현재 예약 ID
+	 * @return 이전 예약 (없으면 null)
+	 */
+	ExplanationReservation findPreviousReservation(Long currentId);
+
+	/**
+	 * 다음 예약 조회.
+	 *
+	 * @param currentId 현재 예약 ID
+	 * @return 다음 예약 (없으면 null)
+	 */
+	ExplanationReservation findNextReservation(Long currentId);
 }
