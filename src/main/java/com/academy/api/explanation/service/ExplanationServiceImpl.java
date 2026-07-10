@@ -932,74 +932,7 @@ public class ExplanationServiceImpl implements ExplanationService {
             return ResponseData.error("R404", "예약을 찾을 수 없습니다.");
         }
 
-        // 설명회와 회차 정보 조회
-        ExplanationSchedule schedule = scheduleRepository.findById(reservation.getScheduleId()).orElse(null);
-        Explanation explanation = null;
-        if (schedule != null) {
-            explanation = explanationRepository.findById(schedule.getExplanationId()).orElse(null);
-        }
-        
-        // ReservationWithDetails를 사용하여 설명회/회차 정보 포함
-        ReservationWithDetails details = new ReservationWithDetails(reservation, schedule, explanation);
-        ResponseExplanationReservation response = explanationMapper.toReservationResponseWithDetails(details);
-        
-        // 네비게이션 정보 조회 및 설정
-        ExplanationReservation previousReservation = reservationRepository.findPreviousReservation(reservationId);
-        ExplanationReservation nextReservation = reservationRepository.findNextReservation(reservationId);
-        
-        ResponseExplanationReservationNavigation.NavigationItem previousItem = null;
-        ResponseExplanationReservationNavigation.NavigationItem nextItem = null;
-        
-        if (previousReservation != null) {
-            previousItem = ResponseExplanationReservationNavigation.NavigationItem.builder()
-                    .id(previousReservation.getId())
-                    .applicantName(previousReservation.getApplicantName())
-                    .studentName(previousReservation.getStudentName())
-                    .createdAt(previousReservation.getCreatedAt())
-                    .build();
-        }
-        
-        if (nextReservation != null) {
-            nextItem = ResponseExplanationReservationNavigation.NavigationItem.builder()
-                    .id(nextReservation.getId())
-                    .applicantName(nextReservation.getApplicantName())
-                    .studentName(nextReservation.getStudentName())
-                    .createdAt(nextReservation.getCreatedAt())
-                    .build();
-        }
-        
-        ResponseExplanationReservationNavigation navigation = ResponseExplanationReservationNavigation.of(previousItem, nextItem);
-        
-        // Builder 패턴을 사용하여 navigation 필드 설정
-        response = ResponseExplanationReservation.builder()
-                .id(response.getId())
-                .scheduleId(response.getScheduleId())
-                .status(response.getStatus())
-                .canceledBy(response.getCanceledBy())
-                .canceledAt(response.getCanceledAt())
-                .applicantName(response.getApplicantName())
-                .applicantPhone(response.getApplicantPhone())
-                .studentName(response.getStudentName())
-                .studentPhone(response.getStudentPhone())
-                .attendeeCount(response.getAttendeeCount())
-                .gender(response.getGender())
-                .schoolName(response.getSchoolName())
-                .grade(response.getGrade())
-                .memo(response.getMemo())
-                .isMemo(response.getIsMemo())
-                .isMarketingAgree(response.getIsMarketingAgree())
-                .clientIp(response.getClientIp())
-                .createdAt(response.getCreatedAt())
-                .updatedAt(response.getUpdatedAt())
-                .explanationDivision(response.getExplanationDivision())
-                .explanationTitle(response.getExplanationTitle())
-                .roundNo(response.getRoundNo())
-                .scheduleStartAt(response.getScheduleStartAt())
-                .scheduleEndAt(response.getScheduleEndAt())
-                .scheduleLocation(response.getScheduleLocation())
-                .navigation(navigation)
-                .build();
-        
+        ResponseExplanationReservation response = explanationMapper.toReservationResponse(reservation);
         log.debug("[ExplanationService] 예약 상세 조회 완료. reservationId={}", reservationId);
 
         return ResponseData.ok(response);

@@ -59,9 +59,6 @@ public class ResponseExplanationReservation {
     @Schema(description = "메모", example = "특별한 요청사항")
     private String memo;
 
-    @Schema(description = "메모 존재 여부", example = "true")
-    private Boolean isMemo;
-
     @Schema(description = "마케팅 수신 동의", example = "true")
     private Boolean isMarketingAgree;
 
@@ -105,7 +102,4 @@ public class ResponseExplanationReservation {
 
     @Schema(description = "회차 정보 (특별한 상세 조회시에만 사용)", hidden = true)
     private ResponseExplanationSchedule schedule;
-
-    @Schema(description = "이전글/다음글 네비게이션 정보")
-    private ResponseExplanationReservationNavigation navigation;
 }
