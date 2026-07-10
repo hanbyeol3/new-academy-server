@@ -176,8 +176,12 @@ public class ApplyApplicationServiceImpl implements ApplyApplicationService {
         // 과목 선택 유효성 검증
         validateSubjectsByDivision(request.getDivision(), request.getSubjects());
 
-        // 엔티티 생성 (사용자가 직접 생성하므로 createdBy는 null)
-        ApplyApplication application = applyApplicationMapper.toEntityWithCreatedBy(request, null);
+        // 현재 로그인한 관리자 정보
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        String currentUserName = getMemberName(currentUserId);
+
+        // 엔티티 생성 (관리자 ID로 createdBy 설정)
+        ApplyApplication application = applyApplicationMapper.toEntityWithCreatedBy(request, currentUserId);
         application = applyApplicationRepository.save(application);
 
         // 과목 정보 저장
@@ -188,11 +192,12 @@ public class ApplyApplicationServiceImpl implements ApplyApplicationService {
         // 파일 처리 (임시 → 정식 변환)
         processFileUploads(application.getId(), request);
 
-        // 사용자 생성 이력 추가
-        ApplyApplicationLog createLog = applyApplicationMapper.createUserCreateLog(application);
+        // 관리자 생성 이력 추가
+        ApplyApplicationLog createLog = applyApplicationMapper.createAdminCreateLog(
+                application, currentUserName, currentUserId);
         applyApplicationLogRepository.save(createLog);
 
-        log.info("[ApplyApplicationService] 원서접수 생성 완료. ID={}, 학생명={}", application.getId(), request.getStudentName());
+        log.info("[ApplyApplicationService] 원서접수 생성 완료. ID={}, 관리자={}", application.getId(), currentUserName);
 
         // SMS 발송 (실패해도 원서접수는 유지)
         try {
@@ -847,8 +852,6 @@ public class ApplyApplicationServiceImpl implements ApplyApplicationService {
      * 원서접수 목록 엑셀 워크북 생성.
      */
     private Workbook createApplyApplicationExcelWorkbook(List<ApplyApplication> applications) {
-        // headless 모드 설정 (폰트 관련 오류 방지)
-        System.setProperty("java.awt.headless", "true");
         
         Workbook workbook = new XSSFWorkbook();
         Sheet sheet = workbook.createSheet("원서접수 목록");

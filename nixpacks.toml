@@ -1,9 +1,0 @@
-[phases.setup]
-nixPkgs = ["jdk17", "fontconfig", "freetype"]
-aptPkgs = ["fontconfig", "libfreetype6", "fonts-dejavu-core", "libfontconfig1"]
-
-[phases.build]
-cmds = ["./gradlew build -x test"]
-
-[start]
-cmd = "java -Dfile.encoding=UTF-8 -Djava.awt.headless=true -Xmx512m -jar build/libs/*.jar"
