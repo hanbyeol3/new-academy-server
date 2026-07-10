@@ -220,7 +220,7 @@ public class ApplyApplicationMapper {
         return ApplyApplicationLog.builder()
                 .applyApplication(applyApplication)
                 .logType(ApplicationLogType.CREATE)
-                .logContent("온라인을 통해 원서접수가 생성되었습니다.")
+                .logContent("온라인을 통해 원서접수가 생성되었습니다!")
                 .build();
     }
 
