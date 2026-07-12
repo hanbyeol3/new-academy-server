@@ -270,4 +270,14 @@ public class ImprovementCase {
     public void updatePassword(String passwordHash) {
         this.passwordHash = passwordHash;
     }
+    
+    /**
+     * 컨텐츠 업데이트.
+     * 인라인 이미지 URL 변환 후 컨텐츠를 업데이트할 때 사용.
+     * 
+     * @param content 새로운 컨텐츠
+     */
+    public void updateContent(String content) {
+        this.content = content;
+    }
 }

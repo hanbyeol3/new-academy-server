@@ -10,6 +10,9 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import com.academy.api.file.dto.FileReference;
+
+import java.util.List;
 
 /**
  * 성적 향상 사례 관리자 수정 요청 DTO.
@@ -63,4 +66,10 @@ public class RequestImprovementCaseAdminUpdate {
     
     @Schema(description = "고정글 여부", example = "false", defaultValue = "false")
     private Boolean isPinned = false;
+    
+    @Schema(description = "새로 추가할 본문 이미지 목록 (임시파일 → 정식파일 변환)")
+    private List<FileReference> newInlineImages;
+    
+    @Schema(description = "삭제할 기존 본문이미지 파일 ID 목록 (정식파일 Long ID)")
+    private List<Long> deleteInlineImageFileIds;
 }

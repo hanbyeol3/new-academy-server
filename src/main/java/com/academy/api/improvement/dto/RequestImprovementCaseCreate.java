@@ -13,6 +13,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * 성적 향상 사례 생성 요청 DTO.
  * 
@@ -86,4 +89,23 @@ public class RequestImprovementCaseCreate {
     
     @Schema(description = "개인정보 수집 및 이용 동의 (0: 미동의, 1: 동의)", example = "1", defaultValue = "0")
     private Integer privacyConsent;
+    
+    @Schema(description = "인라인 이미지 정보 목록")
+    private List<InlineImageInfo> inlineImages = new ArrayList<>();
+    
+    /**
+     * 인라인 이미지 정보 DTO.
+     */
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @Schema(description = "인라인 이미지 정보")
+    public static class InlineImageInfo {
+        
+        @Schema(description = "임시 파일 ID", example = "19f69968-71e7-46c2-8a13-db54edbd12cc")
+        private String tempFileId;
+        
+        @Schema(description = "파일명", example = "image.png")
+        private String fileName;
+    }
 }

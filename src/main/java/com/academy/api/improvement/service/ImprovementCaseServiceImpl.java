@@ -13,6 +13,7 @@ import com.academy.api.improvement.dto.*;
 import com.academy.api.improvement.mapper.ImprovementCaseMapper;
 import com.academy.api.improvement.repository.ImprovementCaseRepository;
 import com.academy.api.sms.service.SmsService;
+import com.academy.api.file.service.FileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -54,6 +55,7 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
     private final UploadFileLinkRepository uploadFileLinkRepository;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final SmsService smsService;
+    private final FileService fileService;
     
     @Value("${academy.admin.phone:01083873610}")
     private String adminPhoneNumber;
@@ -174,6 +176,28 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
                 attachFiles(savedEntity, uploadFileIds);
             }
             
+            // 인라인 이미지 처리 (공지사항과 동일한 로직)
+            Map<String, Long> inlineTempMap = createFileLinkFromTempFiles(
+                savedEntity.getId(), 
+                request.getInlineImages(), 
+                FileRole.INLINE
+            );
+            
+            // content에서 임시 URL을 정식 URL로 변환 (본문 이미지만 해당)
+            if (!inlineTempMap.isEmpty()) {
+                String updatedContent = fileService.convertTempUrlsInContent(savedEntity.getContent(), inlineTempMap);
+                if (!updatedContent.equals(savedEntity.getContent())) {
+                    // content가 변경된 경우 DB 업데이트
+                    savedEntity = improvementCaseRepository.findById(savedEntity.getId())
+                            .orElseThrow(() -> new RuntimeException("사례를 찾을 수 없습니다."));
+                    
+                    // 도메인 메서드를 사용해서 content 업데이트
+                    savedEntity.updateContent(updatedContent);
+                    improvementCaseRepository.save(savedEntity);
+                    log.info("[ImprovementCaseService] content 내 임시 URL 변환 완료. ID={}", savedEntity.getId());
+                }
+            }
+            
             // 관리자 SMS 발송 (실패해도 사례 등록은 유지)
             try {
                 Map<String, Object> adminVariables = new HashMap<>();
@@ -258,6 +282,31 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
                     // 파일 첨부 처리
                     if (uploadFileIds != null) {
                         updateAttachedFiles(entity, uploadFileIds);
+                    }
+                    
+                    // 인라인 이미지 처리
+                    // 1. 삭제할 인라인 이미지 처리
+                    deleteSelectedFileLinks(id, request.getDeleteInlineImageFileIds(), FileRole.INLINE);
+                    
+                    // 2. 새로 추가할 인라인 이미지 처리
+                    Map<String, Long> newInlineTempMap = addFileLinks(id, request.getNewInlineImages(), FileRole.INLINE);
+                    
+                    // 3. content에서 URL 업데이트
+                    String finalContent = entity.getContent();
+                    
+                    // 삭제된 이미지 URL 제거
+                    if (request.getDeleteInlineImageFileIds() != null && !request.getDeleteInlineImageFileIds().isEmpty()) {
+                        finalContent = fileService.removeDeletedImageUrlsFromContent(finalContent, request.getDeleteInlineImageFileIds());
+                    }
+                    
+                    // 새로 추가된 이미지 URL 변환
+                    if (!newInlineTempMap.isEmpty()) {
+                        finalContent = fileService.convertTempUrlsInContent(finalContent, newInlineTempMap);
+                    }
+                    
+                    // content 업데이트
+                    if (!finalContent.equals(entity.getContent())) {
+                        entity.updateContent(finalContent);
                     }
                     
                     log.info("[ImprovementCaseService] 공개 사례 수정 성공. ID={}", id);
@@ -389,6 +438,28 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
                 attachFiles(savedEntity, uploadFileIds);
             }
             
+            // 인라인 이미지 처리 (공지사항과 동일한 로직)
+            Map<String, Long> inlineTempMap = createFileLinkFromTempFiles(
+                savedEntity.getId(), 
+                request.getInlineImages(), 
+                FileRole.INLINE
+            );
+            
+            // content에서 임시 URL을 정식 URL로 변환 (본문 이미지만 해당)
+            if (!inlineTempMap.isEmpty()) {
+                String updatedContent = fileService.convertTempUrlsInContent(savedEntity.getContent(), inlineTempMap);
+                if (!updatedContent.equals(savedEntity.getContent())) {
+                    // content가 변경된 경우 DB 업데이트
+                    savedEntity = improvementCaseRepository.findById(savedEntity.getId())
+                            .orElseThrow(() -> new RuntimeException("사례를 찾을 수 없습니다."));
+                    
+                    // 도메인 메서드를 사용해서 content 업데이트
+                    savedEntity.updateContent(updatedContent);
+                    improvementCaseRepository.save(savedEntity);
+                    log.info("[ImprovementCaseService] content 내 임시 URL 변환 완료. ID={}", savedEntity.getId());
+                }
+            }
+            
             log.info("[ImprovementCaseService] 관리자 사례 생성 성공. ID={}", savedEntity.getId());
             return ResponseData.ok("0000", "성적 향상 사례가 등록되었습니다.", savedEntity.getId());
             
@@ -442,6 +513,31 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
                     // 파일 첨부 처리
                     if (uploadFileIds != null) {
                         updateAttachedFiles(entity, uploadFileIds);
+                    }
+                    
+                    // 인라인 이미지 처리
+                    // 1. 삭제할 인라인 이미지 처리
+                    deleteSelectedFileLinks(id, request.getDeleteInlineImageFileIds(), FileRole.INLINE);
+                    
+                    // 2. 새로 추가할 인라인 이미지 처리
+                    Map<String, Long> newInlineTempMap = addFileLinks(id, request.getNewInlineImages(), FileRole.INLINE);
+                    
+                    // 3. content에서 URL 업데이트
+                    String finalContent = entity.getContent();
+                    
+                    // 삭제된 이미지 URL 제거
+                    if (request.getDeleteInlineImageFileIds() != null && !request.getDeleteInlineImageFileIds().isEmpty()) {
+                        finalContent = fileService.removeDeletedImageUrlsFromContent(finalContent, request.getDeleteInlineImageFileIds());
+                    }
+                    
+                    // 새로 추가된 이미지 URL 변환
+                    if (!newInlineTempMap.isEmpty()) {
+                        finalContent = fileService.convertTempUrlsInContent(finalContent, newInlineTempMap);
+                    }
+                    
+                    // content 업데이트
+                    if (!finalContent.equals(entity.getContent())) {
+                        entity.updateContent(finalContent);
                     }
                     
                     log.info("[ImprovementCaseService] 관리자 사례 수정 성공. ID={}", id);
@@ -712,6 +808,141 @@ public class ImprovementCaseServiceImpl implements ImprovementCaseService {
         }
         
         return false;
+    }
+    
+    /**
+     * 인라인 이미지 처리 - 공지사항과 동일한 로직.
+     * 임시 파일을 정식 파일로 변환하고 파일 링크를 생성.
+     * 
+     * @param caseId 성적향상 사례 ID
+     * @param tempFileInfos 임시파일 정보 목록 (tempFileId + fileName)
+     * @param role 파일 역할 (INLINE만 사용)
+     * @return 임시 파일 ID → 정식 파일 ID 매핑 (content URL 변환용)
+     */
+    private Map<String, Long> createFileLinkFromTempFiles(Long caseId, List<?> tempFileInfos, FileRole role) {
+        Map<String, Long> tempToFormalMap = new HashMap<>();
+        
+        if (tempFileInfos == null || tempFileInfos.isEmpty()) {
+            return tempToFormalMap;
+        }
+        
+        log.debug("[ImprovementCaseService] {} 파일 연결 생성 시작. caseId={}, 파일개수={}", 
+            role, caseId, tempFileInfos.size());
+        
+        // 1단계: 모든 임시 파일을 정식 파일로 변환
+        for (Object tempFileInfo : tempFileInfos) {
+            String tempFileId = null;
+            String fileName = null;
+            
+            // RequestImprovementCaseCreate.InlineImageInfo 타입 처리
+            if (tempFileInfo instanceof RequestImprovementCaseCreate.InlineImageInfo) {
+                RequestImprovementCaseCreate.InlineImageInfo info = 
+                    (RequestImprovementCaseCreate.InlineImageInfo) tempFileInfo;
+                tempFileId = info.getTempFileId();
+                fileName = info.getFileName();
+            }
+            
+            if (tempFileId != null) {
+                Long formalFileId = fileService.promoteToFormalFile(tempFileId, fileName);
+                if (formalFileId != null) {
+                    tempToFormalMap.put(tempFileId, formalFileId);
+                    log.debug("[ImprovementCaseService] 임시 파일 정식 변환 성공. tempId={} -> formalId={}", 
+                        tempFileId, formalFileId);
+                }
+            }
+        }
+        
+        // 2단계: 성공한 변환들에 대해 파일 연결 객체 생성
+        List<UploadFileLink> successfulLinks = tempToFormalMap.values().stream()
+            .map(formalFileId -> UploadFileLink.builder()
+                .fileId(formalFileId)
+                .ownerTable("improvement_cases")
+                .ownerId(caseId)
+                .role(role)
+                .sortOrder(0)
+                .build())
+            .toList();
+        
+        // 3단계: DB에 파일 연결 저장
+        if (!successfulLinks.isEmpty()) {
+            uploadFileLinkRepository.saveAll(successfulLinks);
+        }
+        
+        log.info("[ImprovementCaseService] {} 파일 연결 생성 완료. caseId={}, 성공={}개", 
+            role, caseId, successfulLinks.size());
+        
+        return tempToFormalMap;
+    }
+    
+    /**
+     * 선택된 파일 링크 삭제.
+     * 
+     * @param caseId 성적향상 사례 ID
+     * @param fileIds 삭제할 파일 ID 목록
+     * @param role 파일 역할
+     */
+    private void deleteSelectedFileLinks(Long caseId, List<Long> fileIds, FileRole role) {
+        if (fileIds == null || fileIds.isEmpty()) {
+            log.debug("[ImprovementCaseService] 삭제할 {} 파일 없음. caseId={}", role, caseId);
+            return;
+        }
+        
+        log.info("[ImprovementCaseService] {} 파일 링크 삭제. caseId={}, 파일개수={}", 
+            role, caseId, fileIds.size());
+        
+        // 파일 링크 삭제 (파일 자체는 유지)
+        uploadFileLinkRepository.deleteByOwnerTableAndOwnerIdAndRoleAndFileIdIn(
+            "improvement_cases", caseId, role, fileIds);
+        
+        log.debug("[ImprovementCaseService] {} 파일 링크 삭제 완료", role);
+    }
+    
+    /**
+     * 새로운 파일 링크 추가 (임시 파일 → 정식 파일 변환).
+     * 
+     * @param caseId 성적향상 사례 ID
+     * @param fileReferences 파일 참조 목록
+     * @param role 파일 역할
+     * @return 임시 파일 ID → 정식 파일 ID 매핑
+     */
+    private Map<String, Long> addFileLinks(Long caseId, List<com.academy.api.file.dto.FileReference> fileReferences, FileRole role) {
+        Map<String, Long> tempToFormalMap = new HashMap<>();
+        
+        if (fileReferences == null || fileReferences.isEmpty()) {
+            log.debug("[ImprovementCaseService] 추가할 {} 파일 없음. caseId={}", role, caseId);
+            return tempToFormalMap;
+        }
+        
+        log.info("[ImprovementCaseService] {} 파일 추가. caseId={}, 파일개수={}", 
+            role, caseId, fileReferences.size());
+        
+        for (com.academy.api.file.dto.FileReference ref : fileReferences) {
+            if (ref.getTempFileId() != null) {
+                // 임시 파일을 정식 파일로 변환
+                Long formalFileId = fileService.promoteToFormalFile(ref.getTempFileId(), ref.getFileName());
+                if (formalFileId != null) {
+                    tempToFormalMap.put(ref.getTempFileId(), formalFileId);
+                    
+                    // 파일 링크 생성
+                    UploadFileLink link = UploadFileLink.builder()
+                        .fileId(formalFileId)
+                        .ownerTable("improvement_cases")
+                        .ownerId(caseId)
+                        .role(role)
+                        .sortOrder(0)
+                        .build();
+                    uploadFileLinkRepository.save(link);
+                    
+                    log.debug("[ImprovementCaseService] 파일 추가 성공. tempId={} -> formalId={}", 
+                        ref.getTempFileId(), formalFileId);
+                }
+            }
+        }
+        
+        log.info("[ImprovementCaseService] {} 파일 추가 완료. 성공={}개", 
+            role, tempToFormalMap.size());
+        
+        return tempToFormalMap;
     }
     
     @Override
