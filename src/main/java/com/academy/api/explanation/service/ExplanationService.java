@@ -7,7 +7,6 @@ import com.academy.api.data.responses.ResponseData;
 import com.academy.api.data.responses.ResponseList;
 import org.springframework.data.domain.Pageable;
 
-import jakarta.servlet.http.HttpServletResponse;
 import java.util.Map;
 
 /**
@@ -292,10 +291,9 @@ public interface ExplanationService {
      * @param status 예약 상태
      * @param startDate 시작일
      * @param endDate 종료일
-     * @param response HTTP 응답
      */
-    void exportReservationListToExcel(Long explanationId, Long scheduleId, String keyword,
+    ExcelExportResult exportReservationListToExcel(Long explanationId, Long scheduleId, String keyword,
                                       String applicantName, String applicantPhone, String studentName,
                                       String studentPhone, String schoolName, String status,
-                                      String startDate, String endDate, HttpServletResponse response);
+                                      String startDate, String endDate);
 }

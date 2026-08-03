@@ -28,8 +28,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -44,7 +42,6 @@ import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import jakarta.servlet.http.HttpServletResponse;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
@@ -1406,10 +1403,10 @@ public class ExplanationServiceImpl implements ExplanationService {
 	}
 
 	@Override
-	public void exportReservationListToExcel(Long explanationId, Long scheduleId, String keyword,
+	public ExcelExportResult exportReservationListToExcel(Long explanationId, Long scheduleId, String keyword,
 	                                         String applicantName, String applicantPhone, String studentName,
 	                                         String studentPhone, String schoolName, String status,
-	                                         String startDate, String endDate, HttpServletResponse response) {
+	                                         String startDate, String endDate) {
 		log.info("[ExplanationService] 예약 목록 엑셀 다운로드 시작. explanationId={}, scheduleId={}, keyword={}, " +
 						"applicantName={}, applicantPhone={}, studentName={}, studentPhone={}, schoolName={}, status={}",
 				explanationId, scheduleId, keyword, applicantName, applicantPhone,
@@ -1441,31 +1438,11 @@ public class ExplanationServiceImpl implements ExplanationService {
 			// 바이트 배열 가져오기
 			byte[] excelBytes = baos.toByteArray();
 
-			// HTTP 응답 설정
-			response.reset(); // 응답 초기화
-			response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-			response.setCharacterEncoding("UTF-8");
-
-			// 파일명 인코딩 (한글 깨짐 방지)
-			String encodedFilename = URLEncoder.encode(filenameKorean, StandardCharsets.UTF_8)
-					.replaceAll("\\+", "%20"); // 공백 처리
-
-			response.setHeader("Content-Disposition",
-					String.format("attachment; filename*=UTF-8''%s", encodedFilename));
-			response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-			response.setHeader("Pragma", "no-cache");
-			response.setHeader("Expires", "0");
-
-			// Content-Length 설정 (파일 크기 명시)
-			response.setContentLength(excelBytes.length);
-
-			// 출력 스트림에 쓰기
-			response.getOutputStream().write(excelBytes);
-			response.getOutputStream().flush();
-			response.getOutputStream().close();
-
-			log.info("[ExplanationService] 엑셀 다운로드 완료. 파일명={}, 건수={}, 크기={}bytes",
+			log.info("[ExplanationService] 엑셀 다운로드 준비 완료. 파일명={}, 건수={}, 크기={}bytes",
 					filenameKorean, reservationsWithDetails.size(), excelBytes.length);
+			
+			// ExcelExportResult 객체로 반환
+			return new ExcelExportResult(filenameKorean, excelBytes);
 
 		} catch (IOException e) {
 			log.error("[ExplanationService] 엑셀 다운로드 실패: {}", e.getMessage(), e);

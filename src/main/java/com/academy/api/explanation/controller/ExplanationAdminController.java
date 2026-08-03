@@ -12,8 +12,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import java.nio.charset.StandardCharsets;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
@@ -623,7 +627,7 @@ public class ExplanationAdminController {
                     """
     )
     @GetMapping("/reservations/export")
-    public void exportReservationListToExcel(
+    public ResponseEntity<byte[]> exportReservationListToExcel(
             @Parameter(description = "설명회 ID", example = "1")
             @RequestParam(required = false) Long explanationId,
             @Parameter(description = "회차 ID", example = "1")
@@ -645,17 +649,30 @@ public class ExplanationAdminController {
             @Parameter(description = "예약 시작일", example = "2024-01-01")
             @RequestParam(required = false) String startDate,
             @Parameter(description = "예약 종료일", example = "2024-12-31")
-            @RequestParam(required = false) String endDate,
-            HttpServletResponse response) {
+            @RequestParam(required = false) String endDate) {
         
         log.info("예약 목록 엑셀 다운로드 요청. explanationId={}, scheduleId={}, keyword={}, applicantName={}, " +
                 "applicantPhone={}, studentName={}, studentPhone={}, schoolName={}, status={}", 
                 explanationId, scheduleId, keyword, applicantName, applicantPhone, 
                 studentName, studentPhone, schoolName, status);
         
-        explanationService.exportReservationListToExcel(
+        ExcelExportResult result = explanationService.exportReservationListToExcel(
                 explanationId, scheduleId, keyword, applicantName, applicantPhone,
-                studentName, studentPhone, schoolName, status, startDate, endDate, response);
+                studentName, studentPhone, schoolName, status, startDate, endDate);
+        
+        String contentDisposition = ContentDisposition
+                .attachment()
+                .filename(result.getFileName(), StandardCharsets.UTF_8)
+                .build()
+                .toString();
+        
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                ))
+                .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition)
+                .contentLength(result.getBytes().length)
+                .body(result.getBytes());
     }
 
     // ===== 유틸리티 메서드 =====
