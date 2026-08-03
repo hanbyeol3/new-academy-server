@@ -931,9 +931,37 @@ public class ApplyApplicationServiceImpl implements ApplyApplicationService {
 					app.getUpdatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "", cellStyle);  // 수정일시
 		}
 
-		// 열 너비 자동 조정
-		for (int i = 0; i < headers.length; i++) {
-			sheet.autoSizeColumn(i);
+		// 컬럼 너비 수동 설정 (autoSizeColumn 대신)
+		int[] columnWidths = {
+				2500,  // 번호
+				3500,  // 학생명
+				2500,  // 성별
+				4000,  // 생년월일
+				2500,  // 학년
+				4500,  // 학생 휴대폰
+				5000,  // 학교명
+				3000,  // 구분
+				3000,  // 상태
+				6000,  // 신청과목
+				3500,  // 보호자1 이름
+				4500,  // 보호자1 연락처
+				3000,  // 보호자1 관계
+				3500,  // 보호자2 이름
+				4500,  // 보호자2 연락처
+				3000,  // 보호자2 관계
+				6000,  // 이메일
+				8000,  // 주소
+				6000,  // 상세주소
+				5000,  // 희망대학
+				5000,  // 희망학과
+				8000,  // 보호자 의견
+				3500,  // 담당자
+				5500,  // 접수일시
+				5500   // 수정일시
+		};
+		
+		for (int i = 0; i < headers.length && i < columnWidths.length; i++) {
+			sheet.setColumnWidth(i, columnWidths[i]);
 		}
 
 		return workbook;

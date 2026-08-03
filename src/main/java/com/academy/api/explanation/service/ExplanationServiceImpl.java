@@ -1695,10 +1695,8 @@ public class ExplanationServiceImpl implements ExplanationService {
 			}
 		}
 
-		// 컬럼 너비 자동 조정
-		for (int i = 0; i < headers.length; i++) {
-			sheet.autoSizeColumn(i);
-		}
+		// 컬럼 너비는 위에서 이미 설정했으므로 추가 조정 불필요
+		// (autoSizeColumn 사용 시 서버 환경에서 폰트 라이브러리 오류 발생)
 
 		return workbook;
 	}
