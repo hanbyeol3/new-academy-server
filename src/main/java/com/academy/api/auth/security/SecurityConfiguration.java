@@ -143,6 +143,14 @@ public class SecurityConfiguration {
 		config.setAllowedHeaders(List.of("*"));
 		config.setAllowCredentials(true);
 		config.setMaxAge(3600L);
+		
+		// 엑셀 다운로드를 위한 Response 헤더 노출 설정
+		config.setExposedHeaders(List.of(
+				"Content-Disposition",  // 파일명 정보
+				"Content-Type",         // 파일 타입
+				"Content-Length",       // 파일 크기
+				"X-Filename"           // 커스텀 파일명 (필요시)
+		));
 
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 		// 전체 경로에 CORS 적용
