@@ -1558,7 +1558,32 @@ public class ExplanationServiceImpl implements ExplanationService {
 			Cell cell = headerRow.createCell(i);
 			cell.setCellValue(headers[i]);
 			cell.setCellStyle(headerStyle);
-			sheet.autoSizeColumn(i);
+		}
+		
+		// 컬럼 너비 수동 설정 (autoSizeColumn 대신)
+		int[] columnWidths = {
+				3000,  // 예약ID
+				8000,  // 설명회 제목
+				6000,  // 회차 정보
+				3500,  // 신청자명
+				4500,  // 신청자 전화번호
+				3500,  // 학생명
+				4500,  // 학생 전화번호
+				2500,  // 팀수
+				3000,  // 참석인원
+				2500,  // 성별
+				5000,  // 학교명
+				2500,  // 학년
+				3000,  // 예약상태
+				8000,  // 메모
+				4000,  // 마케팅수신동의
+				5500,  // 예약생성일시
+				5500,  // 취소일시
+				3000   // 취소주체
+		};
+		
+		for (int i = 0; i < headers.length && i < columnWidths.length; i++) {
+			sheet.setColumnWidth(i, columnWidths[i]);
 		}
 
 		// 데이터 행 생성
