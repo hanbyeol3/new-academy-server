@@ -558,6 +558,7 @@ public class ExplanationReservationRepositoryImpl implements ExplanationReservat
 		LocalDateTime endOfDay = targetDate.plusDays(1).atStartOfDay();
 
 		// 쿼리 실행: 내일 예정된 설명회의 확정 예약들을 조회
+		// 관리자 마감(isAdminClosed)은 신규 접수만 막는 것이므로 기존 예약자 리마인더는 발송 대상에 포함
 		List<Tuple> results = queryFactory
 				.select(reservation, schedule, explanation)
 				.from(reservation)
@@ -567,9 +568,7 @@ public class ExplanationReservationRepositoryImpl implements ExplanationReservat
 						reservation.status.eq(ReservationStatus.CONFIRMED),  // 확정된 예약만
 						schedule.startAt.goe(startOfDay),                    // 대상 날짜 시작 이후
 						schedule.startAt.lt(endOfDay),                       // 대상 날짜 끝 이전
-						schedule.isCanceled.isFalse(),                       // 취소되지 않은 회차만
-						schedule.isAdminClosed.isFalse(),                    // 관리자가 마감하지 않은 회차만
-						explanation.isPublished.isTrue()                     // 공개된 설명회만
+						schedule.isCanceled.ne(true)                         // 취소되지 않은 회차만 (NULL 허용)
 				)
 				.orderBy(schedule.startAt.asc(), reservation.id.asc())
 				.fetch();
