@@ -3,6 +3,7 @@ package com.academy.api.analytics.service;
 import com.academy.api.analytics.domain.*;
 import com.academy.api.analytics.dto.request.*;
 import com.academy.api.analytics.dto.response.*;
+import com.academy.api.analytics.enums.DeviceType;
 import com.academy.api.analytics.enums.ReferrerType;
 import com.academy.api.analytics.mapper.AnalyticsMapper;
 import com.academy.api.analytics.repository.*;
@@ -19,9 +20,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.security.MessageDigest;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -96,7 +100,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
             }
             
             // 2. 이탈 정보 업데이트
-            pageView.updateExitInfo(request.getDuration(), request.getScrollDepth());
+            pageView.updateExitInfo(request.getDuration(), request.getScrollDepth(), request.getIsLastPage());
             
             // 3. 클릭 수 업데이트
             if (request.getClickCount() != null && request.getClickCount() > 0) {
@@ -214,29 +218,160 @@ public class AnalyticsServiceImpl implements AnalyticsService {
                                                                       LocalDate endDate, 
                                                                       String granularity) {
         log.info("[AnalyticsService] 시계열 데이터 조회. period={}, granularity={}", period, granularity);
-        
+
         try {
             // 기간 파싱
             LocalDate[] dates = parsePeriodInternal(period, startDate, endDate);
             LocalDate start = dates[0];
             LocalDate end = dates[1];
-            
-            // 집계 데이터 조회
-            List<AnalyticsDaily> dailyStats = dailyRepository.findByDateBetweenOrderByDateDesc(start, end);
-            
-            // Response 변환
-            List<ResponseAnalyticsTimeseries> timeseriesData = dailyStats.stream()
-                    .map(analyticsMapper::toTimeseriesResponse)
-                    .collect(Collectors.toList());
-            
-            log.info("[AnalyticsService] 시계열 데이터 조회 완료. count={}", timeseriesData.size());
-            
+
+            // granularity 자동 결정 (24h=hour, 12m=month, 그 외=day)
+            String resolved = granularity;
+            if (!StringUtils.hasText(resolved)) {
+                resolved = "24h".equals(period) ? "hour"
+                        : "12m".equals(period) ? "month"
+                        : "day";
+            }
+
+            List<ResponseAnalyticsTimeseries> timeseriesData;
+            switch (resolved) {
+                case "hour" -> timeseriesData = buildHourlyTimeseries(period, start, end);
+                case "week" -> timeseriesData = buildBucketedTimeseries(start, end,
+                        date -> date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)));
+                case "month" -> timeseriesData = buildBucketedTimeseries(start, end,
+                        date -> date.withDayOfMonth(1));
+                default -> timeseriesData = buildDailyTimeseries(start, end);
+            }
+
+            log.info("[AnalyticsService] 시계열 데이터 조회 완료. granularity={}, count={}", resolved, timeseriesData.size());
+
             return ResponseList.ok(timeseriesData, timeseriesData.size(), 0, timeseriesData.size());
-            
+
         } catch (Exception e) {
             log.error("[AnalyticsService] 시계열 데이터 조회 실패. error={}", e.getMessage(), e);
             return ResponseList.error("ERROR", "조회 중 오류가 발생했습니다.");
         }
+    }
+
+    /**
+     * 시간별 시계열 (원시 page_views 기반 — 24h 기간용).
+     */
+    private List<ResponseAnalyticsTimeseries> buildHourlyTimeseries(String period, LocalDate start, LocalDate end) {
+        LocalDateTime from;
+        LocalDateTime to;
+        if ("24h".equals(period)) {
+            to = LocalDateTime.now();
+            from = to.minusHours(24);
+        } else {
+            from = start.atStartOfDay();
+            to = end.plusDays(1).atStartOfDay().minusSeconds(1);
+        }
+
+        DateTimeFormatter bucketFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        return pageViewRepository.findHourlyStats(from, to).stream()
+                .map(row -> ResponseAnalyticsTimeseries.builder()
+                        .datetime(LocalDateTime.parse((String) row[0], bucketFormat))
+                        .visitors(toInt(row[1]))
+                        .pageViews(toInt(row[2]))
+                        .sessions(toInt(row[3]))
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 일별 시계열 (집계 테이블 기반, 오름차순). 조회 범위에 오늘이 포함되고
+     * 아직 집계되지 않았다면 원시 데이터로 당일 row를 보완한다.
+     */
+    private List<ResponseAnalyticsTimeseries> buildDailyTimeseries(LocalDate start, LocalDate end) {
+        List<AnalyticsDaily> dailyStats = dailyRepository.findByDateBetweenOrderByDateAsc(start, end);
+        List<ResponseAnalyticsTimeseries> result = dailyStats.stream()
+                .map(analyticsMapper::toTimeseriesResponse)
+                .collect(Collectors.toList());
+
+        LocalDate today = LocalDate.now();
+        boolean rangeIncludesToday = !today.isBefore(start) && !today.isAfter(end);
+        boolean todayAggregated = dailyStats.stream().anyMatch(d -> today.equals(d.getDate()));
+
+        if (rangeIncludesToday && !todayAggregated) {
+            buildTodayFromRaw(today).ifPresent(result::add);
+        }
+        return result;
+    }
+
+    /**
+     * 당일 원시 데이터 기반 시계열 row 생성 (수집은 됐지만 아직 미집계인 오늘 데이터 보완).
+     */
+    private Optional<ResponseAnalyticsTimeseries> buildTodayFromRaw(LocalDate today) {
+        LocalDateTime from = today.atStartOfDay();
+        LocalDateTime to = LocalDateTime.now();
+
+        List<Object[]> totals = pageViewRepository.findRawTotals(from, to);
+        if (totals.isEmpty()) {
+            return Optional.empty();
+        }
+        Object[] t = totals.get(0);
+        int visitors = toInt(t[0]);
+        if (visitors == 0) {
+            return Optional.empty();
+        }
+
+        Double bounceRate = null;
+        List<Object[]> sessionStats = sessionRepository.countSessionsAndBounces(from, to);
+        if (!sessionStats.isEmpty()) {
+            Object[] s = sessionStats.get(0);
+            int sessionCount = toInt(s[0]);
+            int bounceCount = toInt(s[1]);
+            if (sessionCount > 0) {
+                bounceRate = bounceCount * 100.0 / sessionCount;
+            }
+        }
+
+        return Optional.of(ResponseAnalyticsTimeseries.builder()
+                .date(today)
+                .visitors(visitors)
+                .pageViews(toInt(t[1]))
+                .sessions(toInt(t[2]))
+                .bounceRate(bounceRate)
+                .build());
+    }
+
+    /**
+     * 주별/월별 시계열 — 일별 집계 row를 버킷 시작일 기준으로 묶어 합산한다.
+     */
+    private List<ResponseAnalyticsTimeseries> buildBucketedTimeseries(
+            LocalDate start, LocalDate end, java.util.function.UnaryOperator<LocalDate> bucketStart) {
+
+        List<AnalyticsDaily> dailyStats = dailyRepository.findByDateBetweenOrderByDateAsc(start, end);
+        Map<LocalDate, List<AnalyticsDaily>> buckets = new LinkedHashMap<>();
+        for (AnalyticsDaily daily : dailyStats) {
+            buckets.computeIfAbsent(bucketStart.apply(daily.getDate()), k -> new ArrayList<>()).add(daily);
+        }
+
+        List<ResponseAnalyticsTimeseries> result = new ArrayList<>();
+        for (Map.Entry<LocalDate, List<AnalyticsDaily>> entry : buckets.entrySet()) {
+            List<AnalyticsDaily> rows = entry.getValue();
+            int visitors = rows.stream().mapToInt(AnalyticsDaily::getTotalVisitors).sum();
+            int pageViews = rows.stream().mapToInt(AnalyticsDaily::getTotalPageViews).sum();
+            int newVisitors = rows.stream().mapToInt(AnalyticsDaily::getNewVisitors).sum();
+            int returningVisitors = rows.stream().mapToInt(AnalyticsDaily::getReturningVisitors).sum();
+            int sessions = rows.stream().mapToInt(AnalyticsDaily::getTotalSessions).sum();
+            double bounceRate = rows.stream().mapToDouble(d -> d.getBounceRate().doubleValue()).average().orElse(0);
+            int avgDuration = (int) rows.stream().mapToDouble(d -> d.getAvgSessionDuration().doubleValue()).average().orElse(0);
+            double avgPages = rows.stream().mapToDouble(d -> d.getAvgPagesPerSession().doubleValue()).average().orElse(0);
+
+            result.add(ResponseAnalyticsTimeseries.builder()
+                    .date(entry.getKey())
+                    .visitors(visitors)
+                    .pageViews(pageViews)
+                    .newVisitors(newVisitors)
+                    .returningVisitors(returningVisitors)
+                    .sessions(sessions)
+                    .bounceRate(Math.round(bounceRate * 10) / 10.0)
+                    .avgSessionDuration(avgDuration)
+                    .avgPagesPerSession(Math.round(avgPages * 10) / 10.0)
+                    .build());
+        }
+        return result;
     }
     
     @Override
@@ -295,10 +430,19 @@ public class AnalyticsServiceImpl implements AnalyticsService {
             // 전체 방문자 수 (비율 계산용)
             Long totalVisitors = dailyRepository.sumTotalVisitorsByDateRange(start, end);
             double totalVisitorsDouble = totalVisitors != null ? totalVisitors : 0;
-            
+
+            // 도메인별 랜딩 페이지/검색 키워드 (원시 데이터, 쿼리 2회로 일괄 조회 후 Java에서 Top N)
+            LocalDateTime rawStart = start.atStartOfDay();
+            LocalDateTime rawEnd = end.plusDays(1).atStartOfDay().minusSeconds(1);
+            Map<String, List<String>> landingPagesByDomain =
+                    topNByDomain(pageViewRepository.findLandingPagesByReferrer(rawStart, rawEnd), 3);
+            Map<String, List<String>> keywordsByDomain =
+                    topNByDomain(pageViewRepository.findKeywordsByReferrer(rawStart, rawEnd), 3);
+
             // Response 변환
             List<ResponseAnalyticsReferrer> referrerStats = topReferrers.getContent().stream()
-                    .map(data -> convertToReferrerResponse(data, totalVisitorsDouble))
+                    .map(data -> convertToReferrerResponse(data, totalVisitorsDouble,
+                            landingPagesByDomain, keywordsByDomain))
                     .collect(Collectors.toList());
 
             log.info("[AnalyticsService] 유입 경로 통계 조회 완료. count={}", referrerStats.size());
@@ -357,11 +501,11 @@ public class AnalyticsServiceImpl implements AnalyticsService {
             // 현재 활성 방문자 수
             Integer currentVisitors = ((Long) realtimeData.get("currentVisitors")).intValue();
             
-            // 시간대별 방문자 수
+            // 시간대별 방문자 수 (종료된 세션 포함 — 기간 내 활동 기준)
             LocalDateTime now = LocalDateTime.now();
-            Long last5Min = sessionRepository.countActiveSessions(now.minusMinutes(5));
-            Long last30Min = sessionRepository.countActiveSessions(now.minusMinutes(30));
-            Long lastHour = sessionRepository.countActiveSessions(now.minusHours(1));
+            Long last5Min = sessionRepository.countRecentVisitors(now.minusMinutes(5));
+            Long last30Min = sessionRepository.countRecentVisitors(now.minusMinutes(30));
+            Long lastHour = sessionRepository.countRecentVisitors(now.minusHours(1));
             
             // 활성 페이지 목록
             @SuppressWarnings("unchecked")
@@ -402,18 +546,21 @@ public class AnalyticsServiceImpl implements AnalyticsService {
      * 집계 로직은 AnalyticsAggregationService의 세트 기반 SQL(upsert)로 단일화한다.
      */
     @Override
+    @Transactional
     public void aggregateDailyStats(LocalDate date) {
         log.info("[AnalyticsService] 일별 통계 집계 위임. date={}", date);
         aggregationService.aggregateDailyStats(date);
     }
 
     @Override
+    @Transactional
     public void aggregatePageDailyStats(LocalDate date) {
         log.info("[AnalyticsService] 페이지별 일별 통계 집계 위임. date={}", date);
         aggregationService.aggregatePageDailyStats(date);
     }
 
     @Override
+    @Transactional
     public void aggregateReferrerDailyStats(LocalDate date) {
         log.info("[AnalyticsService] 유입경로별 일별 통계 집계 위임. date={}", date);
         aggregationService.aggregateReferrerDailyStats(date);
@@ -433,6 +580,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     }
     
     @Override
+    @Transactional
     public void archiveOldData(int daysToKeep) {
         log.info("[AnalyticsService] 오래된 데이터 아카이빙. keepDays={}", daysToKeep);
 
@@ -632,6 +780,10 @@ public class AnalyticsServiceImpl implements AnalyticsService {
                 buildRecentViews(pagePath, rangeStart, rangeEnd);
         List<ResponseAnalyticsPageDetail.ReferrerSummary> topReferrers =
                 buildPageTopReferrers(pagePath, rangeStart, rangeEnd);
+        ResponseAnalyticsPageDetail.DeviceBreakdown deviceBreakdown =
+                buildDeviceBreakdown(pagePath, rangeStart, rangeEnd);
+        ResponseAnalyticsPageDetail.UserFlow userFlow =
+                buildUserFlow(pagePath, rangeStart, rangeEnd);
 
         return ResponseAnalyticsPageDetail.builder()
                 .path(pagePath)
@@ -644,9 +796,81 @@ public class AnalyticsServiceImpl implements AnalyticsService {
                 .exitRate(avgExitRate)
                 .entrances(entrances)
                 .exits(exits)
+                .deviceBreakdown(deviceBreakdown)
                 .topReferrers(topReferrers)
                 .recentViews(recentViews)
+                .userFlow(userFlow)
                 .build();
+    }
+
+    /**
+     * 특정 페이지의 디바이스별 방문자 분포 생성 (원시 데이터 기반).
+     */
+    private ResponseAnalyticsPageDetail.DeviceBreakdown buildDeviceBreakdown(String pagePath,
+                                                                             LocalDateTime rangeStart,
+                                                                             LocalDateTime rangeEnd) {
+        List<Object[]> rows = pageViewRepository.findDeviceBreakdownByPagePath(pagePath, rangeStart, rangeEnd);
+
+        int desktop = 0, mobile = 0, tablet = 0;
+        for (Object[] row : rows) {
+            DeviceType deviceType = (DeviceType) row[0];
+            int count = toInt(row[1]);
+            if (deviceType == null) continue;
+            switch (deviceType) {
+                case DESKTOP -> desktop += count;
+                case MOBILE -> mobile += count;
+                case TABLET -> tablet += count;
+                default -> { /* UNKNOWN은 분포에서 제외 */ }
+            }
+        }
+
+        int total = desktop + mobile + tablet;
+        return ResponseAnalyticsPageDetail.DeviceBreakdown.builder()
+                .desktop(buildDeviceStats(desktop, total))
+                .mobile(buildDeviceStats(mobile, total))
+                .tablet(buildDeviceStats(tablet, total))
+                .build();
+    }
+
+    private ResponseAnalyticsPageDetail.DeviceStats buildDeviceStats(int visitors, int total) {
+        double percentage = total > 0 ? Math.round(visitors * 1000.0 / total) / 10.0 : 0;
+        return ResponseAnalyticsPageDetail.DeviceStats.builder()
+                .visitors(visitors)
+                .percentage(percentage)
+                .build();
+    }
+
+    /**
+     * 특정 페이지의 이전/다음 이동 경로 생성 (세션 내 인접 페이지뷰 기반, 각 Top 5).
+     */
+    private ResponseAnalyticsPageDetail.UserFlow buildUserFlow(String pagePath,
+                                                               LocalDateTime rangeStart,
+                                                               LocalDateTime rangeEnd) {
+        List<ResponseAnalyticsPageDetail.PageFlowItem> previousPages =
+                toFlowItems(pageViewRepository.findPreviousPages(pagePath, rangeStart, rangeEnd, 5));
+        List<ResponseAnalyticsPageDetail.PageFlowItem> nextPages =
+                toFlowItems(pageViewRepository.findNextPages(pagePath, rangeStart, rangeEnd, 5));
+
+        return ResponseAnalyticsPageDetail.UserFlow.builder()
+                .previousPages(previousPages)
+                .nextPages(nextPages)
+                .build();
+    }
+
+    private List<ResponseAnalyticsPageDetail.PageFlowItem> toFlowItems(List<Object[]> rows) {
+        long total = rows.stream().mapToLong(r -> toLong(r[2])).sum();
+        return rows.stream()
+                .map(r -> {
+                    long count = toLong(r[2]);
+                    double percentage = total > 0 ? Math.round(count * 1000.0 / total) / 10.0 : 0;
+                    return ResponseAnalyticsPageDetail.PageFlowItem.builder()
+                            .path((String) r[0])
+                            .title((String) r[1])
+                            .count((int) count)
+                            .percentage(percentage)
+                            .build();
+                })
+                .collect(Collectors.toList());
     }
 
     /**
@@ -738,6 +962,8 @@ public class AnalyticsServiceImpl implements AnalyticsService {
                 .avgDuration(toInt(data[7]))
                 .bounceRate(toDouble(data[8]))
                 .exitRate(toDouble(data[9]))
+                .avgScrollDepth(toDouble(data[10]))
+                .avgClickCount(toDouble(data[11]))
                 .build();
     }
 
@@ -746,22 +972,62 @@ public class AnalyticsServiceImpl implements AnalyticsService {
      * findTopReferrerDomains 컬럼 순서:
      * 0=referrerDomain, 1=visitors, 2=newVisitors, 3=sessions, 4=pageViews
      */
-    private ResponseAnalyticsReferrer convertToReferrerResponse(Object[] data, double totalVisitors) {
+    private ResponseAnalyticsReferrer convertToReferrerResponse(Object[] data, double totalVisitors,
+                                                                Map<String, List<String>> landingPagesByDomain,
+                                                                Map<String, List<String>> keywordsByDomain) {
         String domain = (String) data[0];
-        int visitors = toInt(data[1]);
+        ReferrerType storedType = (ReferrerType) data[1];
+        int visitors = toInt(data[2]);
+        int sessions = toInt(data[4]);
+        int pageViews = toInt(data[5]);
 
         double percentage = totalVisitors > 0 ?
                 (visitors * 100.0 / totalVisitors) : 0;
 
+        // 수집 시 UTM 기반으로 판별해 저장한 타입을 우선 사용 (PAID/EMAIL 분류 유지)
+        ReferrerType type = storedType != null ? storedType : ReferrerType.fromReferrer(domain);
+
+        Double avgPagesPerSession = sessions > 0
+                ? Math.round(pageViews * 10.0 / sessions) / 10.0 : null;
+
+        String domainKey = domain != null ? domain : "";
         return ResponseAnalyticsReferrer.builder()
                 .source(domain != null ? domain : "직접 유입")
-                .type(ReferrerType.fromReferrer(domain).getValue())
+                .type(type.getValue())
                 .visitors(visitors)
                 .percentage(percentage)
-                .newVisitors(toInt(data[2]))
-                .sessions(toInt(data[3]))
-                .pageViews(toInt(data[4]))
+                .newVisitors(toInt(data[3]))
+                .sessions(sessions)
+                .pageViews(pageViews)
+                .bounceRate(toDouble(data[6]))
+                .avgSessionDuration(data[7] != null ? toInt(data[7]) : null)
+                .avgPagesPerSession(avgPagesPerSession)
+                .topLandingPages(landingPagesByDomain.getOrDefault(domainKey, List.of()))
+                .searchKeywords(keywordsByDomain.getOrDefault(domainKey, List.of()))
                 .build();
+    }
+
+    /**
+     * (도메인, 값, 건수) 그룹 결과에서 도메인별 상위 N개 값 목록을 만든다.
+     */
+    private Map<String, List<String>> topNByDomain(List<Object[]> rows, int limit) {
+        Map<String, List<Object[]>> grouped = new HashMap<>();
+        for (Object[] row : rows) {
+            String domain = row[0] != null ? (String) row[0] : "";
+            grouped.computeIfAbsent(domain, k -> new ArrayList<>()).add(row);
+        }
+        Map<String, List<String>> result = new HashMap<>();
+        grouped.forEach((domain, list) -> result.put(domain, list.stream()
+                .sorted((a, b) -> Long.compare(toLong(b[2]), toLong(a[2])))
+                .limit(limit)
+                .map(r -> (String) r[1])
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList())));
+        return result;
+    }
+
+    private long toLong(Object value) {
+        return value instanceof Number ? ((Number) value).longValue() : 0L;
     }
     
     /**

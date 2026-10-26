@@ -146,11 +146,12 @@ public class PageView {
     /**
      * 페이지 이탈 정보 업데이트.
      */
-    public void updateExitInfo(Integer durationSeconds, Integer scrollDepth) {
+    public void updateExitInfo(Integer durationSeconds, Integer scrollDepth, Boolean isLastPage) {
         this.leftAt = LocalDateTime.now();
         this.timeOnPageSeconds = durationSeconds != null ? durationSeconds : 0;
         this.scrollDepth = scrollDepth != null ? scrollDepth : 0;
-        this.isExitPage = true;
+        // 세션의 마지막 페이지일 때만 종료 페이지로 마킹 (SPA 라우트 이동은 종료가 아님)
+        this.isExitPage = Boolean.TRUE.equals(isLastPage);
     }
     
     /**

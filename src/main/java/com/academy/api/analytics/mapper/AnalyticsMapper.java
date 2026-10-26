@@ -117,15 +117,17 @@ public class AnalyticsMapper {
      * AnalyticsDaily → ResponseAnalyticsTimeseries 변환.
      */
     public ResponseAnalyticsTimeseries toTimeseriesResponse(AnalyticsDaily daily) {
-        return ResponseAnalyticsTimeseries.daily(
-                daily.getDate(),
-                daily.getTotalVisitors(),
-                daily.getTotalPageViews(),
-                daily.getNewVisitors(),
-                daily.getReturningVisitors(),
-                daily.getBounceRate().doubleValue(),
-                daily.getAvgSessionDuration().intValue()
-        );
+        return ResponseAnalyticsTimeseries.builder()
+                .date(daily.getDate())
+                .visitors(daily.getTotalVisitors())
+                .pageViews(daily.getTotalPageViews())
+                .newVisitors(daily.getNewVisitors())
+                .returningVisitors(daily.getReturningVisitors())
+                .sessions(daily.getTotalSessions())
+                .bounceRate(daily.getBounceRate().doubleValue())
+                .avgSessionDuration(daily.getAvgSessionDuration().intValue())
+                .avgPagesPerSession(daily.getAvgPagesPerSession().doubleValue())
+                .build();
     }
     
     /**
@@ -143,8 +145,8 @@ public class AnalyticsMapper {
                 pageDaily.getEntrances(),
                 pageDaily.getExits(),
                 pageDaily.getExitRate().doubleValue(),
-                null, // avgScrollDepth - 별도 계산 필요
-                null  // avgClickCount - 별도 계산 필요
+                pageDaily.getAvgScrollDepth() != null ? pageDaily.getAvgScrollDepth().doubleValue() : null,
+                pageDaily.getAvgClickCount() != null ? pageDaily.getAvgClickCount().doubleValue() : null
         );
     }
     
@@ -228,15 +230,15 @@ public class AnalyticsMapper {
             browser = "Opera";
         }
         
-        // OS 판별
-        if (ua.contains("windows")) {
-            os = "Windows";
-        } else if (ua.contains("mac os") || ua.contains("macintosh")) {
-            os = "macOS";
-        } else if (ua.contains("iphone") || ua.contains("ipad")) {
+        // OS 판별 — iPhone UA에 "like Mac OS X"가 포함되므로 모바일 OS를 먼저 판별해야 함
+        if (ua.contains("iphone") || ua.contains("ipad") || ua.contains("ipod")) {
             os = "iOS";
         } else if (ua.contains("android")) {
             os = "Android";
+        } else if (ua.contains("windows")) {
+            os = "Windows";
+        } else if (ua.contains("mac os") || ua.contains("macintosh")) {
+            os = "macOS";
         } else if (ua.contains("linux")) {
             os = "Linux";
         }

@@ -27,6 +27,11 @@ public interface AnalyticsDailyRepository extends JpaRepository<AnalyticsDaily, 
      * 기간별 집계 데이터 조회.
      */
     List<AnalyticsDaily> findByDateBetweenOrderByDateDesc(LocalDate startDate, LocalDate endDate);
+
+    /**
+     * 기간별 집계 데이터 조회 (날짜 오름차순 — 차트 x축용).
+     */
+    List<AnalyticsDaily> findByDateBetweenOrderByDateAsc(LocalDate startDate, LocalDate endDate);
     
     /**
      * 기간별 집계 데이터 페이징 조회.

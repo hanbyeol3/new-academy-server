@@ -53,7 +53,7 @@ check "헬스 체크 (익명 접근 = security permitAll 정상)" "$RESP" '"resu
 # 1. 관리자 로그인
 # ============================================
 echo -e "\n${YELLOW}[1] 관리자 로그인${NC}"
-LOGIN_RESPONSE=$(curl -s -X POST "${API_URL}/auth/login" \
+LOGIN_RESPONSE=$(curl -s -X POST "${API_URL}/auth/sign-in" \
     -H "Content-Type: application/json" \
     -d '{"username": "testadmin", "password": "password123!"}')
 

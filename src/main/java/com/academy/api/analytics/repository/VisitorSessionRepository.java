@@ -70,6 +70,21 @@ public interface VisitorSessionRepository extends JpaRepository<VisitorSession, 
     @Query("SELECT COUNT(vs) FROM VisitorSession vs " +
            "WHERE vs.updatedAt > :threshold AND vs.sessionEnd IS NULL")
     Long countActiveSessions(@Param("threshold") LocalDateTime threshold);
+
+    /**
+     * 최근 N분간 활동한 방문자 수 (종료된 세션 포함 — 실시간 지표용).
+     */
+    @Query("SELECT COUNT(DISTINCT vs.visitorId) FROM VisitorSession vs " +
+           "WHERE vs.updatedAt > :threshold")
+    Long countRecentVisitors(@Param("threshold") LocalDateTime threshold);
+
+    /**
+     * 기간 내 시작된 세션 수와 바운스 세션 수 (미집계 당일 이탈률 계산용).
+     */
+    @Query("SELECT COUNT(vs), SUM(CASE WHEN vs.isBounce = true THEN 1 ELSE 0 END) " +
+           "FROM VisitorSession vs WHERE vs.sessionStart BETWEEN :startDate AND :endDate")
+    List<Object[]> countSessionsAndBounces(@Param("startDate") LocalDateTime startDate,
+                                           @Param("endDate") LocalDateTime endDate);
     
     /**
      * 종료되지 않은 오래된 세션 조회 (타임아웃 처리용).

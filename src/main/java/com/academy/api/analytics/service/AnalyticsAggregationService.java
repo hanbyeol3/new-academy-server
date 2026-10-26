@@ -33,6 +33,9 @@ public class AnalyticsAggregationService {
     private final AnalyticsReferrerDailyRepository referrerDailyRepository;
     private final EntityManager entityManager;
     private final JdbcTemplate jdbcTemplate;
+
+    /** 집계 테이블(일별/페이지별/유입경로별) 보관 기간 (년) */
+    private static final int AGGREGATE_RETENTION_YEARS = 3;
     
     /**
      * 일별 전체 통계 집계.
@@ -130,9 +133,10 @@ public class AnalyticsAggregationService {
                     date, page_path, page_title, page_category,
                     unique_visitors, page_views, entrances, exits,
                     avg_time_on_page, bounce_rate, exit_rate,
+                    avg_scroll_depth, avg_click_count,
                     created_at
                 )
-                SELECT 
+                SELECT
                     ? as date,
                     pv.page_path,
                     MAX(pv.page_title) as page_title,
@@ -142,10 +146,12 @@ public class AnalyticsAggregationService {
                     SUM(CASE WHEN pv.is_entrance_page = 1 THEN 1 ELSE 0 END) as entrances,
                     SUM(CASE WHEN pv.is_exit_page = 1 THEN 1 ELSE 0 END) as exits,
                     COALESCE(AVG(pv.time_on_page_seconds), 0) as avg_time_on_page,
-                    COALESCE((SUM(CASE WHEN pv.is_entrance_page = 1 AND pv.is_exit_page = 1 THEN 1 ELSE 0 END) * 100.0 / 
+                    COALESCE((SUM(CASE WHEN pv.is_entrance_page = 1 AND pv.is_exit_page = 1 THEN 1 ELSE 0 END) * 100.0 /
                         NULLIF(SUM(CASE WHEN pv.is_entrance_page = 1 THEN 1 ELSE 0 END), 0)), 0) as bounce_rate,
-                    COALESCE((SUM(CASE WHEN pv.is_exit_page = 1 THEN 1 ELSE 0 END) * 100.0 / 
+                    COALESCE((SUM(CASE WHEN pv.is_exit_page = 1 THEN 1 ELSE 0 END) * 100.0 /
                         NULLIF(COUNT(pv.id), 0)), 0) as exit_rate,
+                    COALESCE(AVG(pv.scroll_depth), 0) as avg_scroll_depth,
+                    COALESCE(AVG(pv.click_count), 0) as avg_click_count,
                     NOW()
                 FROM page_views pv
                 WHERE DATE(pv.viewed_at) = ?
@@ -159,7 +165,9 @@ public class AnalyticsAggregationService {
                     exits = VALUES(exits),
                     avg_time_on_page = VALUES(avg_time_on_page),
                     bounce_rate = VALUES(bounce_rate),
-                    exit_rate = VALUES(exit_rate)
+                    exit_rate = VALUES(exit_rate),
+                    avg_scroll_depth = VALUES(avg_scroll_depth),
+                    avg_click_count = VALUES(avg_click_count)
                 """;
             
             int rows = jdbcTemplate.update(sql, date, date);
@@ -277,12 +285,14 @@ public class AnalyticsAggregationService {
             log.info("[AggregationService] 세션 아카이빙 완료. archived={}, deleted={}", 
                     archivedRows, deletedRows);
             
-            // 4. 1년 이상 된 집계 데이터 삭제
-            LocalDate yearAgo = LocalDate.now().minusYears(1);
-            deleteSql = "DELETE FROM analytics_daily WHERE date < ?";
-            deletedRows = jdbcTemplate.update(deleteSql, yearAgo);
-            
-            log.info("[AggregationService] 오래된 집계 데이터 삭제. deleted={}", deletedRows);
+            // 4. 보관 기간(3년)이 지난 집계 데이터 삭제 (일별/페이지별/유입경로별 공통)
+            LocalDate aggregateCutoff = LocalDate.now().minusYears(AGGREGATE_RETENTION_YEARS);
+            int deletedDaily = jdbcTemplate.update("DELETE FROM analytics_daily WHERE date < ?", aggregateCutoff);
+            int deletedPageDaily = jdbcTemplate.update("DELETE FROM analytics_page_daily WHERE date < ?", aggregateCutoff);
+            int deletedReferrerDaily = jdbcTemplate.update("DELETE FROM analytics_referrer_daily WHERE date < ?", aggregateCutoff);
+
+            log.info("[AggregationService] 오래된 집계 데이터 삭제. daily={}, pageDaily={}, referrerDaily={}",
+                    deletedDaily, deletedPageDaily, deletedReferrerDaily);
             
         } catch (Exception e) {
             log.error("[AggregationService] 데이터 아카이빙 실패. error={}", e.getMessage(), e);

@@ -78,7 +78,15 @@ public class AnalyticsPageDaily {
     /** 종료율 (%) */
     @Column(name = "exit_rate", precision = 5, scale = 2)
     private BigDecimal exitRate = BigDecimal.ZERO;
-    
+
+    /** 평균 스크롤 깊이 (%) */
+    @Column(name = "avg_scroll_depth", precision = 5, scale = 2)
+    private BigDecimal avgScrollDepth = BigDecimal.ZERO;
+
+    /** 평균 클릭 수 */
+    @Column(name = "avg_click_count", precision = 5, scale = 2)
+    private BigDecimal avgClickCount = BigDecimal.ZERO;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

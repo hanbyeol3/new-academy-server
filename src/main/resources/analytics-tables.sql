@@ -149,6 +149,8 @@ CREATE TABLE IF NOT EXISTS analytics_page_daily (
     avg_time_on_page DECIMAL(10,2) DEFAULT 0 COMMENT '평균 체류 시간(초)',
     bounce_rate DECIMAL(5,2) DEFAULT 0 COMMENT '이탈률 (%)',
     exit_rate DECIMAL(5,2) DEFAULT 0 COMMENT '종료율 (%)',
+    avg_scroll_depth DECIMAL(5,2) DEFAULT 0 COMMENT '평균 스크롤 깊이(%)',
+    avg_click_count DECIMAL(5,2) DEFAULT 0 COMMENT '평균 클릭 수',
     
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     

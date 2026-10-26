@@ -44,7 +44,8 @@ public interface AnalyticsPageDailyRepository extends JpaRepository<AnalyticsPag
     @Query("SELECT apd.pagePath, apd.pageTitle, MAX(apd.pageCategory), " +
            "SUM(apd.uniqueVisitors), SUM(apd.pageViews), " +
            "SUM(apd.entrances), SUM(apd.exits), " +
-           "AVG(apd.avgTimeOnPage), AVG(apd.bounceRate), AVG(apd.exitRate) " +
+           "AVG(apd.avgTimeOnPage), AVG(apd.bounceRate), AVG(apd.exitRate), " +
+           "AVG(apd.avgScrollDepth), AVG(apd.avgClickCount) " +
            "FROM AnalyticsPageDaily apd " +
            "WHERE apd.date BETWEEN :startDate AND :endDate " +
            "GROUP BY apd.pagePath, apd.pageTitle " +

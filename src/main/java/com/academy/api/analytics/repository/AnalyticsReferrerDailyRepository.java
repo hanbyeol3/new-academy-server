@@ -53,12 +53,12 @@ public interface AnalyticsReferrerDailyRepository extends JpaRepository<Analytic
      *
      * 컬럼 순서: referrerDomain, visitors, newVisitors, sessions, pageViews
      */
-    @Query("SELECT ard.referrerDomain, SUM(ard.visitors) as totalVisitors, " +
-           "SUM(ard.newVisitors), SUM(ard.sessions), SUM(ard.pageViews) " +
+    @Query("SELECT ard.referrerDomain, ard.referrerType, SUM(ard.visitors) as totalVisitors, " +
+           "SUM(ard.newVisitors), SUM(ard.sessions), SUM(ard.pageViews), " +
+           "AVG(ard.bounceRate), AVG(ard.avgSessionDuration) " +
            "FROM AnalyticsReferrerDaily ard " +
            "WHERE ard.date BETWEEN :startDate AND :endDate " +
-           "AND ard.referrerDomain IS NOT NULL " +
-           "GROUP BY ard.referrerDomain " +
+           "GROUP BY ard.referrerDomain, ard.referrerType " +
            "ORDER BY totalVisitors DESC")
     Page<Object[]> findTopReferrerDomains(@Param("startDate") LocalDate startDate,
                                           @Param("endDate") LocalDate endDate,

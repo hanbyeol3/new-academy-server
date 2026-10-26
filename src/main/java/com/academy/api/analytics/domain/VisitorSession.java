@@ -138,12 +138,12 @@ public class VisitorSession {
     public void updateSessionEnd() {
         this.sessionEnd = LocalDateTime.now();
         
-        // 총 체류시간 계산
+        // 총 체류시간 계산 (DB TIMESTAMP 초단위 반올림으로 음수가 될 수 있어 0 미만은 클램프)
         if (this.sessionStart != null && this.sessionEnd != null) {
             long durationSeconds = java.time.Duration.between(
                 this.sessionStart, this.sessionEnd
             ).getSeconds();
-            this.totalDurationSeconds = (int) durationSeconds;
+            this.totalDurationSeconds = (int) Math.max(0, durationSeconds);
         }
         
         // 페이지가 1개만 있으면 바운스로 처리

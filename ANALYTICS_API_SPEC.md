@@ -12,7 +12,7 @@
 
 | 구분 | Base Path | 인증 |
 |------|-----------|------|
-| 수집 API (공개) | `/api/analytics` | 불필요 (CORS 전체 허용) |
+| 수집 API (공개) | `/api/analytics` | 불필요 (단, CORS는 허용 Origin 화이트리스트 — summatus.kr 계열 + 로컬 개발 호스트) |
 | 관리자 통계 API | `/api/admin/analytics` | **JWT 필수 + ROLE_ADMIN** |
 
 관리자 API 호출 시 헤더:
@@ -332,7 +332,18 @@ GET /api/analytics/health
 
 ## 4. 관리자 통계 API (JWT + ADMIN 권한 필수)
 
-모든 API 공통 에러: 401(인증 실패, `isNeedLogin: true`), 403(권한 없음, `accessDenied: true`).
+**모든 API 공통 에러 (401/403):** 인증 필터 단계에서 차단되므로 1.2의 공통 래퍼가 아닌 **별도 에러 포맷**으로 응답합니다. HTTP 상태 코드로 분기하세요.
+
+```json
+// 401 (토큰 없음/만료/위조)
+{ "success": false, "error": { "code": "AUTH_REQUIRED", "message": "인증이 필요합니다. 로그인 후 다시 시도해주세요." } }
+
+// 403 (ADMIN 권한 없음)
+{ "success": false, "error": { "code": "ACCESS_DENIED", "message": "해당 리소스에 접근할 권한이 없습니다." } }
+```
+
+> 컨트롤러까지 도달한 뒤 발생하는 비즈니스 에러는 1.2의 공통 래퍼(`result`/`code`/`message`)로 내려옵니다.
+> 공통 래퍼의 `isNeedLogin`/`accessDenied` 필드는 이 401/403 응답에는 포함되지 않습니다.
 
 ### 4.1 개요(Overview) 조회 — 대시보드 상단 카드
 
@@ -581,12 +592,12 @@ GET /api/admin/analytics/referrers?period=7d&page=0&size=20
 | `pageViews` | Integer | 페이지뷰 |
 | `sessions` | Integer | 세션 수 |
 | `bounceRate` | Double | 이탈률 (%) |
-| `avgSessionDuration` | Integer | 평균 세션 시간 (초) — ⚠️ 현재 null 반환 |
-| `avgPagesPerSession` | Double | 세션당 평균 페이지 수 — ⚠️ 현재 null 반환 |
-| `topLandingPages` | String[] | 상위 랜딩 페이지 — ⚠️ 현재 null 반환 |
-| `searchKeywords` | String[] | 검색 키워드 — ⚠️ 현재 null 반환 |
+| `avgSessionDuration` | Integer | 평균 세션 시간 (초) |
+| `avgPagesPerSession` | Double | 세션당 평균 페이지 수 (세션 0건이면 null) |
+| `topLandingPages` | String[] | 상위 랜딩 페이지 (최대 3개) |
+| `searchKeywords` | String[] | 검색 키워드 (최대 3개) — ⚠️ 수집기가 검색어를 파싱하지 않아 현재 항상 빈 배열 |
 
-> ⚠️ `bounceRate`도 현재 null 반환. `source`, `type`, `visitors`, `percentage`, `newVisitors`, `sessions`, `pageViews`만 값이 채워짐. **null 필드는 프론트에서 옵셔널 처리 필수.**
+> `type`은 수집 시 UTM 기반으로 판별·저장된 값 (PAID/EMAIL 분류 유지). 직접 유입(DIRECT)도 목록에 포함됨.
 
 ---
 
@@ -670,7 +681,7 @@ GET /api/admin/analytics/pages/detail?pagePath=/notice/list&period=7d
 | `recentViews[]` | `sessionId`, `visitorId`, `timestamp`, `duration`(초), `referrer`, `deviceType`, `browser`, `os`, `location`, `scrollDepth`(%), `clickCount` |
 | `userFlow.previousPages[]` / `nextPages[]` | `path`, `title`, `count`, `percentage` |
 
-> ⚠️ `deviceBreakdown`, `userFlow`는 **현재 null 반환** (미구현). `recentViews`(최근 10건), `topReferrers`(상위 5건), `entrances`/`exits`/`exitRate`는 값이 채워짐.
+> `deviceBreakdown`(디바이스별 순 방문자/비율), `userFlow`(이전/다음 페이지 각 상위 5건) 구현 완료. `recentViews`(최근 10건), `topReferrers`(상위 5건), `entrances`/`exits`/`exitRate`도 값이 채워짐.
 > `recentViews[].referrer`는 유입 도메인이며 직접 유입 시 null. `topReferrers[].source`는 직접 유입 시 `"직접 유입"` 문자열.
 
 ---
@@ -1034,10 +1045,12 @@ async function adminApi(url, options = {}) {
     ...options,
     headers: { 'Content-Type': 'application/json', ...authHeaders, ...options.headers }
   });
+  // 401/403은 인증 필터의 별도 포맷({success:false, error:{code}})이므로 HTTP 상태로 분기
+  if (res.status === 401) return redirectToLogin();
+  if (res.status === 403) return showNoPermission();
+
   const json = await res.json();
 
-  if (json.isNeedLogin) return redirectToLogin();      // 401 계열
-  if (json.accessDenied) return showNoPermission();     // 403 계열
   if (json.result !== 'Success') {
     showToast(json.message || '요청 처리에 실패했습니다.');  // code로 분기 가능
     return null;
@@ -1059,7 +1072,7 @@ async function adminApi(url, options = {}) {
 - [ ] SPA 라우트 변경 시 이탈→새 페이지뷰 순서 보장
 - [ ] `pagePath` 쿼리 파라미터는 `encodeURIComponent` 처리
 - [ ] 트래킹 실패가 사이트 UX에 영향 주지 않도록 모든 호출 try/catch
-- [ ] 관리자 API: `isNeedLogin`/`accessDenied` 공통 처리
+- [ ] 관리자 API: 401/403은 **HTTP 상태 코드**로 공통 처리 (바디는 `{success:false, error:{code}}` 포맷)
 - [ ] 페이지네이션은 0-based (`page=0`이 첫 페이지)
 
 ### 서버 동작 참고
@@ -1071,4 +1084,4 @@ async function adminApi(url, options = {}) {
 
 ---
 
-**최종 업데이트**: 2026-09-02 (실제 컨트롤러/DTO 코드 기준 재작성)
+**최종 업데이트**: 2026-10-26 (401/403 에러 포맷·CORS 정책 현행화, granularity/당일 보완·referrers 부가필드·deviceBreakdown·userFlow·scroll/click 집계 구현 반영)

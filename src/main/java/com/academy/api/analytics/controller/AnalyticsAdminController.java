@@ -246,7 +246,7 @@ public class AnalyticsAdminController {
     @GetMapping("/pages/detail")
     public ResponseData<ResponseAnalyticsPageDetail> getPageDetail(
             @Parameter(description = "페이지 경로", example = "/notice/list")
-            @RequestParam String pagePath,
+            @RequestParam(required = false) String pagePath,
             
             @Parameter(description = "조회 기간", example = "7d")
             @RequestParam(defaultValue = "7d") String period,
