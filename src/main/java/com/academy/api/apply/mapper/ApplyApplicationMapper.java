@@ -89,6 +89,7 @@ public class ApplyApplicationMapper {
 	 */
 	public void updateEntityFromRequest(ApplyApplication entity, RequestApplyApplicationUpdate request, Long updatedBy) {
 		entity.update(
+				request.getDivision(),
 				request.getStudentName(),
 				request.getGender(),
 				request.getBirthDate(),

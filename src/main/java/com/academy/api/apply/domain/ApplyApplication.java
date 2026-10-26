@@ -249,7 +249,8 @@ public class ApplyApplication {
     /**
      * 원서접수 정보 업데이트.
      */
-    public void update(String studentName, Gender gender, LocalDate birthDate, String studentPhone,
+    public void update(ApplicationDivision division, String studentName, Gender gender,
+                      LocalDate birthDate, String studentPhone,
                       String schoolName, StudentGradeLevel studentGradeLevel,
                       String email, String postalCode, String address, String addressDetail,
                       BigDecimal latitude, BigDecimal longitude, String parentOpinion,
@@ -257,6 +258,8 @@ public class ApplyApplication {
                       String guardian1Name, String guardian1Phone, String guardian1Relation,
                       String guardian2Name, String guardian2Phone, String guardian2relation,
                       Long updatedBy) {
+        // 구분은 미전송(null) 시 기존 값 유지
+        this.division = division != null ? division : this.division;
         this.studentName = studentName;
         this.gender = gender != null ? gender : this.gender;
         this.birthDate = birthDate;

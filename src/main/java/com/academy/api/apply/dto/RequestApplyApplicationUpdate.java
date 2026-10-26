@@ -1,5 +1,6 @@
 package com.academy.api.apply.dto;
 
+import com.academy.api.apply.domain.ApplicationDivision;
 import com.academy.api.apply.domain.Gender;
 import com.academy.api.apply.domain.StudentGradeLevel;
 import com.academy.api.apply.domain.SubjectCode;
@@ -25,6 +26,10 @@ import java.util.List;
 @NoArgsConstructor
 @Schema(description = "원서접수 수정 요청")
 public class RequestApplyApplicationUpdate {
+
+    @Schema(description = "학습 구분 (미전송 시 기존 값 유지)", example = "MIDDLE",
+            allowableValues = {"MIDDLE", "HIGH", "SELF_STUDY_RETAKE"})
+    private ApplicationDivision division;
 
     @NotBlank(message = "학생 이름을 입력해주세요")
     @Size(max = 100, message = "학생 이름은 100자 이하여야 합니다")
