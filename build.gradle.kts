@@ -49,6 +49,9 @@ dependencies {
     // Jackson XML (XML 파싱) - Spring Boot 버전과 호환되도록 버전 제거
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml")
     
+    // Redis 캐싱
+    implementation("org.springframework.boot:spring-boot-starter-data-redis")
+    
     compileOnly("org.projectlombok:lombok")
     
     runtimeOnly("com.h2database:h2")

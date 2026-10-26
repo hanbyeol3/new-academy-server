@@ -158,13 +158,14 @@ public class ApplyApplicationMapper {
 	 * 이력 생성 요청을 엔티티로 변환.
 	 */
 	public ApplyApplicationLog toLogEntity(Long applyId, RequestApplyApplicationLogCreate request,
-	                                       ApplyApplication applyApplication) {
+	                                       ApplyApplication applyApplication, Long createdBy) {
 		return ApplyApplicationLog.builder()
 				.applyApplication(applyApplication)
 				.logType(request.getLogType())
 				.logContent(request.getLogContent())
 				.nextStatus(request.getNextStatus())
 				.nextAssigneeId(request.getNextAssigneeId())
+				.createdBy(createdBy)
 				.build();
 	}
 
@@ -233,6 +234,20 @@ public class ApplyApplicationMapper {
 				.logType(ApplicationLogType.UPDATE)
 				.logContent("정보 수정: " + updateReason)
 				.createdBy(updatedBy)
+				.build();
+	}
+
+	/**
+	 * 상태 변경 이력 생성.
+	 */
+	public ApplyApplicationLog createStatusChangeLog(ApplyApplication applyApplication,
+	                                                 ApplicationStatus newStatus, Long createdBy) {
+		return ApplyApplicationLog.builder()
+				.applyApplication(applyApplication)
+				.logType(ApplicationLogType.UPDATE)
+				.logContent("상태가 [" + newStatus.getDescription() + "]로 변경되었습니다.")
+				.nextStatus(newStatus)
+				.createdBy(createdBy)
 				.build();
 	}
 

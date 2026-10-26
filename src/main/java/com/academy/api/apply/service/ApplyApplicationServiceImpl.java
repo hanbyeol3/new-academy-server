@@ -346,24 +346,15 @@ public class ApplyApplicationServiceImpl implements ApplyApplicationService {
 
 		Long currentUserId = SecurityUtils.getCurrentUserId();
 
-		// 이력 생성
-		ApplyApplicationLog log = applyApplicationMapper.toLogEntity(applyId, request, application);
-		log = ApplyApplicationLog.builder()
-				.applyApplication(application)
-				.logType(request.getLogType())
-				.logContent(request.getLogContent())
-				.nextStatus(request.getNextStatus())
-				.nextAssigneeId(request.getNextAssigneeId())
-				.createdBy(currentUserId)
-				.build();
-
-		log = applyApplicationLogRepository.save(log);
+		// 이력 생성 (작성자 ID 포함)
+		ApplyApplicationLog applicationLog = applyApplicationMapper.toLogEntity(applyId, request, application, currentUserId);
+		applicationLog = applyApplicationLogRepository.save(applicationLog);
 
 		// 상태 변경이 포함된 경우 원서접수 상태도 업데이트
 		if (request.hasStatusChange()) {
 			application.updateStatus(request.getNextStatus(), currentUserId);
 			applyApplicationRepository.save(application);
-			this.log.debug("[ApplyApplicationService] 원서접수 상태 변경. ID={}, 새상태={}", applyId, request.getNextStatus());
+			log.debug("[ApplyApplicationService] 원서접수 상태 변경. ID={}, 새상태={}", applyId, request.getNextStatus());
 		}
 
 		// 담당자 변경이 포함된 경우
@@ -371,12 +362,12 @@ public class ApplyApplicationServiceImpl implements ApplyApplicationService {
 			String assigneeName = getMemberName(request.getNextAssigneeId());
 			application.assignTo(assigneeName, currentUserId);
 			applyApplicationRepository.save(application);
-			this.log.debug("[ApplyApplicationService] 담당자 변경. ID={}, 새담당자={}", applyId, assigneeName);
+			log.debug("[ApplyApplicationService] 담당자 변경. ID={}, 새담당자={}", applyId, assigneeName);
 		}
 
-		ResponseApplyApplicationLog response = applyApplicationMapper.toLogResponse(log);
+		ResponseApplyApplicationLog response = applyApplicationMapper.toLogResponse(applicationLog);
 
-		this.log.info("[ApplyApplicationService] 원서접수 이력 추가 완료. logId={}", log.getId());
+		log.info("[ApplyApplicationService] 원서접수 이력 추가 완료. logId={}", applicationLog.getId());
 
 		return ResponseData.ok("0000", "이력이 추가되었습니다.", response);
 	}
@@ -398,6 +389,10 @@ public class ApplyApplicationServiceImpl implements ApplyApplicationService {
 		Long currentUserId = SecurityUtils.getCurrentUserId();
 		application.updateStatus(newStatus, currentUserId);
 		applyApplicationRepository.save(application);
+
+		// 상태 변경 이력 추가
+		ApplyApplicationLog statusLog = applyApplicationMapper.createStatusChangeLog(application, newStatus, currentUserId);
+		applyApplicationLogRepository.save(statusLog);
 
 		log.info("[ApplyApplicationService] 원서접수 상태 변경 완료. ID={}, status={}", id, status);
 
