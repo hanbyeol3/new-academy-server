@@ -149,9 +149,10 @@ public class InquiryMapper {
      * @param inquiryId 상담신청 ID
      * @param request 이력 생성 요청 DTO
      * @param inquiry Inquiry Entity (연관관계 설정용)
+     * @param createdBy 등록자 사용자 ID
      * @return InquiryLog Entity
      */
-    public InquiryLog toLogEntity(Long inquiryId, RequestInquiryLogCreate request, Inquiry inquiry) {
+    public InquiryLog toLogEntity(Long inquiryId, RequestInquiryLogCreate request, Inquiry inquiry, Long createdBy) {
         return InquiryLog.builder()
                 .inquiry(inquiry)
                 .logType(request.getLogTypeEnum())
@@ -159,7 +160,7 @@ public class InquiryMapper {
                 .logContent(request.getLogContent())
                 .nextStatus(request.getNextStatusEnum())
                 .nextAssignee(request.getNextAssignee())
-                .createdBy(null) // 서비스에서 설정
+                .createdBy(createdBy)
                 .build();
     }
 

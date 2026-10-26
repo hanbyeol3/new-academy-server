@@ -80,6 +80,7 @@ public class SecurityConfiguration {
 						.requestMatchers("/api/apply-applications/**").permitAll()  // 공개 원서접수 API
 						.requestMatchers("/api/school-exams/**").permitAll()  // 학교별 시험분석 공개 API
 						.requestMatchers("/api/improvement-cases/**").permitAll()  // 학교별 시험분석 공개 API
+						.requestMatchers("/api/analytics/**").permitAll()  // 방문자 분석 수집 API (익명 방문자용)
 
 						// ✅ 관리자 API (ADMIN 권한 필요)
 						.requestMatchers("/api/admin/**").hasRole("ADMIN")

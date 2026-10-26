@@ -242,12 +242,15 @@ public class InquiryServiceImpl implements InquiryService {
         // 상태 변경 시 이력 자동 생성
         if (request.hasStatusUpdate() || request.hasAssigneeUpdate()) {
             String logContent = createUpdateLogContent(request);
+            InquiryLogType logType = request.hasStatusUpdate()
+                    ? InquiryLogType.STATUS_CHANGE
+                    : InquiryLogType.ASSIGNEE_CHANGE;
             InquiryLog updateLog = InquiryLog.builder()
                     .inquiry(inquiry)
-                    .logType(InquiryLogType.STATUS_CHANGE)
+                    .logType(logType)
                     .logContent(logContent)
                     .nextStatus(request.getStatusEnum())
-                    .nextAssignee(null) // 담당자 변경은 별도 메서드에서
+                    .nextAssignee(null) // 담당자는 이름으로 관리되므로 ID 미기록 (이름은 logContent에 포함)
                     .createdBy(currentUserId)
                     .build();
             inquiryLogRepository.save(updateLog);
@@ -351,8 +354,8 @@ public class InquiryServiceImpl implements InquiryService {
 
         Long currentUserId = SecurityUtils.getCurrentUserId();
 
-        // 이력 생성
-        InquiryLog inquiryLog = inquiryMapper.toLogEntity(inquiryId, request, inquiry);
+        // 이력 생성 (작성자 ID 포함)
+        InquiryLog inquiryLog = inquiryMapper.toLogEntity(inquiryId, request, inquiry, currentUserId);
         inquiryLog = inquiryLogRepository.save(inquiryLog);
 
         // 상태 변경이 포함된 경우 상담신청 상태도 업데이트
@@ -402,6 +405,16 @@ public class InquiryServiceImpl implements InquiryService {
         inquiry.updateStatus(newStatus, currentUserId);
         inquiryRepository.save(inquiry);
 
+        // 상태 변경 이력 추가
+        InquiryLog statusLog = InquiryLog.builder()
+                .inquiry(inquiry)
+                .logType(InquiryLogType.STATUS_CHANGE)
+                .logContent("상태가 [" + newStatus.name() + "]로 변경되었습니다.")
+                .nextStatus(newStatus)
+                .createdBy(currentUserId)
+                .build();
+        inquiryLogRepository.save(statusLog);
+
         log.info("[InquiryService] 상담신청 상태 변경 완료. ID={}, status={}", id, status);
 
         return Response.ok("0000", "상담 상태가 변경되었습니다");
@@ -426,6 +439,15 @@ public class InquiryServiceImpl implements InquiryService {
         Long currentUserId = SecurityUtils.getCurrentUserId();
         inquiry.assignTo(assigneeName, currentUserId);
         inquiryRepository.save(inquiry);
+
+        // 담당자 배정 이력 추가 (담당자는 이름으로 관리되므로 nextAssignee ID는 미기록)
+        InquiryLog assignLog = InquiryLog.builder()
+                .inquiry(inquiry)
+                .logType(InquiryLogType.ASSIGNEE_CHANGE)
+                .logContent("담당자가 [" + assigneeName + "]로 배정되었습니다.")
+                .createdBy(currentUserId)
+                .build();
+        inquiryLogRepository.save(assignLog);
 
         log.info("[InquiryService] 상담신청 담당자 배정 완료. ID={}, assigneeName={}", id, assigneeName);
 
