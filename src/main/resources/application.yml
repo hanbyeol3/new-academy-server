@@ -45,6 +45,11 @@ management:
     web:
       exposure:
         include: health,info
+  health:
+    redis:
+      # Redis는 캐시 전용(미기동 시 DB 폴백)이라 헬스체크 판정에서 제외
+      # — Redis 없다고 배포 헬스체크(503)가 실패하지 않도록 함
+      enabled: false
 
 springdoc:
   swagger-ui:
