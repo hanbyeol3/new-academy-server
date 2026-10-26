@@ -652,15 +652,33 @@ public class ApplyApplicationServiceImpl implements ApplyApplicationService {
 	}
 
 	/**
-	 * 파일 업로드 업데이트.
+	 * 파일 업로드 업데이트 (notice 서비스의 선택적 치환 정책 적용).
+	 *
+	 * 삭제 요청된 기존 파일만 연결 해제하고 신규 파일만 추가하므로,
+	 * 요청에 포함되지 않은 기존 파일은 그대로 유지됩니다.
 	 */
 	private void updateFileUploads(Long applyId, RequestApplyApplicationUpdate request) {
-		// 기존 파일 연결 삭제
-		uploadFileLinkRepository.deleteByOwnerTableAndOwnerIdAndRole("apply_applications", applyId, FileRole.ATTACHMENT);
-		uploadFileLinkRepository.deleteByOwnerTableAndOwnerIdAndRole("apply_applications", applyId, FileRole.COVER);
+		// 1. 선택된 기존 파일 연결 삭제
+		deleteSelectedFileLinks(applyId, request.getDeleteTranscriptFileIds(), FileRole.ATTACHMENT);
+		deleteSelectedFileLinks(applyId, request.getDeletePhotoFileIds(), FileRole.COVER);
 
-		// 새 파일 연결 생성
+		// 2. 신규 파일 연결 생성 (기존 파일 유지)
 		processFileUploads(applyId, convertUpdateToCreate(request));
+	}
+
+	/**
+	 * 선택된 파일 연결 삭제.
+	 */
+	private void deleteSelectedFileLinks(Long applyId, List<Long> fileIds, FileRole role) {
+		if (fileIds == null || fileIds.isEmpty()) {
+			log.debug("[ApplyApplicationService] 삭제할 {} 파일 없음. applyId={}", role, applyId);
+			return;
+		}
+
+		log.info("[ApplyApplicationService] {} 파일 선택 삭제 실행. applyId={}, 삭제파일={}개", role, applyId, fileIds.size());
+
+		uploadFileLinkRepository.deleteByOwnerTableAndOwnerIdAndRoleAndFileIdIn(
+				"apply_applications", applyId, role, fileIds);
 	}
 
 	/**

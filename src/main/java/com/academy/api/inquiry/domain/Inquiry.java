@@ -162,7 +162,16 @@ public class Inquiry {
         this.name = name;
         this.phoneNumber = phoneNumber;
         this.content = content;
-        this.status = status != null ? status : this.status;
+        InquiryStatus newStatus = status != null ? status : this.status;
+        if (newStatus != this.status) {
+            // 상태 변경 시 처리 완료 시각 동기화 (updateStatus와 동일 정책)
+            if (newStatus == InquiryStatus.DONE || newStatus == InquiryStatus.REJECTED || newStatus == InquiryStatus.SPAM) {
+                this.processedAt = LocalDateTime.now();
+            } else {
+                this.processedAt = null;
+            }
+        }
+        this.status = newStatus;
         this.assigneeName = assigneeName;
         this.adminMemo = adminMemo;
         this.inquiryChannel = inquiryChannel != null ? inquiryChannel : this.inquiryChannel;

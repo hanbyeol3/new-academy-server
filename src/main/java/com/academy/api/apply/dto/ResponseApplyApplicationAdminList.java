@@ -59,6 +59,9 @@ public class ResponseApplyApplicationAdminList {
     @Schema(description = "신청 과목 수", example = "3")
     private Integer subjectCount;
 
+    @Schema(description = "신청 과목 목록")
+    private List<ResponseApplyApplicationSubject> subjects;
+
     @Schema(description = "담당 관리자명", example = "김관리자")
     private String assigneeName;
 
@@ -101,6 +104,7 @@ public class ResponseApplyApplicationAdminList {
                 .guardian1Name(entity.getGuardian1Name())
                 .guardian1Phone(entity.getGuardian1Phone())
                 .subjectCount(entity.getSubjects().size())
+                .subjects(toSubjectResponses(entity))
                 .assigneeName(entity.getAssigneeName())
                 .createdBy(entity.getCreatedBy())
                 .createdByName(null) // 서비스에서 별도 설정
@@ -131,6 +135,7 @@ public class ResponseApplyApplicationAdminList {
                 .guardian1Name(entity.getGuardian1Name())
                 .guardian1Phone(entity.getGuardian1Phone())
                 .subjectCount(entity.getSubjects().size())
+                .subjects(toSubjectResponses(entity))
                 .assigneeName(entity.getAssigneeName())
                 .createdBy(entity.getCreatedBy())
                 .createdByName(createdByName)
@@ -139,6 +144,15 @@ public class ResponseApplyApplicationAdminList {
                 .updatedByName(updatedByName)
                 .updatedAt(entity.getUpdatedAt())
                 .build();
+    }
+
+    /**
+     * 신청 과목 엔티티 목록을 응답 DTO 목록으로 변환.
+     */
+    private static List<ResponseApplyApplicationSubject> toSubjectResponses(ApplyApplication entity) {
+        return entity.getSubjects().stream()
+                .map(ResponseApplyApplicationSubject::from)
+                .toList();
     }
 
     /**

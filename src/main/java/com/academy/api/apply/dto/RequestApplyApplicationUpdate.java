@@ -129,12 +129,18 @@ public class RequestApplyApplicationUpdate {
     private List<SubjectCode> subjects;
 
     @Valid
-    @Schema(description = "성적표 파일 참조 목록 (FileRole: ATTACHMENT)")
+    @Schema(description = "신규 추가할 성적표 파일 참조 목록 (FileRole: ATTACHMENT, 기존 파일은 유지)")
     private List<FileReference> transcriptFiles;
 
     @Valid
-    @Schema(description = "증명사진 파일 참조 목록 (FileRole: COVER)")
+    @Schema(description = "신규 추가할 증명사진 파일 참조 목록 (FileRole: COVER, 기존 파일은 유지)")
     private List<FileReference> photoFiles;
+
+    @Schema(description = "삭제할 기존 성적표 파일 ID 목록", example = "[1, 2]")
+    private List<Long> deleteTranscriptFileIds;
+
+    @Schema(description = "삭제할 기존 증명사진 파일 ID 목록", example = "[3]")
+    private List<Long> deletePhotoFileIds;
 
     @NotBlank(message = "수정 사유를 입력해주세요")
     @Size(max = 500, message = "수정 사유는 500자 이하여야 합니다")
