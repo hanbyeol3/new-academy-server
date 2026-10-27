@@ -19,7 +19,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -27,6 +29,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -50,13 +53,30 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     
     // 세션 타임아웃 기본값 (30분)
     private static final int DEFAULT_SESSION_TIMEOUT_MINUTES = 30;
-    
+
+    // 봇/크롤러 UA 패턴 (클라이언트 필터를 우회한 수집 요청의 2차 차단)
+    private static final Pattern BOT_UA_PATTERN = Pattern.compile(
+            "bot|crawler|spider|crawling|headless|lighthouse|slurp|yeti|daumoa|bingpreview"
+                    + "|facebookexternalhit|kakaotalk-scrap|whatsapp|telegram|petalbot|semrush"
+                    + "|ahrefs|mj12|dotbot|bytespider|gptbot|claudebot",
+            Pattern.CASE_INSENSITIVE);
+
     @Override
     @Transactional
     public ResponseData<Long> trackPageView(RequestPageView request, String ipAddress) {
-        log.info("[AnalyticsService] 페이지뷰 추적 시작. sessionId={}, path={}, visitor={}", 
+        log.info("[AnalyticsService] 페이지뷰 추적 시작. sessionId={}, path={}, visitor={}",
                 request.getSessionId(), request.getPagePath(), request.getVisitorId());
-        
+
+        // 봇/크롤러 트래픽은 수집 제외 (방문자 수·이탈률 왜곡 방지)
+        if (isBotUserAgent(request.getUserAgent())) {
+            log.debug("[AnalyticsService] 봇 UA 수집 제외. ua={}", request.getUserAgent());
+            return ResponseData.ok("0000", "봇 트래픽은 수집에서 제외되었습니다.", null);
+        }
+
+        // 방문자 ID를 서버에서 IP+UA 기반 일별 해시로 재계산 (Vercel/Plausible 방식)
+        // 스토리지가 격리되는 인앱브라우저·시크릿모드에서도 동일 방문자로 집계된다
+        request.setVisitorId(computeVisitorId(ipAddress, request.getUserAgent()));
+
         try {
             // 1. 활성 세션 확인 또는 신규 생성
             LocalDateTime sessionThreshold = LocalDateTime.now().minusMinutes(DEFAULT_SESSION_TIMEOUT_MINUTES);
@@ -626,7 +646,36 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     }
     
     // === Private Helper Methods ===
-    
+
+    /**
+     * 봇/크롤러 User-Agent 여부 판별.
+     */
+    private boolean isBotUserAgent(String userAgent) {
+        return userAgent != null && BOT_UA_PATTERN.matcher(userAgent).find();
+    }
+
+    /**
+     * IP + User-Agent + 날짜 기반 익명 방문자 ID 생성 (Vercel/Plausible 방식).
+     * - 쿠키/스토리지에 의존하지 않아 인앱브라우저·시크릿모드에서도 동일 기기는 하나로 집계
+     * - 날짜를 섞어 매일 ID가 바뀌므로 장기 개인 추적이 불가능한 익명 식별자가 됨
+     */
+    private String computeVisitorId(String ipAddress, String userAgent) {
+        String raw = (ipAddress == null ? "" : ipAddress) + "|"
+                + (userAgent == null ? "" : userAgent) + "|" + LocalDate.now();
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(raw.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder("v_");
+            for (int i = 0; i < 16; i++) {
+                sb.append(String.format("%02x", hash[i]));
+            }
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            // SHA-256 미지원 환경은 사실상 없지만, 만일을 대비한 폴백
+            return "v_" + Integer.toHexString(raw.hashCode());
+        }
+    }
+
     /**
      * 신규 세션 생성.
      */
