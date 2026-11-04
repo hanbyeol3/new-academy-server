@@ -164,14 +164,18 @@ public class InquiryRepositoryImpl implements InquiryRepositoryCustom {
 
     @Override
     public Map<String, Object> getComplexStatistics(LocalDateTime startDate, LocalDateTime endDate) {
-        
+
         Map<String, Object> stats = new HashMap<>();
+
+        // 기간 조건 (null인 쪽 경계는 where 가변인자에서 무시됨 → 둘 다 null이면 전체 기간 집계)
+        BooleanExpression afterStart = startDate != null ? inquiry.createdAt.goe(startDate) : null;
+        BooleanExpression beforeEnd = endDate != null ? inquiry.createdAt.loe(endDate) : null;
 
         // 상태별 통계
         List<Object[]> statusStats = queryFactory
                 .select(inquiry.status, inquiry.count())
                 .from(inquiry)
-                .where(inquiry.createdAt.between(startDate, endDate))
+                .where(afterStart, beforeEnd)
                 .groupBy(inquiry.status)
                 .fetch()
                 .stream()
@@ -183,7 +187,7 @@ public class InquiryRepositoryImpl implements InquiryRepositoryCustom {
         List<Object[]> channelStats = queryFactory
                 .select(inquiry.inquiryChannel, inquiry.count())
                 .from(inquiry)
-                .where(inquiry.createdAt.between(startDate, endDate))
+                .where(afterStart, beforeEnd)
                 .groupBy(inquiry.inquiryChannel)
                 .fetch()
                 .stream()
@@ -195,7 +199,7 @@ public class InquiryRepositoryImpl implements InquiryRepositoryCustom {
         List<Object[]> inflowStats = queryFactory
                 .select(inquiry.inflowSource, inquiry.count())
                 .from(inquiry)
-                .where(inquiry.createdAt.between(startDate, endDate))
+                .where(afterStart, beforeEnd)
                 .groupBy(inquiry.inflowSource)
                 .fetch()
                 .stream()
@@ -207,8 +211,7 @@ public class InquiryRepositoryImpl implements InquiryRepositoryCustom {
         List<Object[]> assigneeStats = queryFactory
                 .select(inquiry.assigneeName, inquiry.count())
                 .from(inquiry)
-                .where(inquiry.assigneeName.isNotNull()
-                      .and(inquiry.createdAt.between(startDate, endDate)))
+                .where(inquiry.assigneeName.isNotNull(), afterStart, beforeEnd)
                 .groupBy(inquiry.assigneeName)
                 .orderBy(inquiry.count().desc())
                 .fetch()

@@ -400,8 +400,9 @@ public class InquiryAdminController {
                   - 각 유입경로별 비율 (%)
                 
                 기간 필터:
-                - startDate: 시작일 (선택, 기본값: 30일 전)
-                - endDate: 종료일 (선택, 기본값: 오늘)
+                - startDate: 시작일 (선택, 미지정 시 제한 없음)
+                - endDate: 종료일 (선택, 미지정 시 제한 없음)
+                - 둘 다 미지정 시 전체 기간 집계
                 
                 용도:
                 - 마케팅 채널 효과 분석

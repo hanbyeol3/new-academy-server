@@ -71,12 +71,6 @@ public interface InquiryRepository extends JpaRepository<Inquiry, Long>, Inquiry
     List<Object[]> findStatusStatistics();
 
     /**
-     * 문의접수 채널별 통계 조회.
-     */
-    @Query("SELECT i.inquiryChannel, COUNT(i) FROM Inquiry i GROUP BY i.inquiryChannel")
-    List<Object[]> findChannelStatistics();
-
-    /**
      * 월별 접수 통계 조회 (최근 12개월).
      */
     @Query(value = """

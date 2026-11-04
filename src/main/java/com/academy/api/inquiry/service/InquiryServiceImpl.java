@@ -499,25 +499,26 @@ public class InquiryServiceImpl implements InquiryService {
         
         log.info("[InquiryService] 문의접수 채널별 통계 조회 시작. 기간={} ~ {}", startDate, endDate);
 
-        // 기간 설정 (기본값: 최근 30일)
-        if (endDate == null) {
-            endDate = LocalDateTime.now();
-        }
-        if (startDate == null) {
-            startDate = endDate.minusDays(30);
-        }
+        // 채널별/유입경로별 통계 조회 (기간 미지정 시 전체 기간 집계, QueryDSL 사용)
+        // 주의: 모든 수치(전체 건수, 채널, 유입경로)는 반드시 동일한 기간 조건으로 집계해야
+        //       건수 합계와 비율(%)이 서로 어긋나지 않는다.
+        Map<String, Object> complexStats = inquiryRepository.getComplexStatistics(startDate, endDate);
 
-        // 전체 건수 조회
-        long totalCount = inquiryRepository.count();
+        // 채널별 통계 처리
+        @SuppressWarnings("unchecked")
+        List<Object[]> channelData = (List<Object[]>) complexStats.getOrDefault("channelStats", List.of());
 
-        // 채널별 통계 조회
-        List<Object[]> channelData = inquiryRepository.findChannelStatistics();
+        // 전체 건수 = 기간 내 채널별 건수 합계 (inquiryChannel은 NOT NULL이므로 기간 내 전체 건수와 동일)
+        long totalCount = channelData.stream()
+                .mapToLong(data -> (Long) data[1])
+                .sum();
+
         List<ResponseInquiryChannelStats.ChannelStat> channelStats = channelData.stream()
                 .map(data -> {
                     InquiryChannel channel = (InquiryChannel) data[0];
                     Long count = (Long) data[1];
                     double percentage = totalCount > 0 ? (count * 100.0) / totalCount : 0;
-                    
+
                     return ResponseInquiryChannelStats.ChannelStat.builder()
                             .channel(channel != null ? channel.name() : "UNKNOWN")
                             .channelName(getChannelName(channel))
@@ -527,19 +528,17 @@ public class InquiryServiceImpl implements InquiryService {
                 })
                 .toList();
 
-        // 유입경로별 통계 조회 (QueryDSL 사용)
-        Map<String, Object> complexStats = inquiryRepository.getComplexStatistics(startDate, endDate);
-        
         // 유입경로 통계 처리
         List<ResponseInquiryChannelStats.InflowStat> inflowStats = new ArrayList<>();
         if (complexStats.containsKey("inflowStats")) {
+            @SuppressWarnings("unchecked")
             List<Object[]> inflowData = (List<Object[]>) complexStats.get("inflowStats");
             inflowStats = inflowData.stream()
                     .map(data -> {
                         InflowSource source = (InflowSource) data[0];
                         Long count = (Long) data[1];
                         double percentage = totalCount > 0 ? (count * 100.0) / totalCount : 0;
-                        
+
                         return ResponseInquiryChannelStats.InflowStat.builder()
                                 .inflowSource(source != null ? source.name() : "UNKNOWN")
                                 .inflowSourceName(getInflowSourceName(source))

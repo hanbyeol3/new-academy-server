@@ -1,5 +1,6 @@
 package com.academy.api.apply.service;
 
+import com.academy.api.apply.domain.ApplicationDivision;
 import com.academy.api.apply.dto.*;
 import com.academy.api.data.responses.Response;
 import com.academy.api.data.responses.ResponseData;
@@ -83,6 +84,17 @@ public interface ApplyApplicationService {
      * @return 상세 통계
      */
     ResponseData<ResponseApplyApplicationStats> getDetailedStats(LocalDateTime startDate, LocalDateTime endDate);
+
+    /**
+     * 과목별 통계 조회 (기간·구분별, 접수취소 제외).
+     *
+     * @param startDate 접수일 시작 (null이면 최근 30일)
+     * @param endDate 접수일 종료 (null이면 현재)
+     * @param division 구분 필터 (null이면 전체)
+     * @return 과목별·구분별 통계
+     */
+    ResponseData<ResponseApplySubjectStats> getSubjectStats(LocalDateTime startDate, LocalDateTime endDate,
+                                                            ApplicationDivision division);
 
     /**
      * 원서접수 이력 추가.

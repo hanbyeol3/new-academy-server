@@ -758,8 +758,8 @@ public class ExplanationServiceImpl implements ExplanationService {
 			throw new BusinessException(ErrorCode.EXPLANATION_RESERVATION_DUPLICATE);
 		}
 
-		// 4. 팀 정원 확인 (1예약 = 1팀)
-		if (!schedule.hasAvailableTeamCapacity()) {
+		// 4. 팀 정원 확인 (1예약 = 1팀) - 관리자는 정원 초과 접수 허용
+		if (!isAdminRequest && !schedule.hasAvailableTeamCapacity()) {
 			log.warn("[ExplanationService] 팀 정원 부족. scheduleId={}, teamCapacity={}, reservedTeams={}",
 					request.getScheduleId(), schedule.getTeamCapacity(), schedule.getReservedTeamCount());
 			throw new BusinessException(ErrorCode.EXPLANATION_SCHEDULE_FULL);

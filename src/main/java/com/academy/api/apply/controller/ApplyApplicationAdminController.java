@@ -1,5 +1,6 @@
 package com.academy.api.apply.controller;
 
+import com.academy.api.apply.domain.ApplicationDivision;
 import com.academy.api.apply.dto.*;
 import com.academy.api.apply.service.ApplyApplicationService;
 import com.academy.api.data.responses.Response;
@@ -230,6 +231,39 @@ public class ApplyApplicationAdminController {
 		log.info("상세 통계 조회 요청. startDate={}, endDate={}", startDate, endDate);
 
 		return applyApplicationService.getDetailedStats(startDate, endDate);
+	}
+
+	@Operation(
+			summary = "과목별 통계 조회 (기간·구분별)",
+			description = """
+                기간(접수일)·구분별 과목 신청 통계를 조회합니다.
+
+                통계 항목:
+                - 기간·구분 내 원서접수 건수 (접수취소 제외)
+                - 과목별 신청 건수 및 선택률 (건수 내림차순)
+                - 구분별 접수 건수 및 비율 (기간 필터만 적용)
+
+                매개변수:
+                - startDate: 조회 시작일시 (선택, 기본값: 30일 전)
+                - endDate: 조회 종료일시 (선택, 기본값: 현재)
+                - division: 구분 필터 (선택, 미지정 시 전체)
+
+                주의사항:
+                - 과목은 다중선택이므로 선택률 합계는 100%를 초과할 수 있습니다
+                """
+	)
+	@GetMapping("/statistics/subjects")
+	public ResponseData<ResponseApplySubjectStats> getSubjectStats(
+			@Parameter(description = "조회 시작일시", example = "2025-01-01T00:00:00")
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+			@Parameter(description = "조회 종료일시", example = "2025-12-31T23:59:59")
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+			@Parameter(description = "구분 필터 (MIDDLE, HIGH, SELF_STUDY_RETAKE)", example = "HIGH")
+			@RequestParam(required = false) ApplicationDivision division) {
+
+		log.info("과목별 통계 조회 요청. startDate={}, endDate={}, division={}", startDate, endDate, division);
+
+		return applyApplicationService.getSubjectStats(startDate, endDate, division);
 	}
 
 	@Operation(

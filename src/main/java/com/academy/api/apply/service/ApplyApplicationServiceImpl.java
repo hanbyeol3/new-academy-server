@@ -335,6 +335,84 @@ public class ApplyApplicationServiceImpl implements ApplyApplicationService {
 	}
 
 	@Override
+	public ResponseData<ResponseApplySubjectStats> getSubjectStats(LocalDateTime startDate, LocalDateTime endDate,
+	                                                               ApplicationDivision division) {
+
+		log.info("[ApplyApplicationService] 과목별 통계 조회 시작. 기간={} ~ {}, 구분={}", startDate, endDate, division);
+
+		// 기간 미지정 시 최근 30일 기준 (문의접수 채널별 통계와 동일한 규칙)
+		if (endDate == null) {
+			endDate = LocalDateTime.now();
+		}
+		if (startDate == null) {
+			startDate = endDate.minusDays(30);
+		}
+
+		// 선택률 분모: 기간·구분 내 원서접수 건수 (접수취소 제외)
+		Long totalCount = applyApplicationRepository.countByPeriodAndDivision(
+				startDate, endDate, division, ApplicationStatus.CANCELED);
+
+		// 과목별 신청 건수 집계 (과목은 다중선택이므로 선택률 합계는 100%를 초과할 수 있음)
+		List<Object[]> subjectRows = applyApplicationSubjectRepository.findSubjectStatistics(
+				startDate, endDate, division, ApplicationStatus.CANCELED);
+
+		List<ResponseApplySubjectStats.SubjectStat> subjectStats = subjectRows.stream()
+				.map(row -> {
+					SubjectCode subjectCode = (SubjectCode) row[0];
+					Long count = (Long) row[1];
+					return ResponseApplySubjectStats.SubjectStat.builder()
+							.subjectCode(subjectCode.name())
+							.subjectName(subjectCode.getDisplayName())
+							.count(count)
+							.percentage(calculatePercentage(count, totalCount))
+							.build();
+				})
+				.toList();
+
+		// 구분별 접수 건수 집계 (기간 필터만 적용, 구분 필터와 무관하게 전체 분포 제공)
+		List<Object[]> divisionRows = applyApplicationRepository.findDivisionStatistics(
+				startDate, endDate, ApplicationStatus.CANCELED);
+
+		long divisionTotal = divisionRows.stream()
+				.mapToLong(row -> (Long) row[1])
+				.sum();
+
+		List<ResponseApplySubjectStats.DivisionStat> divisionStats = divisionRows.stream()
+				.map(row -> {
+					ApplicationDivision div = (ApplicationDivision) row[0];
+					Long count = (Long) row[1];
+					return ResponseApplySubjectStats.DivisionStat.builder()
+							.division(div.name())
+							.divisionName(div.getDisplayName())
+							.count(count)
+							.percentage(calculatePercentage(count, divisionTotal))
+							.build();
+				})
+				.toList();
+
+		ResponseApplySubjectStats stats = ResponseApplySubjectStats.builder()
+				.totalCount(totalCount)
+				.subjectStats(subjectStats)
+				.divisionStats(divisionStats)
+				.build();
+
+		log.debug("[ApplyApplicationService] 과목별 통계 조회 완료. 전체={}, 과목수={}, 구분수={}",
+				totalCount, subjectStats.size(), divisionStats.size());
+
+		return ResponseData.ok("0000", "과목별 통계 조회 성공", stats);
+	}
+
+	/**
+	 * 백분율 계산 (소수점 첫째 자리 반올림).
+	 */
+	private Double calculatePercentage(Long count, long total) {
+		if (total <= 0) {
+			return 0.0;
+		}
+		return Math.round(count * 1000.0 / total) / 10.0;
+	}
+
+	@Override
 	@Transactional
 	public ResponseData<ResponseApplyApplicationLog> addApplyApplicationLog(Long applyId,
 	                                                                        RequestApplyApplicationLogCreate request) {

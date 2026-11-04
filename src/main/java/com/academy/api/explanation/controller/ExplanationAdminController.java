@@ -467,6 +467,38 @@ public class ExplanationAdminController {
     }
 
     @Operation(
+            summary = "예약 추가 접수 (관리자)",
+            description = """
+                    관리자가 설명회 예약을 수동으로 추가 접수합니다.
+
+                    공개 예약 신청과 동일한 입력을 받지만, 다음 검증을 생략합니다:
+                    - 회차 상태 검증 생략 (관리자 강제마감/신청기간 외에도 접수 가능)
+                    - 팀 정원 검증 생략 (정원 초과 접수 가능)
+
+                    유지되는 검증:
+                    - 동일 회차에 같은 전화번호로 확정 예약이 있으면 중복 예약 에러
+
+                    처리 내용:
+                    - 예약 생성 및 회차 예약 팀 수 증가
+                    - 신청자에게 예약 확인 SMS 발송 (공개 신청과 동일)
+                    """
+    )
+    @PostMapping("/reservations")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ResponseData<Long> createReservationByAdmin(
+            @Parameter(description = "예약 신청 요청")
+            @RequestBody @Valid RequestExplanationReservationCreate request,
+            HttpServletRequest httpRequest) {
+
+        log.info("관리자 예약 추가 접수 요청. scheduleId={}, applicantName={}, applicantPhone={}",
+                request.getScheduleId(), request.getApplicantName(), request.getApplicantPhone());
+
+        String clientIp = getClientIpAddress(httpRequest);
+
+        return explanationService.createReservationByAdmin(request, clientIp);
+    }
+
+    @Operation(
             summary = "예약 상세 조회",
             description = """
                     예약 상세 정보를 조회합니다.
@@ -701,5 +733,32 @@ public class ExplanationAdminController {
             return null;
         }
         return isPublished == 1;
+    }
+
+    /**
+     * 클라이언트 IP 주소 추출.
+     */
+    private String getClientIpAddress(HttpServletRequest request) {
+        String[] headerNames = {
+                "X-Forwarded-For",
+                "X-Real-IP",
+                "Proxy-Client-IP",
+                "WL-Proxy-Client-IP",
+                "HTTP_CLIENT_IP",
+                "HTTP_X_FORWARDED_FOR"
+        };
+
+        for (String headerName : headerNames) {
+            String ip = request.getHeader(headerName);
+            if (ip != null && !ip.trim().isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
+                // X-Forwarded-For에서 첫 번째 IP 추출 (proxy chain인 경우)
+                if (ip.contains(",")) {
+                    ip = ip.split(",")[0].trim();
+                }
+                return ip;
+            }
+        }
+
+        return request.getRemoteAddr();
     }
 }
